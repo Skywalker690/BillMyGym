@@ -84,7 +84,7 @@ public class ReminderService {
         log.setType(NotificationType.MEMBERSHIP_EXPIRY);
         log.setChannel(channel);
         log.setRecipient(channel == NotificationChannel.WHATSAPP ? member.getPhoneNumber() : member.getEmail());
-        log.setStatus(NotificationStatus.SENT.name());
+        log.setStatus(NotificationStatus.QUEUED.name());
         log.setMessage("Your gym membership is near expiry. Please renew.");
         return log;
     }
