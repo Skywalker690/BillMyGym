@@ -805,3 +805,56 @@ Membership Workflows
 Notifications & Renewals
 
 This structure becomes the official production architecture for the platform.
+
+---
+
+## Implementation Status (Current)
+
+The repository now includes an initial backend implementation at:
+
+- `/home/runner/work/GymMax/GymMax/backend`
+
+Implemented in this phase:
+
+- Spring Boot 3 backend scaffold (Java 21, Maven)
+- PostgreSQL + Flyway baseline schema migration
+- JWT-based authentication with role claims
+- RBAC-aware API surface for:
+  - auth (`/api/auth/register`, `/api/auth/login`)
+  - organizations (`/api/organizations`)
+  - members (`/api/members`)
+  - analytics (`/api/analytics/platform`, `/api/analytics/organization`)
+- Soft delete support in core entities and repositories
+- Scheduled reminder foundation for expiry notifications with usage metric logging
+- Default SUPER_ADMIN bootstrap user (configurable by env vars)
+
+## Local Run (Backend)
+
+### 1) Start PostgreSQL
+
+Use any local PostgreSQL instance and create a database/user, for example:
+
+- database: `gymflow`
+- user: `gymflow`
+- password: `gymflow`
+
+### 2) Configure environment
+
+Set environment variables (optional if using defaults):
+
+- `DB_URL` (default `jdbc:postgresql://localhost:5432/gymflow`)
+- `DB_USERNAME` (default `gymflow`)
+- `DB_PASSWORD` (default `gymflow`)
+- `JWT_SECRET` (base64 secret; default provided for local dev only)
+- `SUPER_ADMIN_EMAIL` (default `admin@gymflow.local`)
+- `SUPER_ADMIN_PASSWORD` (default `SuperAdmin@123`)
+
+### 3) Run the application
+
+From `/home/runner/work/GymMax/GymMax/backend`:
+
+```bash
+mvn spring-boot:run
+```
+
+Flyway migrations run automatically on startup.
