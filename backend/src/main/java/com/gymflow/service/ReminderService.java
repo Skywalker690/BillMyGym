@@ -6,6 +6,7 @@ import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationSetting;
 import com.gymflow.domain.UsageMetric;
 import com.gymflow.domain.enums.NotificationChannel;
+import com.gymflow.domain.enums.NotificationStatus;
 import com.gymflow.domain.enums.NotificationType;
 import com.gymflow.repository.MemberRepository;
 import com.gymflow.repository.NotificationLogRepository;
@@ -52,7 +53,7 @@ public class ReminderService {
             Organization organization = member.getOrganization();
             OrganizationSetting setting = settingRepository.findByOrganizationIdAndDeletedFalse(organization.getId())
                 .orElse(null);
-            if (setting == null || setting.isDeleted()) {
+            if (setting == null) {
                 continue;
             }
 
@@ -83,7 +84,7 @@ public class ReminderService {
         log.setType(NotificationType.MEMBERSHIP_EXPIRY);
         log.setChannel(channel);
         log.setRecipient(channel == NotificationChannel.WHATSAPP ? member.getPhoneNumber() : member.getEmail());
-        log.setStatus("SENT");
+        log.setStatus(NotificationStatus.SENT.name());
         log.setMessage("Your gym membership is near expiry. Please renew.");
         return log;
     }

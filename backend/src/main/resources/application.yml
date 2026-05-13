@@ -20,7 +20,7 @@ server:
   port: ${SERVER_PORT:8080}
 
 jwt:
-  secret: ${JWT_SECRET:MDEyMzQ1Njc4OUFCQ0RFRjAxMjM0NTY3ODlBQkNERUY=}
+  secret: ${JWT_SECRET}
   access-token-expiration-minutes: ${JWT_ACCESS_TOKEN_EXPIRATION_MINUTES:120}
 
 gymflow:
@@ -28,7 +28,7 @@ gymflow:
     pre-expiry-days: ${REMINDER_PRE_EXPIRY_DAYS:1}
   super-admin:
     email: ${SUPER_ADMIN_EMAIL:admin@gymflow.local}
-    password: ${SUPER_ADMIN_PASSWORD:SuperAdmin@123}
+    password: ${SUPER_ADMIN_PASSWORD}
 
 ---
 spring:

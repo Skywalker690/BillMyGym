@@ -845,9 +845,9 @@ Set environment variables (optional if using defaults):
 - `DB_URL` (default `jdbc:postgresql://localhost:5432/gymflow`)
 - `DB_USERNAME` (default `gymflow`)
 - `DB_PASSWORD` (default `gymflow`)
-- `JWT_SECRET` (base64 secret; default provided for local dev only)
+- `JWT_SECRET` (**required**, base64-encoded secret key)
 - `SUPER_ADMIN_EMAIL` (default `admin@gymflow.local`)
-- `SUPER_ADMIN_PASSWORD` (default `SuperAdmin@123`)
+- `SUPER_ADMIN_PASSWORD` (**required**)
 
 ### 3) Run the application
 
@@ -858,3 +858,7 @@ mvn spring-boot:run
 ```
 
 Flyway migrations run automatically on startup.
+
+### 4) Java version
+
+- Java 17 is required.

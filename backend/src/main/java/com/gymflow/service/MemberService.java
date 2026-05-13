@@ -2,6 +2,8 @@ package com.gymflow.service;
 
 import com.gymflow.api.dto.MemberDtos.MemberRequest;
 import com.gymflow.api.dto.MemberDtos.MemberResponse;
+import com.gymflow.api.error.BadRequestException;
+import com.gymflow.api.error.NotFoundException;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.Organization;
 import com.gymflow.repository.MemberRepository;
@@ -35,7 +37,7 @@ public class MemberService {
         Long orgId = requireOrgId(user);
 
         Organization organization = organizationRepository.findByIdAndDeletedFalse(orgId)
-            .orElseThrow(() -> new IllegalArgumentException("Organization not found"));
+            .orElseThrow(() -> new NotFoundException("Organization not found"));
 
         Member member = new Member();
         member.setOrganization(organization);
@@ -57,7 +59,7 @@ public class MemberService {
         Long orgId = requireOrgId(user);
 
         Member member = memberRepository.findByIdAndOrganizationIdAndDeletedFalse(memberId, orgId)
-            .orElseThrow(() -> new IllegalArgumentException("Member not found"));
+            .orElseThrow(() -> new NotFoundException("Member not found"));
 
         member.setFullName(request.fullName());
         member.setPhoneNumber(request.phoneNumber());
@@ -77,13 +79,13 @@ public class MemberService {
         Long orgId = requireOrgId(user);
 
         Member member = memberRepository.findByIdAndOrganizationIdAndDeletedFalse(memberId, orgId)
-            .orElseThrow(() -> new IllegalArgumentException("Member not found"));
+            .orElseThrow(() -> new NotFoundException("Member not found"));
         member.setDeleted(true);
     }
 
     private Long requireOrgId(AuthenticatedUser user) {
         if (user.organizationId() == null) {
-            throw new IllegalArgumentException("Organization context is required");
+            throw new BadRequestException("Organization context is required");
         }
         return user.organizationId();
     }

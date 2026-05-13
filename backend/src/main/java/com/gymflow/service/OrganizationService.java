@@ -2,6 +2,8 @@ package com.gymflow.service;
 
 import com.gymflow.api.dto.OrganizationDtos.OrganizationResponse;
 import com.gymflow.api.dto.OrganizationDtos.UpdateOrganizationRequest;
+import com.gymflow.api.error.ForbiddenException;
+import com.gymflow.api.error.NotFoundException;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.enums.Role;
 import com.gymflow.repository.OrganizationRepository;
@@ -35,11 +37,11 @@ public class OrganizationService {
     public OrganizationResponse updateOrganization(Long id, UpdateOrganizationRequest request) {
         AuthenticatedUser user = SecurityUtils.currentUser();
         if (user.role() != Role.SUPER_ADMIN && !id.equals(user.organizationId())) {
-            throw new IllegalArgumentException("Forbidden organization access");
+            throw new ForbiddenException("Forbidden organization access");
         }
 
         Organization org = organizationRepository.findByIdAndDeletedFalse(id)
-            .orElseThrow(() -> new IllegalArgumentException("Organization not found"));
+            .orElseThrow(() -> new NotFoundException("Organization not found"));
 
         org.setName(request.name());
         org.setDistrict(request.district());
@@ -61,11 +63,11 @@ public class OrganizationService {
     public void softDeleteOrganization(Long id) {
         AuthenticatedUser user = SecurityUtils.currentUser();
         if (user.role() != Role.SUPER_ADMIN) {
-            throw new IllegalArgumentException("Only SUPER_ADMIN can delete organizations");
+            throw new ForbiddenException("Only SUPER_ADMIN can delete organizations");
         }
 
         Organization org = organizationRepository.findByIdAndDeletedFalse(id)
-            .orElseThrow(() -> new IllegalArgumentException("Organization not found"));
+            .orElseThrow(() -> new NotFoundException("Organization not found"));
         org.setDeleted(true);
         org.setStatus(com.gymflow.domain.enums.OrganizationStatus.INACTIVE);
     }

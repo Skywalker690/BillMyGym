@@ -2,6 +2,7 @@ package com.gymflow.service;
 
 import com.gymflow.api.dto.AnalyticsDtos.OrganizationAnalyticsResponse;
 import com.gymflow.api.dto.AnalyticsDtos.PlatformAnalyticsResponse;
+import com.gymflow.api.error.BadRequestException;
 import com.gymflow.repository.MemberRepository;
 import com.gymflow.repository.NotificationLogRepository;
 import com.gymflow.repository.OrganizationRepository;
@@ -40,7 +41,7 @@ public class AnalyticsService {
     public OrganizationAnalyticsResponse organizationAnalytics() {
         Long organizationId = SecurityUtils.currentUser().organizationId();
         if (organizationId == null) {
-            throw new IllegalArgumentException("Organization context is required");
+            throw new BadRequestException("Organization context is required");
         }
 
         return new OrganizationAnalyticsResponse(

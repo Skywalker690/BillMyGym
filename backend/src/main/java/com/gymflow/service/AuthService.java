@@ -1,5 +1,6 @@
 package com.gymflow.service;
 
+import com.gymflow.api.error.BadRequestException;
 import com.gymflow.api.dto.AuthDtos.LoginRequest;
 import com.gymflow.api.dto.AuthDtos.LoginResponse;
 import com.gymflow.api.dto.AuthDtos.RegisterOrganizationAdminRequest;
@@ -43,10 +44,10 @@ public class AuthService {
     @Transactional
     public void registerOrganizationAdmin(RegisterOrganizationAdminRequest request) {
         if (organizationRepository.existsByNameAndDeletedFalse(request.organizationName())) {
-            throw new IllegalArgumentException("Organization already exists");
+            throw new BadRequestException("Organization already exists");
         }
         if (appUserRepository.findByEmailAndDeletedFalse(request.adminEmail()).isPresent()) {
-            throw new IllegalArgumentException("Admin email already exists");
+            throw new BadRequestException("Admin email already exists");
         }
 
         Organization organization = new Organization();
@@ -77,10 +78,10 @@ public class AuthService {
 
     public LoginResponse login(LoginRequest request) {
         AppUser user = appUserRepository.findByEmailAndDeletedFalse(request.email())
-            .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
+            .orElseThrow(() -> new BadRequestException("Invalid credentials"));
 
         if (user.getStatus() != UserStatus.ACTIVE || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid credentials");
+            throw new BadRequestException("Invalid credentials");
         }
 
         String token = jwtService.issueToken(user);

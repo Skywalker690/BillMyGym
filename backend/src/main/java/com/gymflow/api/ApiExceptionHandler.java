@@ -1,8 +1,8 @@
 package com.gymflow.api;
 
+import com.gymflow.api.error.AppException;
 import java.time.OffsetDateTime;
 import java.util.Map;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -11,12 +11,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
-        HttpStatus status = ex.getMessage() != null && ex.getMessage().toLowerCase().contains("forbidden")
-            ? HttpStatus.FORBIDDEN : HttpStatus.BAD_REQUEST;
-
-        return ResponseEntity.status(status).body(Map.of(
+    @ExceptionHandler(AppException.class)
+    public ResponseEntity<Map<String, Object>> handleAppException(AppException ex) {
+        return ResponseEntity.status(ex.getStatus()).body(Map.of(
             "timestamp", OffsetDateTime.now().toString(),
             "error", ex.getMessage()
         ));

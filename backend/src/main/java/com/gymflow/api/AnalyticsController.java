@@ -2,6 +2,7 @@ package com.gymflow.api;
 
 import com.gymflow.api.dto.AnalyticsDtos.OrganizationAnalyticsResponse;
 import com.gymflow.api.dto.AnalyticsDtos.PlatformAnalyticsResponse;
+import com.gymflow.api.error.ForbiddenException;
 import com.gymflow.domain.enums.Role;
 import com.gymflow.security.SecurityUtils;
 import com.gymflow.service.AnalyticsService;
@@ -22,7 +23,7 @@ public class AnalyticsController {
     @GetMapping("/platform")
     public PlatformAnalyticsResponse platformAnalytics() {
         if (SecurityUtils.currentUser().role() != Role.SUPER_ADMIN) {
-            throw new IllegalArgumentException("Only SUPER_ADMIN can access platform analytics");
+            throw new ForbiddenException("Only SUPER_ADMIN can access platform analytics");
         }
         return analyticsService.platformAnalytics();
     }
