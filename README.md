@@ -576,3 +576,232 @@ focused on:
 simplicity
 automation
 operational reliability
+
+
+
+
+PRD ADDENDUM — Domain Model & Database Architecture Update
+
+1. User Model Clarification
+
+The system distinguishes between:
+
+A. Application Users
+
+Authenticated platform users with login access.
+
+These users can:
+
+- access dashboard
+- manage organizations
+- manage members
+- configure settings
+
+Roles
+
+SUPER_ADMIN
+ORG_ADMIN
+
+Stored In
+
+users table
+
+Fields
+
+id
+organization_id
+email
+password_hash
+role
+status
+created_at
+updated_at
+deleted
+
+---
+
+B. Gym Members
+
+Business entities tracked by organizations.
+
+Gym members:
+
+- DO NOT have login access
+- DO NOT authenticate
+- DO NOT receive JWT tokens
+- are operational records only
+
+Their purpose is:
+
+- membership tracking
+- renewal reminders
+- operational management
+
+Stored In
+
+members table
+
+Fields
+
+id
+organization_id
+full_name
+phone_number
+email
+joining_date
+membership_start_date
+membership_end_date
+membership_status
+notes
+deleted
+created_at
+updated_at
+
+---
+
+2. Database Design Decision
+
+Approved Architecture
+
+Use:
+
+normalized relational tables
+
+NOT:
+
+JSON-based member storage
+
+---
+
+3. Reasoning
+
+Using relational tables provides:
+
+- proper indexing
+- scalable querying
+- efficient reminder processing
+- analytics support
+- filtering/sorting
+- reporting support
+- production-grade architecture
+
+---
+
+4. Example Queries
+
+Expiring Membership Query
+
+SELECT *
+FROM members
+WHERE membership_end_date <= CURRENT_DATE + INTERVAL '1 day'
+AND deleted = false;
+
+---
+
+5. Reminder Processing Workflow
+
+Scheduler
+↓
+Find expiring members
+↓
+Check org settings
+↓
+Send WhatsApp/email
+↓
+Log notification
+↓
+Update usage metrics
+
+---
+
+6. Database System Update
+
+Database Engine
+
+Use:
+
+- PostgreSQL for development
+- PostgreSQL for production
+- PostgreSQL for testing
+
+---
+
+7. Testing Database Policy
+
+The system will NOT use:
+
+H2 database
+
+Reason:
+
+- avoid environment inconsistency
+- ensure production parity
+- avoid SQL dialect differences
+- realistic migration validation
+
+---
+
+8. Flyway Migration Policy
+
+All schema creation and updates must use:
+
+Flyway migrations
+
+No automatic schema generation in production.
+
+---
+
+9. Spring Boot Configuration Policy
+
+application.yml / application.properties
+
+Environment-based configuration:
+
+- local
+- dev
+- prod
+
+Configured for:
+
+- PostgreSQL
+- Flyway
+- JWT
+- mail service
+- Razorpay
+- WhatsApp APIs
+
+---
+
+10. Soft Delete Enforcement
+
+All domain entities use:
+
+soft delete
+
+No hard delete operations allowed.
+
+Applied to:
+
+- organizations
+- users
+- members
+- subscriptions
+- notifications
+
+---
+
+11. Final Architecture Summary
+
+Platform Owner
+↓
+Organizations
+↓
+Application Users (Admins)
+↓
+Members (Tracked Entities)
+↓
+Membership Workflows
+↓
+Notifications & Renewals
+
+This structure becomes the official production architecture for the platform.
