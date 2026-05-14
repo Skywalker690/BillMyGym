@@ -862,3 +862,28 @@ Flyway migrations run automatically on startup.
 ### 4) Java version
 
 - Java 17 is required.
+
+## Local Run (Frontend)
+
+The frontend is available at:
+
+- `/home/runner/work/GymMax/GymMax/frontend`
+
+### 1) Install dependencies
+
+```bash
+cd /home/runner/work/GymMax/GymMax/frontend
+npm install
+```
+
+### 2) Start development server
+
+```bash
+npm run dev
+```
+
+### 3) Production build
+
+```bash
+npm run build
+```
