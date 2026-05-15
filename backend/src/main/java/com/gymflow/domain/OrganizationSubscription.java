@@ -9,10 +9,15 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
+@Getter
+@Setter
 @Table(name = "organization_subscriptions")
 public class OrganizationSubscription extends BaseEntity {
 
@@ -34,52 +39,4 @@ public class OrganizationSubscription extends BaseEntity {
     private BigDecimal amount;
 
     private String razorpaySubscriptionId;
-
-    public Organization getOrganization() {
-        return organization;
-    }
-
-    public void setOrganization(Organization organization) {
-        this.organization = organization;
-    }
-
-    public LocalDate getStartDate() {
-        return startDate;
-    }
-
-    public void setStartDate(LocalDate startDate) {
-        this.startDate = startDate;
-    }
-
-    public LocalDate getEndDate() {
-        return endDate;
-    }
-
-    public void setEndDate(LocalDate endDate) {
-        this.endDate = endDate;
-    }
-
-    public SubscriptionStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(SubscriptionStatus status) {
-        this.status = status;
-    }
-
-    public BigDecimal getAmount() {
-        return amount;
-    }
-
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
-    }
-
-    public String getRazorpaySubscriptionId() {
-        return razorpaySubscriptionId;
-    }
-
-    public void setRazorpaySubscriptionId(String razorpaySubscriptionId) {
-        this.razorpaySubscriptionId = razorpaySubscriptionId;
-    }
 }

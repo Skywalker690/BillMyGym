@@ -1,5 +1,6 @@
 package com.gymflow.service;
 
+import com.gymflow.api.dto.MemberDtos;
 import com.gymflow.api.dto.MemberDtos.MemberRequest;
 import com.gymflow.api.dto.MemberDtos.MemberResponse;
 import com.gymflow.api.error.BadRequestException;
@@ -12,18 +13,16 @@ import com.gymflow.security.AuthenticatedUser;
 import com.gymflow.security.SecurityUtils;
 import jakarta.transaction.Transactional;
 import java.util.List;
+
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class MemberService {
 
     private final MemberRepository memberRepository;
     private final OrganizationRepository organizationRepository;
-
-    public MemberService(MemberRepository memberRepository, OrganizationRepository organizationRepository) {
-        this.memberRepository = memberRepository;
-        this.organizationRepository = organizationRepository;
-    }
 
     public List<MemberResponse> listMembers() {
         AuthenticatedUser user = SecurityUtils.currentUser();
@@ -41,6 +40,12 @@ public class MemberService {
 
         Member member = new Member();
         member.setOrganization(organization);
+        toMemberDto(request, member);
+
+        return toResponse(memberRepository.save(member));
+    }
+
+    private void toMemberDto(MemberRequest request, Member member) {
         member.setFullName(request.fullName());
         member.setPhoneNumber(request.phoneNumber());
         member.setEmail(request.email());
@@ -49,8 +54,6 @@ public class MemberService {
         member.setMembershipEndDate(request.membershipEndDate());
         member.setMembershipStatus(request.membershipStatus());
         member.setNotes(request.notes());
-
-        return toResponse(memberRepository.save(member));
     }
 
     @Transactional
@@ -61,14 +64,7 @@ public class MemberService {
         Member member = memberRepository.findByIdAndOrganizationIdAndDeletedFalse(memberId, orgId)
             .orElseThrow(() -> new NotFoundException("Member not found"));
 
-        member.setFullName(request.fullName());
-        member.setPhoneNumber(request.phoneNumber());
-        member.setEmail(request.email());
-        member.setJoiningDate(request.joiningDate());
-        member.setMembershipStartDate(request.membershipStartDate());
-        member.setMembershipEndDate(request.membershipEndDate());
-        member.setMembershipStatus(request.membershipStatus());
-        member.setNotes(request.notes());
+        toMemberDto(request, member);
 
         return toResponse(member);
     }

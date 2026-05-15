@@ -6,9 +6,14 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.YearMonth;
 
 @Entity
+@Getter
+@Setter
 @Table(name = "usage_metrics")
 public class UsageMetric extends BaseEntity {
 
@@ -50,59 +55,8 @@ public class UsageMetric extends BaseEntity {
         return metric;
     }
 
-    public Organization getOrganization() {
-        return organization;
-    }
-
-    public void setOrganization(Organization organization) {
-        this.organization = organization;
-    }
-
-    public int getYear() {
-        return year;
-    }
-
-    public int getMonth() {
-        return month;
-    }
-
-    public int getWhatsappMessagesSent() {
-        return whatsappMessagesSent;
-    }
-
     public void incrementWhatsappMessagesSent() {
-        this.whatsappMessagesSent += 1;
+        this.whatsappMessagesSent++;
     }
 
-    public int getEmailsSent() {
-        return emailsSent;
-    }
-
-    public void incrementEmailsSent() {
-        this.emailsSent += 1;
-    }
-
-    public int getActiveMembers() {
-        return activeMembers;
-    }
-
-    public void setActiveMembers(int activeMembers) {
-        this.activeMembers = activeMembers;
-    }
-
-    public int getActiveAdmins() {
-        return activeAdmins;
-    }
-
-    public void setActiveAdmins(int activeAdmins) {
-        this.activeAdmins = activeAdmins;
-    }
-
-    public String getSubscriptionStatus() {
-        return subscriptionStatus;
-    }
-
-    public void setSubscriptionStatus(String subscriptionStatus) {
-        this.subscriptionStatus = subscriptionStatus;
-    }
 }

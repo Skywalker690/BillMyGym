@@ -6,8 +6,12 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
+@Getter
+@Setter
 @Table(name = "organization_settings")
 public class OrganizationSetting extends BaseEntity {
 
@@ -25,44 +29,4 @@ public class OrganizationSetting extends BaseEntity {
     private int reminderDaysBeforeExpiry = 1;
 
     private String brandingName;
-
-    public Organization getOrganization() {
-        return organization;
-    }
-
-    public void setOrganization(Organization organization) {
-        this.organization = organization;
-    }
-
-    public boolean isWhatsappEnabled() {
-        return whatsappEnabled;
-    }
-
-    public void setWhatsappEnabled(boolean whatsappEnabled) {
-        this.whatsappEnabled = whatsappEnabled;
-    }
-
-    public boolean isEmailEnabled() {
-        return emailEnabled;
-    }
-
-    public void setEmailEnabled(boolean emailEnabled) {
-        this.emailEnabled = emailEnabled;
-    }
-
-    public int getReminderDaysBeforeExpiry() {
-        return reminderDaysBeforeExpiry;
-    }
-
-    public void setReminderDaysBeforeExpiry(int reminderDaysBeforeExpiry) {
-        this.reminderDaysBeforeExpiry = reminderDaysBeforeExpiry;
-    }
-
-    public String getBrandingName() {
-        return brandingName;
-    }
-
-    public void setBrandingName(String brandingName) {
-        this.brandingName = brandingName;
-    }
 }

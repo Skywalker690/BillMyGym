@@ -69,7 +69,6 @@ public class ReminderService {
             }
             if (setting.isEmailEnabled() && member.getEmail() != null && !member.getEmail().isBlank()) {
                 notificationLogRepository.save(buildLog(member, NotificationChannel.EMAIL));
-                metric.incrementEmailsSent();
             }
 
             metric.setActiveMembers((int) memberRepository.countByOrganizationIdAndDeletedFalse(organization.getId()));

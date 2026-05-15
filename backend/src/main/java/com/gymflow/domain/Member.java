@@ -9,9 +9,14 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDate;
 
 @Entity
+@Getter
+@Setter
 @Table(name = "members")
 public class Member extends BaseEntity {
 
@@ -43,75 +48,4 @@ public class Member extends BaseEntity {
     @Column(length = 1000)
     private String notes;
 
-    public Organization getOrganization() {
-        return organization;
-    }
-
-    public void setOrganization(Organization organization) {
-        this.organization = organization;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public LocalDate getJoiningDate() {
-        return joiningDate;
-    }
-
-    public void setJoiningDate(LocalDate joiningDate) {
-        this.joiningDate = joiningDate;
-    }
-
-    public LocalDate getMembershipStartDate() {
-        return membershipStartDate;
-    }
-
-    public void setMembershipStartDate(LocalDate membershipStartDate) {
-        this.membershipStartDate = membershipStartDate;
-    }
-
-    public LocalDate getMembershipEndDate() {
-        return membershipEndDate;
-    }
-
-    public void setMembershipEndDate(LocalDate membershipEndDate) {
-        this.membershipEndDate = membershipEndDate;
-    }
-
-    public MembershipStatus getMembershipStatus() {
-        return membershipStatus;
-    }
-
-    public void setMembershipStatus(MembershipStatus membershipStatus) {
-        this.membershipStatus = membershipStatus;
-    }
-
-    public String getNotes() {
-        return notes;
-    }
-
-    public void setNotes(String notes) {
-        this.notes = notes;
-    }
 }

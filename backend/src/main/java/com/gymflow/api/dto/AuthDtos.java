@@ -12,7 +12,11 @@ public class AuthDtos {
     ) {
     }
 
-    public record LoginResponse(String accessToken, String role, Long organizationId) {
+    public record LoginResponse(
+            String accessToken,
+            String role,
+            Long organizationId
+    ) {
     }
 
     public record RegisterOrganizationAdminRequest(

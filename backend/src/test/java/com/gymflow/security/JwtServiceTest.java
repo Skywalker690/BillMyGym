@@ -2,7 +2,7 @@ package com.gymflow.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.gymflow.domain.AppUser;
+import com.gymflow.domain.User;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.enums.Role;
 import java.lang.reflect.Field;
@@ -20,7 +20,7 @@ class JwtServiceTest {
         Organization organization = new Organization();
         setEntityId(organization, 42L);
 
-        AppUser user = new AppUser();
+        User user = new User();
         setEntityId(user, 101L);
         user.setEmail("org.admin@example.com");
         user.setRole(Role.ORG_ADMIN);

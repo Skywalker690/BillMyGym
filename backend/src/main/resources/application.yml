@@ -2,7 +2,9 @@ spring:
   profiles:
     active: local
   application:
-    name: gymflow
+    name: gymMax
+  jackson:
+    time-zone: Asia/Kolkata
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/gymmax}
     username: ${DB_USERNAME:postgres}
@@ -23,13 +25,19 @@ server:
 
 jwt:
   secret: ${JWT_SECRET}
-  access-token-expiration-minutes: ${JWT_ACCESS_TOKEN_EXPIRATION_MINUTES:120}
 
-gymflow:
-  reminder:
-    pre-expiry-days: ${REMINDER_PRE_EXPIRY_DAYS:1}
-  super-admin:
-    email: ${SUPER_ADMIN_EMAIL:admin@gymflow.local}
-    password: ${SUPER_ADMIN_PASSWORD}
-
-
+app:
+  rate-limit:
+    enabled: true
+    api:
+      max-requests: 180
+      window-seconds: 60
+    auth:
+      max-requests: 12
+      window-seconds: 60
+    password-reset:
+      max-requests: 5
+      window-seconds: 300
+    notifications:
+      max-requests: 60
+      window-seconds: 60

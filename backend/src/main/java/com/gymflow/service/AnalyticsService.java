@@ -9,27 +9,18 @@ import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.repository.OrganizationSubscriptionRepository;
 import com.gymflow.security.SecurityUtils;
 import java.time.LocalDate;
+
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class AnalyticsService {
 
     private final OrganizationRepository organizationRepository;
     private final OrganizationSubscriptionRepository subscriptionRepository;
     private final MemberRepository memberRepository;
     private final NotificationLogRepository notificationLogRepository;
-
-    public AnalyticsService(
-        OrganizationRepository organizationRepository,
-        OrganizationSubscriptionRepository subscriptionRepository,
-        MemberRepository memberRepository,
-        NotificationLogRepository notificationLogRepository
-    ) {
-        this.organizationRepository = organizationRepository;
-        this.subscriptionRepository = subscriptionRepository;
-        this.memberRepository = memberRepository;
-        this.notificationLogRepository = notificationLogRepository;
-    }
 
     public PlatformAnalyticsResponse platformAnalytics() {
         return new PlatformAnalyticsResponse(
