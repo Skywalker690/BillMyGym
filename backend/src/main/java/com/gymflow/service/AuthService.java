@@ -28,7 +28,6 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -48,7 +47,6 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final OrganizationMapper organizationMapper;
     private final AuditLogService auditLogService;
-    private final AppUserRepository userRepository;
 
     @Value("${google.client.id}")
     private String googleClientId;
@@ -107,15 +105,10 @@ public class AuthService {
 
     public LoginResponse loginWithGoogle(GoogleLoginRequest request) {
         try {
-            log.debug("Processing Google login request");
-
-            // Check if Google Client ID is configured
             if (googleClientId == null || googleClientId.trim().isEmpty()) {
-                log.error("Google Client ID is not configured. Please set the GOOGLE_CLIENT_ID environment variable.");
-                throw new IllegalStateException("Google authentication is not properly configured. Please contact the administrator.");
+                throw new BadRequestException("Google authentication is not configured");
             }
 
-            // Verify Google ID token
             GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
                     new NetHttpTransport(),
                     GsonFactory.getDefaultInstance())
@@ -124,22 +117,16 @@ public class AuthService {
 
             GoogleIdToken idToken = verifier.verify(request.idToken());
             if (idToken == null) {
-                log.error("Google token verification failed - invalid token");
-                throw new RuntimeException("Invalid Google ID token");
+                throw new BadRequestException("Invalid Google ID token");
             }
 
             GoogleIdToken.Payload payload = idToken.getPayload();
             String googleId = payload.getSubject();
             String email = payload.getEmail();
-            String name = (String) payload.get("name");
             String pictureUrl = (String) payload.get("picture");
 
-            // Find user by email - user must be pre-registered
-            User user = (User) userRepository.findByEmail(email).orElseThrow(
-                    () -> new UsernameNotFoundException("User not associated with this email. Contact sales")
-            );
+            User user = resolveActiveUser(email);
 
-            // Update existing user with Google info only if values changed
             boolean needsUpdate = false;
             if (user.getGoogleId() == null || !user.getGoogleId().equals(googleId)) {
                 user.setGoogleId(googleId);
@@ -150,26 +137,14 @@ public class AuthService {
                 needsUpdate = true;
             }
             if (needsUpdate) {
-                userRepository.save(user);
+                appUserRepository.save(user);
             }
 
-            String token = jwtUtil.generateToken(user.getEmail(),user.getRole());
-
-            UserDto userDto = toUserDto(user);
-
-            return LoginResponse.builder()
-                    .statusCode(200)
-                    .token(token)
-                    .role(user.getRole())
-                    .message("Google login successful")
-                    .user(userDto)
-                    .build();
+            return buildLoginResponse(user, "GOOGLE_LOGIN");
 
         } catch (GeneralSecurityException | IOException e) {
-            // Log error for debugging - full stack trace only in debug mode
-            log.error("Google authentication error: {} - {}", e.getClass().getSimpleName(), e.getMessage());
             log.debug("Full exception details:", e);
-            throw new RuntimeException("Google authentication failed. Please try again.");
+            throw new BadRequestException("Google authentication failed. Please try again.");
         }
     }
 
@@ -192,6 +167,17 @@ public class AuthService {
             "AUTH",
             user.getEmail()
         );
-        return new LoginResponse(token, user.getRole().name(), organizationId);
+        return new LoginResponse(token, user.getRole().name(), organizationId, toUserDto(user));
+    }
+
+    private UserDto toUserDto(User user) {
+        return UserDto.builder()
+            .id(user.getId())
+            .email(user.getEmail())
+            .role(user.getRole() == null ? null : user.getRole().name())
+            .googleId(user.getGoogleId())
+            .avatarUrl(user.getAvatarUrl())
+            .createdAt(user.getCreatedAt() == null ? null : user.getCreatedAt().toLocalDateTime())
+            .build();
     }
 }

@@ -10,6 +10,4 @@ public interface AppUserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmailAndDeletedFalse(String email);
 
     long countByOrganizationIdAndRoleAndDeletedFalse(Long organizationId, Role role);
-
-    Optional<Object> findByEmail(String email);
 }

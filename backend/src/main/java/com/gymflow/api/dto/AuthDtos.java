@@ -3,7 +3,6 @@ package com.gymflow.api.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
 
 public class AuthDtos {
 
@@ -16,7 +15,7 @@ public class AuthDtos {
     public record GoogleLoginRequest(@NotBlank String idToken) {
     }
 
-    public record LoginResponse(String accessToken, String role, Long organizationId) {
+    public record LoginResponse(String accessToken, String role, Long organizationId, UserDto user) {
     }
 
     public record RegisterOrganizationAdminRequest(
