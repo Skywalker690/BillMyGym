@@ -1,5 +1,6 @@
 package com.gymflow.api;
 
+import com.gymflow.api.dto.AuthDtos;
 import com.gymflow.api.dto.AuthDtos.GoogleLoginRequest;
 import com.gymflow.api.dto.AuthDtos.LoginRequest;
 import com.gymflow.api.dto.AuthDtos.RegisterOrganizationAdminRequest;
@@ -34,7 +35,8 @@ public class AuthController {
     }
 
     @PostMapping("/google-login")
-    public ResponseEntity<?> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Google login successful", authService.googleLogin(request)));
+    public ResponseEntity<AuthDtos.LoginResponse> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+        AuthDtos.LoginResponse response = authService.loginWithGoogle(request);
+        return ResponseEntity.ok(response);
     }
 }

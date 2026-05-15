@@ -1,4 +1,4 @@
-package com.gymflow.service.audit;
+package com.gymflow.service;
 
 import com.gymflow.domain.AuditLog;
 import com.gymflow.domain.enums.AuditCategory;

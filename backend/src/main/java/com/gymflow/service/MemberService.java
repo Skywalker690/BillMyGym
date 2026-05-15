@@ -12,7 +12,6 @@ import com.gymflow.repository.MemberRepository;
 import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.security.AuthenticatedUser;
 import com.gymflow.security.SecurityUtils;
-import com.gymflow.service.audit.AuditLogService;
 import jakarta.transaction.Transactional;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
