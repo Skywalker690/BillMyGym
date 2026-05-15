@@ -3,13 +3,14 @@ package com.gymflow.service;
 import com.gymflow.api.dto.AnalyticsDtos.OrganizationAnalyticsResponse;
 import com.gymflow.api.dto.AnalyticsDtos.PlatformAnalyticsResponse;
 import com.gymflow.api.error.BadRequestException;
+import com.gymflow.api.error.ForbiddenException;
+import com.gymflow.domain.enums.Role;
 import com.gymflow.repository.MemberRepository;
 import com.gymflow.repository.NotificationLogRepository;
 import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.repository.OrganizationSubscriptionRepository;
 import com.gymflow.security.SecurityUtils;
 import java.time.LocalDate;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +24,9 @@ public class AnalyticsService {
     private final NotificationLogRepository notificationLogRepository;
 
     public PlatformAnalyticsResponse platformAnalytics() {
+        if (SecurityUtils.currentUser().role() != Role.SUPER_ADMIN) {
+            throw new ForbiddenException("Only SUPER_ADMIN can access platform analytics");
+        }
         return new PlatformAnalyticsResponse(
             organizationRepository.findAllByDeletedFalse().size(),
             subscriptionRepository.countByDeletedFalseAndEndDateGreaterThanEqual(LocalDate.now())
@@ -34,7 +38,6 @@ public class AnalyticsService {
         if (organizationId == null) {
             throw new BadRequestException("Organization context is required");
         }
-
         return new OrganizationAnalyticsResponse(
             memberRepository.countByOrganizationIdAndDeletedFalse(organizationId),
             notificationLogRepository.countByOrganizationIdAndDeletedFalse(organizationId)

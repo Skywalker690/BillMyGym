@@ -12,11 +12,10 @@ public class AuthDtos {
     ) {
     }
 
-    public record LoginResponse(
-            String accessToken,
-            String role,
-            Long organizationId
-    ) {
+    public record GoogleLoginRequest(@NotBlank String idToken) {
+    }
+
+    public record LoginResponse(String accessToken, String role, Long organizationId) {
     }
 
     public record RegisterOrganizationAdminRequest(

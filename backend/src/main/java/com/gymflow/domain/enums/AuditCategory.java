@@ -1,7 +1,9 @@
 package com.gymflow.domain.enums;
 
 public enum AuditCategory {
-    LOGIN,
-    PROJECT,
-    PASSWORD
+    AUTHENTICATION,
+    ORGANIZATION,
+    MEMBER,
+    SECURITY,
+    SYSTEM
 }
