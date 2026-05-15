@@ -17,6 +17,8 @@ public class MemberMapper {
             member.getPhoneNumber(),
             member.getEmail(),
             member.getJoiningDate(),
+            member.getMembershipDuration(),
+            member.getCustomDurationDays(),
             member.getMembershipStartDate(),
             member.getMembershipEndDate(),
             member.getMembershipStatus(),
@@ -36,9 +38,8 @@ public class MemberMapper {
         member.setPhoneNumber(request.phoneNumber());
         member.setEmail(request.email());
         member.setJoiningDate(request.joiningDate());
-        member.setMembershipStartDate(request.membershipStartDate());
-        member.setMembershipEndDate(request.membershipEndDate());
-        member.setMembershipStatus(request.membershipStatus());
+        member.setMembershipDuration(request.membershipDuration());
+        member.setCustomDurationDays(request.customDurationDays());
         member.setNotes(request.notes());
     }
 }

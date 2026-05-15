@@ -1,5 +1,6 @@
 package com.gymflow.domain;
 
+import com.gymflow.domain.enums.MembershipDuration;
 import com.gymflow.domain.enums.MembershipStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +14,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 @Entity
 @Getter
@@ -43,7 +45,17 @@ public class Member extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    private MembershipDuration membershipDuration;
+
+    private Integer customDurationDays;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private MembershipStatus membershipStatus = MembershipStatus.ACTIVE;
+
+    private OffsetDateTime overdueMarkedAt;
+
+    private OffsetDateTime deletedAt;
 
     @Column(length = 1000)
     private String notes;

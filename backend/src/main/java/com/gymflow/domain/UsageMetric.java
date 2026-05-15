@@ -28,10 +28,13 @@ public class UsageMetric extends BaseEntity {
     private int month;
 
     @Column(nullable = false)
-    private int whatsappMessagesSent;
+    private int monthlyWhatsappCount;
 
     @Column(nullable = false)
-    private int emailsSent;
+    private int monthlyEmailCount;
+
+    @Column(nullable = false)
+    private int monthlyRemindersExecuted;
 
     @Column(nullable = false)
     private int activeMembers;
@@ -47,16 +50,25 @@ public class UsageMetric extends BaseEntity {
         metric.organization = organization;
         metric.year = ym.getYear();
         metric.month = ym.getMonthValue();
-        metric.whatsappMessagesSent = 0;
-        metric.emailsSent = 0;
+        metric.monthlyWhatsappCount = 0;
+        metric.monthlyEmailCount = 0;
+        metric.monthlyRemindersExecuted = 0;
         metric.activeMembers = 0;
         metric.activeAdmins = 0;
         metric.subscriptionStatus = "ACTIVE";
         return metric;
     }
 
-    public void incrementWhatsappMessagesSent() {
-        this.whatsappMessagesSent++;
+    public void incrementMonthlyWhatsappCount() {
+        this.monthlyWhatsappCount++;
+    }
+
+    public void incrementMonthlyEmailCount() {
+        this.monthlyEmailCount++;
+    }
+
+    public void incrementMonthlyRemindersExecuted() {
+        this.monthlyRemindersExecuted++;
     }
 
 }

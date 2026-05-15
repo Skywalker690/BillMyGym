@@ -1,90 +1,99 @@
 package com.gymflow.service;
 
+import com.gymflow.api.dto.ReminderDtos.ReminderRunResponse;
+import com.gymflow.api.error.BadRequestException;
 import com.gymflow.domain.Member;
-import com.gymflow.domain.NotificationLog;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationSetting;
-import com.gymflow.domain.UsageMetric;
-import com.gymflow.domain.enums.NotificationChannel;
-import com.gymflow.domain.enums.NotificationStatus;
+import com.gymflow.domain.enums.MembershipStatus;
 import com.gymflow.domain.enums.NotificationType;
+import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.repository.MemberRepository;
-import com.gymflow.repository.NotificationLogRepository;
-import com.gymflow.repository.OrganizationSettingRepository;
-import com.gymflow.repository.UsageMetricRepository;
+import com.gymflow.security.SecurityUtils;
+import jakarta.transaction.Transactional;
 import java.time.LocalDate;
-import java.time.YearMonth;
+import java.time.OffsetDateTime;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class ReminderService {
 
     private final MemberRepository memberRepository;
-    private final OrganizationSettingRepository settingRepository;
-    private final NotificationLogRepository notificationLogRepository;
-    private final UsageMetricRepository usageMetricRepository;
+    private final MembershipLifecycleService membershipLifecycleService;
+    private final OrganizationSettingService organizationSettingService;
+    private final NotificationDispatcherService notificationDispatcherService;
 
-    @Value("${gymflow.reminder.pre-expiry-days:1}")
-    private int defaultPreExpiryDays;
-
-    public ReminderService(
-        MemberRepository memberRepository,
-        OrganizationSettingRepository settingRepository,
-        NotificationLogRepository notificationLogRepository,
-        UsageMetricRepository usageMetricRepository
-    ) {
-        this.memberRepository = memberRepository;
-        this.settingRepository = settingRepository;
-        this.notificationLogRepository = notificationLogRepository;
-        this.usageMetricRepository = usageMetricRepository;
+    @Transactional
+    public ReminderRunResponse runRemindersForCurrentOrganization() {
+        Long organizationId = SecurityUtils.currentUser().organizationId();
+        if (organizationId == null) {
+            throw new BadRequestException("Organization context is required");
+        }
+        return runReminders(organizationId);
     }
 
-    @Scheduled(cron = "0 0 10 * * *")
     @Transactional
-    public void processExpiryReminders() {
-        LocalDate thresholdDate = LocalDate.now().plusDays(defaultPreExpiryDays);
-        List<Member> members = memberRepository.findByMembershipEndDateLessThanEqualAndDeletedFalse(thresholdDate);
+    public ReminderRunResponse runReminders(Long organizationId) {
+        LocalDate today = LocalDate.now();
+        LocalDate thresholdDate = today.plusDays(30);
+        List<Member> members = memberRepository.findReminderCandidates(thresholdDate, organizationId);
+
+        int processedMembers = 0;
+        int reminderEventsTriggered = 0;
+        int notificationsSent = 0;
 
         for (Member member : members) {
             Organization organization = member.getOrganization();
-            OrganizationSetting setting = settingRepository.findByOrganizationIdAndDeletedFalse(organization.getId())
-                .orElse(null);
-            if (setting == null) {
+            if (organization.getStatus() != OrganizationStatus.ACTIVE) {
                 continue;
             }
 
-            UsageMetric metric = usageMetricRepository.findByOrganizationIdAndYearAndMonthAndDeletedFalse(
-                organization.getId(),
-                YearMonth.now().getYear(),
-                YearMonth.now().getMonthValue()
-            ).orElseGet(() -> UsageMetric.empty(organization, YearMonth.now()));
+            OrganizationSetting setting = organizationSettingService.getOrCreateSettings(organization.getId());
+            membershipLifecycleService.refreshMembership(member, setting.getReminderDaysBeforeExpiry());
+            processedMembers++;
 
-            if (setting.isWhatsappEnabled()) {
-                notificationLogRepository.save(buildLog(member, NotificationChannel.WHATSAPP));
-                metric.incrementWhatsappMessagesSent();
-            }
-            if (setting.isEmailEnabled() && member.getEmail() != null && !member.getEmail().isBlank()) {
-                notificationLogRepository.save(buildLog(member, NotificationChannel.EMAIL));
+            if (shouldSendExpiryReminder(member, today, setting)) {
+                NotificationDispatcherService.DispatchResult result = notificationDispatcherService.dispatch(
+                    member,
+                    setting,
+                    NotificationType.MEMBERSHIP_EXPIRY
+                );
+                if (result.reminderTriggered()) {
+                    reminderEventsTriggered++;
+                    notificationsSent += result.notificationsSent();
+                }
+                continue;
             }
 
-            metric.setActiveMembers((int) memberRepository.countByOrganizationIdAndDeletedFalse(organization.getId()));
-            usageMetricRepository.save(metric);
+            if (shouldSendOverdueReminder(member, today)) {
+                NotificationDispatcherService.DispatchResult result = notificationDispatcherService.dispatch(
+                    member,
+                    setting,
+                    NotificationType.MEMBERSHIP_OVERDUE
+                );
+                if (result.reminderTriggered()) {
+                    reminderEventsTriggered++;
+                    notificationsSent += result.notificationsSent();
+                    member.setOverdueMarkedAt(OffsetDateTime.now());
+                    member.setMembershipStatus(MembershipStatus.OVERDUE);
+                }
+            }
         }
+
+        return new ReminderRunResponse(processedMembers, reminderEventsTriggered, notificationsSent);
     }
 
-    private NotificationLog buildLog(Member member, NotificationChannel channel) {
-        NotificationLog log = new NotificationLog();
-        log.setOrganization(member.getOrganization());
-        log.setMember(member);
-        log.setType(NotificationType.MEMBERSHIP_EXPIRY);
-        log.setChannel(channel);
-        log.setRecipient(channel == NotificationChannel.WHATSAPP ? member.getPhoneNumber() : member.getEmail());
-        log.setStatus(NotificationStatus.QUEUED.name());
-        log.setMessage("Your gym membership is near expiry. Please renew.");
-        return log;
+    private boolean shouldSendExpiryReminder(Member member, LocalDate today, OrganizationSetting setting) {
+        return member.getMembershipEndDate().equals(today.plusDays(setting.getReminderDaysBeforeExpiry()))
+            && member.getMembershipStatus() == MembershipStatus.EXPIRING_SOON;
+    }
+
+    private boolean shouldSendOverdueReminder(Member member, LocalDate today) {
+        return member.getMembershipEndDate().isBefore(today)
+            && member.getMembershipStatus() == MembershipStatus.EXPIRED
+            && member.getOverdueMarkedAt() == null;
     }
 }

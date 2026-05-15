@@ -1,7 +1,8 @@
 package com.gymflow.domain.enums;
 
 public enum NotificationStatus {
-    QUEUED,
+    PENDING,
     SENT,
-    FAILED
+    FAILED,
+    RETRY
 }
