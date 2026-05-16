@@ -10,6 +10,7 @@ public class NotificationDtos {
     public record NotificationResponse(
         Long id,
         Long memberId,
+        int memberCount,
         NotificationType type,
         NotificationChannel channel,
         String recipient,

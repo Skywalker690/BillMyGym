@@ -2,29 +2,39 @@ package com.gymflow.service;
 
 import com.gymflow.api.dto.ReminderDtos.ReminderRunResponse;
 import com.gymflow.api.error.BadRequestException;
-import com.gymflow.domain.Member;
+import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationSetting;
-import com.gymflow.domain.enums.MembershipStatus;
 import com.gymflow.domain.enums.NotificationType;
 import com.gymflow.domain.enums.OrganizationStatus;
-import com.gymflow.repository.MemberRepository;
+import com.gymflow.repository.MemberMembershipRepository;
+import com.gymflow.repository.NotificationLogRepository;
+import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.security.SecurityUtils;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class ReminderService {
 
-    private final MemberRepository memberRepository;
-    private final MembershipLifecycleService membershipLifecycleService;
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
+
+    private final MemberMembershipRepository memberMembershipRepository;
+    private final MemberMembershipService memberMembershipService;
     private final OrganizationSettingService organizationSettingService;
+    private final OrganizationDigestBuilderService organizationDigestBuilderService;
     private final NotificationDispatcherService notificationDispatcherService;
+    private final OrganizationRepository organizationRepository;
+    private final NotificationLogRepository notificationLogRepository;
 
     @Transactional
     public ReminderRunResponse runRemindersForCurrentOrganization() {
@@ -36,64 +46,65 @@ public class ReminderService {
     }
 
     @Transactional
+    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public ReminderRunResponse runReminders(Long organizationId) {
-        LocalDate today = LocalDate.now();
-        LocalDate thresholdDate = today.plusDays(30);
-        List<Member> members = memberRepository.findReminderCandidates(thresholdDate, organizationId);
+        memberMembershipService.refreshMembershipStatuses(organizationId);
 
-        int processedMembers = 0;
-        int reminderEventsTriggered = 0;
-        int notificationsSent = 0;
+        OffsetDateTime dayStart = LocalDate.now(APP_ZONE)
+            .atStartOfDay(APP_ZONE)
+            .toOffsetDateTime();
+        List<MemberMembership> candidates = memberMembershipRepository.findReminderCandidatesForDay(organizationId, dayStart).stream()
+            .filter(membership -> membership.getOrganization().getStatus() == OrganizationStatus.ACTIVE)
+            .toList();
+        if (notificationLogRepository.existsByOrganizationIdAndNotificationDateAndTypeAndDeletedFalse(
+            organizationId,
+            LocalDate.now(APP_ZONE),
+            NotificationType.ORGANIZATION_RENEWAL_DIGEST
+        )) {
+            return new ReminderRunResponse(candidates.size(), 0, 0);
+        }
+        Map<Organization, List<MemberMembership>> membershipsByOrganization = candidates.stream()
+            .collect(Collectors.groupingBy(MemberMembership::getOrganization));
 
-        for (Member member : members) {
-            Organization organization = member.getOrganization();
-            if (organization.getStatus() != OrganizationStatus.ACTIVE) {
-                continue;
-            }
+        int digestsSent = 0;
 
+        for (Map.Entry<Organization, List<MemberMembership>> entry : membershipsByOrganization.entrySet()) {
+            Organization organization = entry.getKey();
+            List<MemberMembership> memberships = entry.getValue();
             OrganizationSetting setting = organizationSettingService.getOrCreateSettings(organization.getId());
-            membershipLifecycleService.refreshMembership(member, setting.getReminderDaysBeforeExpiry());
-            processedMembers++;
+            OrganizationDigestBuilderService.DigestContent digestContent =
+                organizationDigestBuilderService.buildDigest(organization, setting, memberships);
 
-            if (shouldSendExpiryReminder(member, today, setting)) {
-                NotificationDispatcherService.DispatchResult result = notificationDispatcherService.dispatch(
-                    member,
-                    setting,
-                    NotificationType.MEMBERSHIP_EXPIRY
-                );
-                if (result.reminderTriggered()) {
-                    reminderEventsTriggered++;
-                    notificationsSent += result.notificationsSent();
-                }
-                continue;
-            }
-
-            if (shouldSendOverdueReminder(member, today)) {
-                NotificationDispatcherService.DispatchResult result = notificationDispatcherService.dispatch(
-                    member,
-                    setting,
-                    NotificationType.MEMBERSHIP_OVERDUE
-                );
-                if (result.reminderTriggered()) {
-                    reminderEventsTriggered++;
-                    notificationsSent += result.notificationsSent();
-                    member.setOverdueMarkedAt(OffsetDateTime.now());
-                    member.setMembershipStatus(MembershipStatus.OVERDUE);
-                }
+            NotificationDispatcherService.DispatchResult result = notificationDispatcherService.dispatchDigest(
+                organization,
+                setting,
+                digestContent
+            );
+            if (result.digestTriggered()) {
+                memberMembershipService.markReminderSent(memberships, OffsetDateTime.now(APP_ZONE));
+                digestsSent += result.digestsSent();
             }
         }
 
-        return new ReminderRunResponse(processedMembers, reminderEventsTriggered, notificationsSent);
+        return new ReminderRunResponse(
+            candidates.size(),
+            membershipsByOrganization.size(),
+            digestsSent
+        );
     }
 
-    private boolean shouldSendExpiryReminder(Member member, LocalDate today, OrganizationSetting setting) {
-        return member.getMembershipEndDate().equals(today.plusDays(setting.getReminderDaysBeforeExpiry()))
-            && member.getMembershipStatus() == MembershipStatus.EXPIRING_SOON;
-    }
-
-    private boolean shouldSendOverdueReminder(Member member, LocalDate today) {
-        return member.getMembershipEndDate().isBefore(today)
-            && member.getMembershipStatus() == MembershipStatus.EXPIRED
-            && member.getOverdueMarkedAt() == null;
+    @Transactional
+    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
+    public ReminderRunResponse runDailyReminders() {
+        int processedMemberships = 0;
+        int organizationsGrouped = 0;
+        int digestsSent = 0;
+        for (Organization organization : organizationRepository.findAllByDeletedFalseAndStatus(OrganizationStatus.ACTIVE)) {
+            ReminderRunResponse response = runReminders(organization.getId());
+            processedMemberships += response.processedMembers();
+            organizationsGrouped += response.organizationsGrouped();
+            digestsSent += response.digestsSent();
+        }
+        return new ReminderRunResponse(processedMemberships, organizationsGrouped, digestsSent);
     }
 }

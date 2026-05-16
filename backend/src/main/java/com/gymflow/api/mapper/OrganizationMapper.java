@@ -21,6 +21,7 @@ public class OrganizationMapper {
             organization.getAdminPhoneNumber(),
             organization.getAdminEmail(),
             organization.getDescription(),
+            organization.getMonthlyMembershipFee(),
             organization.getStatus()
         );
     }
@@ -35,6 +36,9 @@ public class OrganizationMapper {
         organization.setAdminPhoneNumber(request.adminPhoneNumber());
         organization.setAdminEmail(request.adminEmail());
         organization.setDescription(request.description());
+        if (request.monthlyMembershipFee() != null) {
+            organization.setMonthlyMembershipFee(request.monthlyMembershipFee());
+        }
         if (request.status() != null) {
             organization.setStatus(request.status());
         }

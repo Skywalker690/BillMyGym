@@ -26,6 +26,11 @@ public class OrganizationController {
         return ResponseEntity.ok(ApiResponse.success("Organizations fetched successfully", organizationService.listOrganizations()));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getOrganization(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success("Organization fetched successfully", organizationService.getOrganization(id)));
+    }
+
     @PatchMapping("/{id}")
     public ResponseEntity<?> updateOrganization(@PathVariable Long id, @Valid @RequestBody UpdateOrganizationRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Organization updated successfully", organizationService.updateOrganization(id, request)));

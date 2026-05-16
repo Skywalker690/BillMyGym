@@ -14,6 +14,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -27,8 +28,11 @@ public class NotificationLog extends BaseEntity {
     private Organization organization;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id", nullable = false)
+    @JoinColumn(name = "member_id")
     private Member member;
+
+    @Column(nullable = false)
+    private int memberCount;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -50,6 +54,9 @@ public class NotificationLog extends BaseEntity {
 
     @Column(length = 1000)
     private String failureReason;
+
+    @Column(name = "notification_date")
+    private LocalDate notificationDate;
 
     private OffsetDateTime sentAt;
 

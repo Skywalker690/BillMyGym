@@ -13,6 +13,7 @@ import com.gymflow.security.AuthenticatedUser;
 import com.gymflow.security.SecurityUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,12 +24,14 @@ public class OrganizationSettingService {
     private final OrganizationSettingRepository settingRepository;
     private final AuditLogService auditLogService;
 
+    @Transactional
     public SettingsResponse getCurrentSettings() {
         OrganizationSetting setting = getOrCreateSettings(requireOrgId());
         return toResponse(setting);
     }
 
     @Transactional
+    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public SettingsResponse updateCurrentSettings(UpdateSettingsRequest request) {
         Long organizationId = requireOrgId();
         OrganizationSetting setting = getOrCreateSettings(organizationId);
@@ -44,6 +47,9 @@ public class OrganizationSettingService {
         }
         if (request.brandingName() != null) {
             setting.setBrandingName(request.brandingName());
+        }
+        if (request.monthlyMembershipFee() != null) {
+            setting.getOrganization().setMonthlyMembershipFee(request.monthlyMembershipFee());
         }
 
         auditLogService.log(
@@ -73,7 +79,8 @@ public class OrganizationSettingService {
             setting.isWhatsappEnabled(),
             setting.isEmailEnabled(),
             setting.getReminderDaysBeforeExpiry(),
-            setting.getBrandingName()
+            setting.getBrandingName(),
+            setting.getOrganization().getMonthlyMembershipFee()
         );
     }
 

@@ -39,6 +39,16 @@ public class OrganizationService {
             .toList();
     }
 
+    public OrganizationResponse getOrganization(Long id) {
+        AuthenticatedUser user = SecurityUtils.currentUser();
+        if (user.role() != Role.SUPER_ADMIN && !id.equals(user.organizationId())) {
+            throw new ForbiddenException("Forbidden organization access");
+        }
+        return organizationRepository.findByIdAndDeletedFalse(id)
+            .map(organizationMapper::toResponse)
+            .orElseThrow(() -> new NotFoundException("Organization not found"));
+    }
+
     @Transactional
     public OrganizationResponse updateOrganization(Long id, UpdateOrganizationRequest request) {
         AuthenticatedUser user = SecurityUtils.currentUser();

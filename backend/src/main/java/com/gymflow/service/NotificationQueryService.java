@@ -9,6 +9,7 @@ import com.gymflow.security.SecurityUtils;
 import jakarta.transaction.Transactional;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -29,9 +30,18 @@ public class NotificationQueryService {
     @Transactional
     public List<NotificationResponse> listReminderLogs() {
         Long organizationId = requireOrgId();
+        return listReminderLogs(organizationId, 100);
+    }
+
+    public List<NotificationResponse> listRecentReminderLogs(Long organizationId, int limit) {
+        return listReminderLogs(organizationId, limit);
+    }
+
+    private List<NotificationResponse> listReminderLogs(Long organizationId, int limit) {
         return notificationLogRepository.findByOrganizationIdAndTypeInAndDeletedFalseOrderByCreatedAtDesc(
                 organizationId,
-                List.of(NotificationType.MEMBERSHIP_EXPIRY, NotificationType.MEMBERSHIP_OVERDUE)
+                List.of(NotificationType.ORGANIZATION_RENEWAL_DIGEST),
+                PageRequest.of(0, Math.max(1, limit))
             ).stream()
             .map(this::toResponse)
             .toList();
@@ -40,7 +50,8 @@ public class NotificationQueryService {
     private NotificationResponse toResponse(NotificationLog log) {
         return new NotificationResponse(
             log.getId(),
-            log.getMember().getId(),
+            log.getMember() == null ? null : log.getMember().getId(),
+            log.getMemberCount(),
             log.getType(),
             log.getChannel(),
             log.getRecipient(),

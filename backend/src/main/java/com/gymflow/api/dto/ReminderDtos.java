@@ -4,8 +4,8 @@ public class ReminderDtos {
 
     public record ReminderRunResponse(
         int processedMembers,
-        int reminderEventsTriggered,
-        int notificationsSent
+        int organizationsGrouped,
+        int digestsSent
     ) {
     }
 }

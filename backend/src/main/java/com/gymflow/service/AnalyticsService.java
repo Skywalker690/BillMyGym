@@ -4,6 +4,8 @@ import com.gymflow.api.dto.AnalyticsDtos.OrganizationAnalyticsResponse;
 import com.gymflow.api.dto.AnalyticsDtos.PlatformAnalyticsResponse;
 import com.gymflow.api.error.BadRequestException;
 import com.gymflow.api.error.ForbiddenException;
+import com.gymflow.domain.enums.MemberStatus;
+import com.gymflow.domain.enums.NotificationType;
 import com.gymflow.domain.enums.Role;
 import com.gymflow.repository.MemberRepository;
 import com.gymflow.repository.NotificationLogRepository;
@@ -39,8 +41,11 @@ public class AnalyticsService {
             throw new BadRequestException("Organization context is required");
         }
         return new OrganizationAnalyticsResponse(
-            memberRepository.countByOrganizationIdAndDeletedFalse(organizationId),
-            notificationLogRepository.countByOrganizationIdAndDeletedFalse(organizationId)
+            memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(organizationId, MemberStatus.ACTIVE),
+            notificationLogRepository.countByOrganizationIdAndTypeAndDeletedFalse(
+                organizationId,
+                NotificationType.ORGANIZATION_RENEWAL_DIGEST
+            )
         );
     }
 }

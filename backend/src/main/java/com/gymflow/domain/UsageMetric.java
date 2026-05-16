@@ -34,7 +34,7 @@ public class UsageMetric extends BaseEntity {
     private int monthlyEmailCount;
 
     @Column(nullable = false)
-    private int monthlyRemindersExecuted;
+    private int monthlyDigestCount;
 
     @Column(nullable = false)
     private int activeMembers;
@@ -52,7 +52,7 @@ public class UsageMetric extends BaseEntity {
         metric.month = ym.getMonthValue();
         metric.monthlyWhatsappCount = 0;
         metric.monthlyEmailCount = 0;
-        metric.monthlyRemindersExecuted = 0;
+        metric.monthlyDigestCount = 0;
         metric.activeMembers = 0;
         metric.activeAdmins = 0;
         metric.subscriptionStatus = "ACTIVE";
@@ -67,8 +67,8 @@ public class UsageMetric extends BaseEntity {
         this.monthlyEmailCount++;
     }
 
-    public void incrementMonthlyRemindersExecuted() {
-        this.monthlyRemindersExecuted++;
+    public void incrementMonthlyDigestCount() {
+        this.monthlyDigestCount++;
     }
 
 }

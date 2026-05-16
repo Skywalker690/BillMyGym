@@ -9,6 +9,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Entity
 @Getter
 @Setter
@@ -36,6 +38,9 @@ public class Organization extends BaseEntity {
 
     @Column(length = 1000)
     private String description;
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal monthlyMembershipFee = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

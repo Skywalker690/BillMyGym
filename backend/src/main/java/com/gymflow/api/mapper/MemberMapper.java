@@ -4,6 +4,7 @@ import com.gymflow.api.dto.MemberDtos.MemberRequest;
 import com.gymflow.api.dto.MemberDtos.MemberResponse;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.Organization;
+import com.gymflow.domain.enums.MemberStatus;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -14,14 +15,13 @@ public class MemberMapper {
             member.getId(),
             member.getOrganization().getId(),
             member.getFullName(),
-            member.getPhoneNumber(),
+            member.getPhone(),
             member.getEmail(),
-            member.getJoiningDate(),
-            member.getMembershipDuration(),
-            member.getCustomDurationDays(),
-            member.getMembershipStartDate(),
-            member.getMembershipEndDate(),
-            member.getMembershipStatus(),
+            member.getStatus(),
+            member.getDeactivatedAt(),
+            member.getDeactivationReason(),
+            member.isDeleted(),
+            member.getDeletedAt(),
             member.getNotes()
         );
     }
@@ -35,11 +35,10 @@ public class MemberMapper {
 
     public void apply(Member member, MemberRequest request) {
         member.setFullName(request.fullName());
-        member.setPhoneNumber(request.phoneNumber());
+        member.setPhone(request.phone());
         member.setEmail(request.email());
-        member.setJoiningDate(request.joiningDate());
-        member.setMembershipDuration(request.membershipDuration());
-        member.setCustomDurationDays(request.customDurationDays());
+        member.setStatus(request.status() == null ? MemberStatus.ACTIVE : request.status());
+        member.setDeactivationReason(request.deactivationReason());
         member.setNotes(request.notes());
     }
 }

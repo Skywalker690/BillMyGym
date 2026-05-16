@@ -1,0 +1,6 @@
+{
+  "name": "GymFlow",
+  "description": "Multi-tenant gym management frontend",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

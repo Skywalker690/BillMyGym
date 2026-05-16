@@ -12,6 +12,6 @@ public class MembershipReminderScheduler {
 
     @Scheduled(cron = "0 0 10 * * *")
     public void runDailyReminders() {
-        reminderService.runReminders(null);
+        reminderService.runDailyReminders();
     }
 }

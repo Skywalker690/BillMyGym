@@ -3,6 +3,8 @@ package com.gymflow.api.dto;
 import com.gymflow.domain.enums.OrganizationStatus;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
+import java.math.BigDecimal;
 
 public class OrganizationDtos {
 
@@ -17,6 +19,7 @@ public class OrganizationDtos {
         String adminPhoneNumber,
         String adminEmail,
         String description,
+        BigDecimal monthlyMembershipFee,
         OrganizationStatus status
     ) {
     }
@@ -31,6 +34,7 @@ public class OrganizationDtos {
         @NotBlank String adminPhoneNumber,
         @Email @NotBlank String adminEmail,
         String description,
+        @PositiveOrZero BigDecimal monthlyMembershipFee,
         OrganizationStatus status
     ) {
     }

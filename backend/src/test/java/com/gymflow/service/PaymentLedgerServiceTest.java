@@ -1,0 +1,166 @@
+package com.gymflow.service;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.gymflow.api.dto.PaymentDtos.RecordPaymentRequest;
+import com.gymflow.api.error.BadRequestException;
+import com.gymflow.domain.Member;
+import com.gymflow.domain.MemberMembership;
+import com.gymflow.domain.MemberPayment;
+import com.gymflow.domain.Organization;
+import com.gymflow.domain.OrganizationSetting;
+import com.gymflow.domain.enums.MemberStatus;
+import com.gymflow.domain.enums.PaymentStatus;
+import com.gymflow.domain.enums.PaymentType;
+import com.gymflow.domain.enums.Role;
+import com.gymflow.repository.MemberMembershipRepository;
+import com.gymflow.repository.MemberPaymentRepository;
+import com.gymflow.security.AuthenticatedUser;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+@ExtendWith(MockitoExtension.class)
+class PaymentLedgerServiceTest {
+
+    @Mock
+    private MemberMembershipRepository memberMembershipRepository;
+
+    @Mock
+    private MemberPaymentRepository memberPaymentRepository;
+
+    @Mock
+    private AuditLogService auditLogService;
+
+    @Mock
+    private OrganizationSettingService organizationSettingService;
+
+    private final MembershipLifecycleService membershipLifecycleService = new MembershipLifecycleService();
+
+    private PaymentLedgerService paymentLedgerService;
+
+    @BeforeEach
+    void setUp() {
+        paymentLedgerService = new PaymentLedgerService(
+            memberMembershipRepository,
+            memberPaymentRepository,
+            membershipLifecycleService,
+            organizationSettingService,
+            auditLogService
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+            new UsernamePasswordAuthenticationToken(
+                new AuthenticatedUser(1L, "admin@gymflow.local", Role.ORG_ADMIN, 100L),
+                null,
+                List.of()
+            )
+        );
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void rejectsDuplicateGatewayTransactionId() {
+        MemberMembership membership = membership(200L, 100L);
+        when(memberMembershipRepository.findByIdAndOrganizationIdAndDeletedFalse(200L, 100L))
+            .thenReturn(Optional.of(membership));
+        when(memberPaymentRepository.findByGatewayTransactionIdAndDeletedFalse("txn_dup"))
+            .thenReturn(Optional.of(new MemberPayment()));
+
+        RecordPaymentRequest request = new RecordPaymentRequest(
+            200L,
+            new BigDecimal("1000.00"),
+            LocalDate.of(2026, 5, 16),
+            PaymentType.NEW_MEMBERSHIP,
+            PaymentStatus.PAID,
+            "txn_dup",
+            "duplicate"
+        );
+
+        assertThrows(BadRequestException.class, () -> paymentLedgerService.recordPayment(request));
+        verify(memberPaymentRepository, never()).save(any(MemberPayment.class));
+    }
+
+    @Test
+    void allowsManualPaymentWithoutGatewayTransactionId() {
+        MemberMembership membership = membership(200L, 100L);
+        when(memberMembershipRepository.findByIdAndOrganizationIdAndDeletedFalse(200L, 100L))
+            .thenReturn(Optional.of(membership));
+        when(memberPaymentRepository.findByMembershipIdAndDeletedFalseOrderByPaymentDateAscCreatedAtAsc(200L))
+            .thenReturn(List.of());
+        OrganizationSetting setting = new OrganizationSetting();
+        setting.setReminderDaysBeforeExpiry(3);
+        when(organizationSettingService.getOrCreateSettings(100L)).thenReturn(setting);
+        when(memberPaymentRepository.save(any(MemberPayment.class))).thenAnswer(invocation -> {
+            MemberPayment payment = invocation.getArgument(0);
+            payment.setPaymentStatus(PaymentStatus.PARTIAL);
+            return payment;
+        });
+
+        RecordPaymentRequest request = new RecordPaymentRequest(
+            200L,
+            new BigDecimal("1000.00"),
+            LocalDate.of(2026, 5, 16),
+            PaymentType.NEW_MEMBERSHIP,
+            PaymentStatus.PARTIAL,
+            null,
+            "manual payment"
+        );
+
+        var response = paymentLedgerService.recordPayment(request);
+
+        assertEquals(PaymentStatus.PARTIAL, response.paymentStatus());
+        assertEquals(null, response.gatewayTransactionId());
+        assertEquals("2026-05", response.billingMonth());
+        verify(memberPaymentRepository).save(any(MemberPayment.class));
+    }
+
+    private MemberMembership membership(Long membershipId, Long organizationId) {
+        Organization organization = new Organization();
+        organization.setName("Gym");
+
+        Member member = new Member();
+        member.setOrganization(organization);
+        member.setStatus(MemberStatus.ACTIVE);
+
+        MemberMembership membership = new MemberMembership();
+        membership.setOrganization(organization);
+        membership.setMember(member);
+        membership.setPlanAmount(new BigDecimal("3600.00"));
+        membership.setStartDate(LocalDate.of(2026, 5, 1));
+        membership.setEndDate(LocalDate.of(2026, 8, 1));
+        membership.setStatus(com.gymflow.domain.enums.MembershipStatus.ACTIVE);
+
+        setId(organization, organizationId);
+        setId(member, 300L);
+        setId(membership, membershipId);
+        return membership;
+    }
+
+    private void setId(Object target, Long id) {
+        try {
+            var field = target.getClass().getSuperclass().getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(target, id);
+        } catch (ReflectiveOperationException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+}
