@@ -64,6 +64,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         if (path == null || !path.startsWith("/api/")) {
             return null;
         }
+        if ("POST".equalsIgnoreCase(request.getMethod()) && isPasswordResetPath(path)) {
+            return rateLimitProperties.getPasswordReset();
+        }
         if ("POST".equalsIgnoreCase(request.getMethod()) && path.startsWith("/api/auth/")) {
             return rateLimitProperties.getAuth();
         }
@@ -71,6 +74,12 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             return rateLimitProperties.getNotifications();
         }
         return rateLimitProperties.getApi();
+    }
+
+    private boolean isPasswordResetPath(String path) {
+        return "/api/auth/forgot-password".equals(path)
+            || "/api/auth/verify-otp".equals(path)
+            || "/api/auth/change-password".equals(path);
     }
 
     private String buildKey(HttpServletRequest request) {

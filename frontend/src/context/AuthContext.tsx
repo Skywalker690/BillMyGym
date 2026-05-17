@@ -9,6 +9,7 @@ interface User {
   email: string;
   role: Role;
   organizationId?: number | null;
+  avatarUrl?: string | null;
 }
 
 interface AuthContextType {

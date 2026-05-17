@@ -46,12 +46,6 @@ public class PaymentLedgerService {
         if (membership.getMember().isDeleted() || membership.getMember().getStatus() == com.gymflow.domain.enums.MemberStatus.DEACTIVATED) {
             throw new BadRequestException("Cannot record payment for deleted or deactivated members");
         }
-        if (request.gatewayTransactionId() != null && !request.gatewayTransactionId().isBlank()) {
-            memberPaymentRepository.findByGatewayTransactionIdAndDeletedFalse(request.gatewayTransactionId())
-                .ifPresent(existing -> {
-                    throw new BadRequestException("This gateway transaction has already been processed");
-                });
-        }
 
         MemberPayment payment = new MemberPayment();
         payment.setMember(membership.getMember());
@@ -61,7 +55,6 @@ public class PaymentLedgerService {
         payment.setPaymentDate(request.paymentDate());
         payment.setBillingMonth(YearMonth.from(request.paymentDate()).toString());
         payment.setPaymentType(request.paymentType());
-        payment.setGatewayTransactionId(hasText(request.gatewayTransactionId()) ? request.gatewayTransactionId().trim() : null);
         payment.setNotes(request.notes());
 
         List<MemberPayment> previousPayments = new ArrayList<>(
@@ -128,7 +121,6 @@ public class PaymentLedgerService {
             payment.getBillingMonth(),
             payment.getPaymentStatus(),
             payment.getPaymentType(),
-            payment.getGatewayTransactionId(),
             payment.getNotes(),
             coverage
         );
@@ -150,10 +142,6 @@ public class PaymentLedgerService {
             throw new BadRequestException("Organization context is required");
         }
         return organizationId;
-    }
-
-    private boolean hasText(String value) {
-        return value != null && !value.isBlank();
     }
 
     private Map<Long, List<MemberPayment>> loadPaymentsByMembershipId(Collection<MemberPayment> payments) {

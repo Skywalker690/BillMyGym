@@ -19,12 +19,10 @@ const memberSchema = z.object({
   status: z.enum(["ACTIVE", "PAUSED", "DEACTIVATED"]),
   deactivationReason: z.string().optional(),
   notes: z.string().optional(),
-  planName: z.string().optional(),
   durationMonths: z.coerce.number().min(1).optional(),
   planAmount: z.coerce.number().min(0).optional(),
   startDate: z.string().optional(),
   initialPaymentAmount: z.coerce.number().min(0).optional(),
-  gatewayTransactionId: z.string().optional(),
 });
 
 type MemberFormValues = z.infer<typeof memberSchema>;
@@ -34,26 +32,32 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const memberId = id && /^\d+$/.test(id) ? Number(id) : null;
+  const canLoadMember = Boolean(isEdit && memberId);
 
   const { data: member, isLoading: memberLoading } = useQuery({
-    queryKey: ["member", id],
+    queryKey: ["member", memberId],
     queryFn: async () => {
-      const res = await api.get(`/members/${id}`);
+      const res = await api.get(`/members/${memberId}`);
       return res.data;
     },
-    enabled: isEdit && !!id,
+    enabled: canLoadMember,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
   const { data: memberships } = useQuery({
-    queryKey: ["memberMemberships", id],
+    queryKey: ["memberMemberships", memberId],
     queryFn: async () => {
-      const res = await api.get(`/members/${id}/memberships`);
+      const res = await api.get(`/members/${memberId}/memberships`);
       return res.data.memberships;
     },
-    enabled: isEdit && !!id,
+    enabled: canLoadMember,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<MemberFormInput, unknown, MemberFormValues>({
+  const { register, watch, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<MemberFormInput, unknown, MemberFormValues>({
     resolver: zodResolver(memberSchema),
     defaultValues: {
       fullName: "",
@@ -62,14 +66,13 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
       status: "ACTIVE",
       deactivationReason: "",
       notes: "",
-      planName: "",
       durationMonths: 1,
       planAmount: 0,
       startDate: new Date().toISOString().slice(0, 10),
       initialPaymentAmount: 0,
-      gatewayTransactionId: "",
     },
   });
+  const selectedStatus = watch("status");
 
   useEffect(() => {
     if (member && isEdit) {
@@ -80,12 +83,10 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
         status: member.status ?? "ACTIVE",
         deactivationReason: member.deactivationReason ?? "",
         notes: member.notes ?? "",
-        planName: "",
         durationMonths: 1,
         planAmount: 0,
         startDate: new Date().toISOString().slice(0, 10),
         initialPaymentAmount: 0,
-        gatewayTransactionId: "",
       });
     }
   }, [member, isEdit, reset]);
@@ -101,13 +102,12 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
         notes: data.notes,
       };
       const memberResponse = isEdit
-        ? await api.patch(`/members/${id}`, memberPayload)
+        ? await api.patch(`/members/${memberId}`, memberPayload)
         : await api.post("/members", memberPayload);
       const savedMember = memberResponse.data;
 
-      if (data.planName && data.durationMonths && data.planAmount !== undefined && data.planAmount > 0) {
+      if (data.durationMonths && data.planAmount !== undefined && data.planAmount > 0) {
         const membershipResponse = await api.post(`/members/${savedMember.id}/memberships`, {
-          planName: data.planName,
           durationMonths: data.durationMonths,
           planAmount: data.planAmount,
           startDate: data.startDate || undefined,
@@ -120,7 +120,6 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
             paymentDate: new Date().toISOString().slice(0, 10),
             paymentType: isEdit ? "RENEWAL" : "NEW_MEMBERSHIP",
             paymentStatus: data.initialPaymentAmount >= data.planAmount ? "PAID" : "PARTIAL",
-            gatewayTransactionId: data.gatewayTransactionId || null,
             notes: isEdit ? "Membership payment" : "Initial membership payment",
           });
         }
@@ -136,6 +135,10 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
     },
     onError: () => toast.error(`Failed to ${isEdit ? "update" : "create"} member`),
   });
+
+  if (isEdit && !memberId) {
+    return <div className="p-8">Invalid member link.</div>;
+  }
 
   if (isEdit && memberLoading) return <div className="p-8">Loading member...</div>;
 
@@ -162,7 +165,7 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
             <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Member Identity</h2>
             {isEdit && currentMembership && (
               <p className="text-sm text-slate-500 mt-2">
-                Current membership: {currentMembership.planName} | {currentMembership.status} | ends {new Date(currentMembership.endDate).toLocaleDateString()}
+                Current membership: {currentMembership.durationMonths} month plan | {currentMembership.status} | ends {new Date(currentMembership.endDate).toLocaleDateString()}
               </p>
             )}
           </div>
@@ -183,11 +186,13 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
                 <option value="DEACTIVATED">Deactivated</option>
               </select>
             </Field>
-            <div className="md:col-span-2">
-              <Field label="Deactivation Reason">
-                <Input {...register("deactivationReason")} className="h-11 rounded-xl" />
-              </Field>
-            </div>
+            {selectedStatus === "DEACTIVATED" && (
+              <div className="md:col-span-2">
+                <Field label="Deactivation Reason">
+                  <Input {...register("deactivationReason")} className="h-11 rounded-xl" />
+                </Field>
+              </div>
+            )}
             <div className="md:col-span-2 space-y-2">
               <Label className="font-semibold text-slate-700 dark:text-slate-300">Notes</Label>
               <textarea {...register("notes")} className="w-full min-h-24 rounded-xl border border-black/10 dark:border-white/10 bg-white/50 dark:bg-slate-900/50 p-4 text-sm" />
@@ -201,9 +206,6 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
             <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{isEdit ? "New Membership / Renewal" : "Initial Membership"}</h2>
           </div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Field label="Plan Name">
-              <Input {...register("planName")} placeholder="Monthly Gym Access" className="h-11 rounded-xl" />
-            </Field>
             <Field label="Duration Months">
               <Input type="number" min="1" {...register("durationMonths")} className="h-11 rounded-xl" />
             </Field>
@@ -215,9 +217,6 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
             </Field>
             <Field label="Payment Collected">
               <Input type="number" min="0" step="0.01" {...register("initialPaymentAmount")} className="h-11 rounded-xl" />
-            </Field>
-            <Field label="Gateway Transaction ID">
-              <Input {...register("gatewayTransactionId")} className="h-11 rounded-xl" />
             </Field>
           </div>
         </div>

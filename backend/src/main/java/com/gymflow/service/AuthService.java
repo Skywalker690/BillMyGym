@@ -4,14 +4,15 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
+import com.gymflow.api.dto.*;
 import com.gymflow.api.dto.AuthDtos.GoogleLoginRequest;
 import com.gymflow.api.dto.AuthDtos.LoginRequest;
 import com.gymflow.api.dto.AuthDtos.LoginResponse;
 import com.gymflow.api.dto.AuthDtos.RegisterOrganizationAdminRequest;
-import com.gymflow.api.dto.UserDto;
 import com.gymflow.api.error.BadRequestException;
 import com.gymflow.api.error.ForbiddenException;
 import com.gymflow.api.mapper.OrganizationMapper;
+import com.gymflow.api.response.ApiResponse;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationSetting;
 import com.gymflow.domain.User;
@@ -28,6 +29,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -40,13 +43,15 @@ import java.util.Collections;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final AppUserRepository appUserRepository;
+    private final AppUserRepository userRepository;
     private final JwtService jwtService;
     private final OrganizationRepository organizationRepository;
     private final OrganizationSettingRepository settingRepository;
     private final PasswordEncoder passwordEncoder;
     private final OrganizationMapper organizationMapper;
     private final AuditLogService auditLogService;
+    private final OtpService otpService;
+    private final EmailService emailService;
 
     @Value("${google.client.id}")
     private String googleClientId;
@@ -59,7 +64,7 @@ public class AuthService {
         if (organizationRepository.existsByNameAndDeletedFalse(request.organizationName())) {
             throw new BadRequestException("Organization already exists");
         }
-        if (appUserRepository.findByEmailAndDeletedFalse(request.adminEmail()).isPresent()) {
+        if (userRepository.findByEmailAndDeletedFalse(request.adminEmail()).isPresent()) {
             throw new BadRequestException("Admin email already exists");
         }
 
@@ -78,7 +83,15 @@ public class AuthService {
         admin.setPasswordHash(passwordEncoder.encode(request.password()));
         admin.setRole(Role.ORG_ADMIN);
         admin.setStatus(UserStatus.ACTIVE);
-        appUserRepository.save(admin);
+        userRepository.save(admin);
+
+        emailService.sendOrganizationAdminWelcomeEmail(
+            request.adminEmail(),
+            request.adminFullName(),
+            savedOrganization.getName(),
+            request.password(),
+            savedOrganization.getDistrict()
+        );
 
         auditLogService.log(
             "ORG_ADMIN_REGISTERED",
@@ -137,7 +150,7 @@ public class AuthService {
                 needsUpdate = true;
             }
             if (needsUpdate) {
-                appUserRepository.save(user);
+                userRepository.save(user);
             }
 
             return buildLoginResponse(user, "GOOGLE_LOGIN");
@@ -149,7 +162,7 @@ public class AuthService {
     }
 
     private User resolveActiveUser(String email) {
-        User user = appUserRepository.findByEmailAndDeletedFalse(email)
+        User user = userRepository.findByEmailAndDeletedFalse(email)
             .orElseThrow(() -> new BadRequestException("Invalid credentials"));
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new BadRequestException("User account is inactive");
@@ -168,6 +181,142 @@ public class AuthService {
             user.getEmail()
         );
         return new LoginResponse(token, user.getRole().name(), organizationId, toUserDto(user));
+    }
+
+    public ApiResponse forgotPassword(ForgotPasswordRequest request) {
+        userRepository.findByEmailAndDeletedFalse(request.getEmail())
+            .filter(user -> user.getStatus() == UserStatus.ACTIVE)
+            .ifPresent(user -> {
+                otpService.generateAndSendOtp(user.getEmail());
+                runAuditSafely(
+                    () -> auditLogService.logActor(
+                        "PASSWORD_RESET_OTP_REQUESTED",
+                        "Password reset OTP requested",
+                        AuditCategory.SECURITY,
+                        "AUTH",
+                        user.getEmail()
+                    ),
+                    "forgot-password"
+                );
+            });
+
+        return ApiResponse.success("If an active account exists for that email, a reset code has been sent.");
+    }
+
+    public ApiResponse verifyOtp(VerifyOtpRequest request) {
+        boolean isValid = otpService.isOtpValid(request.getEmail(), request.getOtp());
+
+        if (!isValid) {
+            throw new BadRequestException("Invalid or expired OTP");
+        }
+
+        return ApiResponse.success("OTP verified successfully");
+    }
+
+    @Transactional
+    public ApiResponse changePassword(ChangePasswordRequest request) {
+        boolean isValid = otpService.consumeOtp(request.getEmail(), request.getOtp());
+
+        if (!isValid) {
+            throw new BadRequestException("Invalid or expired OTP");
+        }
+
+        User user = userRepository.findByEmailAndDeletedFalse(request.getEmail())
+            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new BadRequestException("New password must be different from the current password");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        runAuditSafely(
+            () -> auditLogService.logActor(
+                "PASSWORD_RESET_COMPLETED",
+                "Password reset completed successfully",
+                AuditCategory.SECURITY,
+                "AUTH",
+                user.getEmail()
+            ),
+            "change-password"
+        );
+
+        return ApiResponse.success("Password changed successfully");
+    }
+
+    public ApiResponse requestPasswordUpdateOtp(String authenticatedEmail, UpdatePasswordOtpRequest request) {
+        User user = userRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Current password is incorrect");
+        }
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("New password must be different from current password");
+        }
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("New password and confirm password do not match");
+        }
+
+        otpService.generateAndSendOtp(authenticatedEmail);
+
+        return ApiResponse.builder()
+                .message("OTP sent to your email. Please verify to update password.")
+                .build();
+    }
+
+    public UserDto getCurrentUser(String authenticatedEmail) {
+        User user = userRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return toUserDto(user);
+    }
+
+    @Transactional
+    public UserDto acceptPolicy(String authenticatedEmail, AcceptPolicyRequest request) {
+        User user = userRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        if (!Boolean.TRUE.equals(request.getAccepted())) {
+            throw new IllegalArgumentException("Policy acceptance is required");
+        }
+
+        String version = request.getVersion().trim();
+        user.setTermsAccepted(true);
+        user.setPolicyVersion(version);
+        User savedUser = userRepository.save(user);
+
+        return toUserDto(savedUser);
+    }
+
+    @Transactional
+    public ApiResponse confirmPasswordUpdate(String authenticatedEmail, UpdatePasswordWithOtpRequest request) {
+        boolean isValid = otpService.consumeOtp(authenticatedEmail, request.getOtp());
+        if (!isValid) {
+            throw new BadRequestException("Invalid or expired OTP");
+        }
+
+        User user = userRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("New password must be different from current password");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        return ApiResponse.builder()
+                .message("Password updated successfully")
+                .build();
+    }
+
+
+    private void runAuditSafely(Runnable action, String context) {
+        try {
+            action.run();
+        } catch (RuntimeException ex) {
+            log.warn("Audit log failed during {}: {}", context, ex.getMessage());
+        }
     }
 
     private UserDto toUserDto(User user) {

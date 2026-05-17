@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Dumbbell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -103,6 +103,11 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="appearance-none block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
+              </div>
+              <div className="mt-2 text-right">
+                <Link to="/forgot-password" className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
+                  Forgot your password?
+                </Link>
               </div>
             </div>
 

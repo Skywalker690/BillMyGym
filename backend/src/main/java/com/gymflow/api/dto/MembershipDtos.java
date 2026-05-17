@@ -14,7 +14,6 @@ import java.util.List;
 public class MembershipDtos {
 
     public record CreateMembershipRequest(
-        @NotBlank String planName,
         @Positive Integer durationMonths,
         @NotNull @PositiveOrZero BigDecimal planAmount,
         LocalDate startDate
@@ -34,7 +33,6 @@ public class MembershipDtos {
         Long id,
         Long memberId,
         Long organizationId,
-        String planName,
         int durationMonths,
         BigDecimal planAmount,
         LocalDate startDate,

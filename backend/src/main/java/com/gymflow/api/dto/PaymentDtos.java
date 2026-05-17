@@ -15,7 +15,6 @@ public class PaymentDtos {
         @NotNull LocalDate paymentDate,
         @NotNull PaymentType paymentType,
         PaymentStatus paymentStatus,
-        String gatewayTransactionId,
         String notes
     ) {
     }
@@ -30,7 +29,6 @@ public class PaymentDtos {
         String billingMonth,
         PaymentStatus paymentStatus,
         PaymentType paymentType,
-        String gatewayTransactionId,
         String notes,
         MembershipDtos.PaymentCoverageSummary paymentCoverage
     ) {

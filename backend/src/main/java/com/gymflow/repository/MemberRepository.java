@@ -24,42 +24,65 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     @EntityGraph(attributePaths = "organization")
     @Query("""
-        select member
-        from Member member
-        where member.organization.id = :organizationId
-          and member.deleted = false
-          and (:search is null
-            or lower(member.fullName) like lower(concat('%', :search, '%'))
-            or lower(member.phone) like lower(concat('%', :search, '%'))
-            or lower(coalesce(member.email, '')) like lower(concat('%', :search, '%')))
-          and (:memberStatus is null or member.status = :memberStatus)
-          and (:membershipStatus is null
-            or (:membershipStatus = 'ACTIVE' and exists (
-                select membership.id from MemberMembership membership
-                where membership.member = member
-                  and membership.deleted = false
-                  and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
-            ))
-            or (:membershipStatus = 'EXPIRING_SOON' and exists (
-                select membership.id from MemberMembership membership
-                where membership.member = member
-                  and membership.deleted = false
-                  and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
-                  and membership.endDate between :today and :expiringThrough
-            ))
-            or (:membershipStatus = 'EXPIRED' and exists (
-                select membership.id from MemberMembership membership
-                where membership.member = member
-                  and membership.deleted = false
-                  and membership.status = com.gymflow.domain.enums.MembershipStatus.EXPIRED
-            ))
-            or (:membershipStatus = 'OVERDUE' and exists (
-                select membership.id from MemberMembership membership
-                where membership.member = member
-                  and membership.deleted = false
-                  and membership.status = com.gymflow.domain.enums.MembershipStatus.OVERDUE
-            )))
-        """)
+    select member
+    from Member member
+    where member.organization.id = :organizationId
+      and member.deleted = false
+      and (
+          :search is null
+          or lower(member.fullName) like lower(concat('%', cast(:search as string), '%'))
+          or lower(member.phone) like lower(concat('%', cast(:search as string), '%'))
+          or (
+              member.email is not null
+              and lower(member.email) like lower(concat('%', cast(:search as string), '%'))
+          )
+      )
+      and (:memberStatus is null or member.status = :memberStatus)
+      and (
+          :membershipStatus is null
+          or (
+              :membershipStatus = 'ACTIVE'
+              and exists (
+                  select membership.id
+                  from MemberMembership membership
+                  where membership.member = member
+                    and membership.deleted = false
+                    and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
+              )
+          )
+          or (
+              :membershipStatus = 'EXPIRING_SOON'
+              and exists (
+                  select membership.id
+                  from MemberMembership membership
+                  where membership.member = member
+                    and membership.deleted = false
+                    and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
+                    and membership.endDate between :today and :expiringThrough
+              )
+          )
+          or (
+              :membershipStatus = 'EXPIRED'
+              and exists (
+                  select membership.id
+                  from MemberMembership membership
+                  where membership.member = member
+                    and membership.deleted = false
+                    and membership.status = com.gymflow.domain.enums.MembershipStatus.EXPIRED
+              )
+          )
+          or (
+              :membershipStatus = 'OVERDUE'
+              and exists (
+                  select membership.id
+                  from MemberMembership membership
+                  where membership.member = member
+                    and membership.deleted = false
+                    and membership.status = com.gymflow.domain.enums.MembershipStatus.OVERDUE
+              )
+          )
+      )
+    """)
     Page<Member> searchDirectory(
         @Param("organizationId") Long organizationId,
         @Param("search") String search,

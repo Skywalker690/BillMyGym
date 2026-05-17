@@ -44,7 +44,13 @@ public class SecurityConfig {
                 .accessDeniedHandler(accessDeniedHandler)
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login", "/api/auth/google-login").permitAll()
+                .requestMatchers(
+                    "/api/auth/login",
+                    "/api/auth/google-login",
+                    "/api/auth/forgot-password",
+                    "/api/auth/verify-otp",
+                    "/api/auth/change-password"
+                ).permitAll()
                 .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
                 .requestMatchers("/actuator/**").denyAll()
                 .anyRequest().authenticated()

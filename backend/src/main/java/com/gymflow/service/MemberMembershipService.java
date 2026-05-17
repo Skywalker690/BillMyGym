@@ -65,7 +65,7 @@ public class MemberMembershipService {
         MemberMembership membership = new MemberMembership();
         membership.setMember(member);
         membership.setOrganization(member.getOrganization());
-        membership.setPlanName(request.planName());
+        membership.setPlanName(resolvePlanName(request.durationMonths()));
         membership.setDurationMonths(request.durationMonths());
         membership.setPlanAmount(request.planAmount());
 
@@ -149,8 +149,7 @@ public class MemberMembershipService {
     }
 
     private boolean samePlan(MemberMembership activeMembership, CreateMembershipRequest request) {
-        return activeMembership.getPlanName().equals(request.planName())
-            && activeMembership.getDurationMonths() == request.durationMonths()
+        return activeMembership.getDurationMonths() == request.durationMonths()
             && activeMembership.getPlanAmount().compareTo(request.planAmount()) == 0;
     }
 
@@ -171,7 +170,6 @@ public class MemberMembershipService {
             membership.getId(),
             membership.getMember().getId(),
             membership.getOrganization().getId(),
-            membership.getPlanName(),
             membership.getDurationMonths(),
             membership.getPlanAmount(),
             membership.getStartDate(),
@@ -213,6 +211,10 @@ public class MemberMembershipService {
         for (MemberMembership membership : memberships) {
             membership.setLastSentAt(sentAt);
         }
+    }
+
+    private String resolvePlanName(int durationMonths) {
+        return durationMonths == 1 ? "Monthly Membership" : durationMonths + "-Month Membership";
     }
 
     private Long requireOrganizationId() {

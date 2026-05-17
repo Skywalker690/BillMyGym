@@ -12,8 +12,10 @@ import { Toaster } from "sonner";
 
 // Lazy load or import pages
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
 import Unauthorized from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
+import ResetPassword from "./pages/ResetPassword";
 
 // ORG_ADMIN pages
 import Dashboard from "./pages/org/Dashboard";
@@ -40,6 +42,8 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
             <Route element={<AppLayout />}>

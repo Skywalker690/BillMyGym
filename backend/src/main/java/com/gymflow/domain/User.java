@@ -42,4 +42,10 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserStatus status = UserStatus.ACTIVE;
+
+    @Column(name = "terms_accepted")
+    private Boolean termsAccepted;
+
+    @Column(name = "policy_version", length = 32)
+    private String policyVersion;
 }

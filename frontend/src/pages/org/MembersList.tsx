@@ -134,7 +134,7 @@ export default function MembersList() {
                         <div className="text-xs font-medium text-slate-500 mt-1">{member.phone}</div>
                       </td>
                       <td className="px-6 py-5 font-medium text-slate-700 dark:text-slate-300">
-                        {membership ? `${membership.planName} (${membership.durationMonths} mo)` : "No membership"}
+                        {membership ? `${membership.durationMonths} month${membership.durationMonths > 1 ? "s" : ""}` : "No membership"}
                       </td>
                       <td className="px-6 py-5 text-xs font-medium text-slate-500 dark:text-slate-400">
                         <div>{formatDate(membership?.startDate)}</div>

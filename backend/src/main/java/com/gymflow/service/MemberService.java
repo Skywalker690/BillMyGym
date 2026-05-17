@@ -240,7 +240,6 @@ public class MemberService {
         PaymentStatus paymentStatus = membershipLifecycleService.resolveCoverageStatus(membership.getPlanAmount(), paidAmount);
         return new CurrentMembershipSummary(
             membership.getId(),
-            membership.getPlanName(),
             membership.getDurationMonths(),
             membership.getPlanAmount(),
             membership.getStartDate(),

@@ -139,7 +139,7 @@ function MembershipList({ title, items, tone }: { title: string; items: any[]; t
                 <div>
                   <p className="font-bold text-sm text-slate-900 dark:text-white">{member.fullName}</p>
                   <p className={`text-xs font-medium mt-1 ${color}`}>
-                    {member.currentMembership?.planName ?? "Membership"} ends {date(member.currentMembership?.endDate)}
+                    {member.currentMembership?.durationMonths ?? 0} month plan ends {date(member.currentMembership?.endDate)}
                   </p>
                 </div>
                 <Link to={`/app/members/${member.id}/edit`}>

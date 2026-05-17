@@ -1,14 +1,11 @@
 package com.gymflow.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.gymflow.api.dto.PaymentDtos.RecordPaymentRequest;
-import com.gymflow.api.error.BadRequestException;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
@@ -77,28 +74,6 @@ class PaymentLedgerServiceTest {
     }
 
     @Test
-    void rejectsDuplicateGatewayTransactionId() {
-        MemberMembership membership = membership(200L, 100L);
-        when(memberMembershipRepository.findByIdAndOrganizationIdAndDeletedFalse(200L, 100L))
-            .thenReturn(Optional.of(membership));
-        when(memberPaymentRepository.findByGatewayTransactionIdAndDeletedFalse("txn_dup"))
-            .thenReturn(Optional.of(new MemberPayment()));
-
-        RecordPaymentRequest request = new RecordPaymentRequest(
-            200L,
-            new BigDecimal("1000.00"),
-            LocalDate.of(2026, 5, 16),
-            PaymentType.NEW_MEMBERSHIP,
-            PaymentStatus.PAID,
-            "txn_dup",
-            "duplicate"
-        );
-
-        assertThrows(BadRequestException.class, () -> paymentLedgerService.recordPayment(request));
-        verify(memberPaymentRepository, never()).save(any(MemberPayment.class));
-    }
-
-    @Test
     void allowsManualPaymentWithoutGatewayTransactionId() {
         MemberMembership membership = membership(200L, 100L);
         when(memberMembershipRepository.findByIdAndOrganizationIdAndDeletedFalse(200L, 100L))
@@ -120,14 +95,12 @@ class PaymentLedgerServiceTest {
             LocalDate.of(2026, 5, 16),
             PaymentType.NEW_MEMBERSHIP,
             PaymentStatus.PARTIAL,
-            null,
             "manual payment"
         );
 
         var response = paymentLedgerService.recordPayment(request);
 
         assertEquals(PaymentStatus.PARTIAL, response.paymentStatus());
-        assertEquals(null, response.gatewayTransactionId());
         assertEquals("2026-05", response.billingMonth());
         verify(memberPaymentRepository).save(any(MemberPayment.class));
     }

@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,6 +20,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final Set<String> PUBLIC_AUTH_ENDPOINTS = Set.of(
+        "/api/auth/login",
+        "/api/auth/google-login",
+        "/api/auth/forgot-password",
+        "/api/auth/verify-otp",
+        "/api/auth/change-password"
+    );
+
     private final JwtService jwtService;
     private final JsonSecurityErrorWriter errorWriter;
 
@@ -28,7 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
-        return "/api/auth/login".equals(servletPath) || "/api/auth/google-login".equals(servletPath);
+        return PUBLIC_AUTH_ENDPOINTS.contains(servletPath);
     }
 
     @Override
