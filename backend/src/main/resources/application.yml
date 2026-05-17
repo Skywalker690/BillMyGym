@@ -1,0 +1,52 @@
+spring:
+  profiles:
+    active: local
+  application:
+    name: gymMax
+  jackson:
+    time-zone: Asia/Kolkata
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/gymmax}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:tiger}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_ID}
+    password: ${APP_PASS}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+jwt:
+  secret: ${JWT_SECRET}
+
+google:
+  client:
+    id: ${GOOGLE_CLIENT_ID}
+
+app:
+  rate-limit:
+    enabled: true
+    api:
+      max-requests: 180
+      window-seconds: 60
+    auth:
+      max-requests: 12
+      window-seconds: 60
+    password-reset:
+      max-requests: 5
+      window-seconds: 300
+    notifications:
+      max-requests: 60
+      window-seconds: 60
