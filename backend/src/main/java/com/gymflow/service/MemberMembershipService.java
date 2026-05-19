@@ -8,14 +8,12 @@ import com.gymflow.api.error.NotFoundException;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
-import com.gymflow.domain.enums.AuditCategory;
 import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.MembershipStatus;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberPaymentRepository;
 import com.gymflow.repository.MemberRepository;
 import com.gymflow.security.SecurityUtils;
-import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Collection;
@@ -25,6 +23,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -34,10 +33,8 @@ public class MemberMembershipService {
     private final MemberMembershipRepository memberMembershipRepository;
     private final MemberPaymentRepository memberPaymentRepository;
     private final MembershipLifecycleService membershipLifecycleService;
-    private final MembershipWorkflowService membershipWorkflowService;
     private final MemberCreditLedgerService memberCreditLedgerService;
     private final OrganizationSettingService organizationSettingService;
-    private final AuditLogService auditLogService;
 
     @Transactional
     @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
@@ -53,6 +50,7 @@ public class MemberMembershipService {
         List<MemberMembership> memberships = memberMembershipRepository
             .findByMemberIdAndOrganizationIdAndDeletedFalseOrderByStartDateDescCreatedAtDesc(memberId, organizationId);
         int reminderDays = organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry();
+        java.math.BigDecimal walletBalance = memberCreditLedgerService.balanceForMember(memberId, organizationId);
         Map<Long, List<MemberPayment>> paymentsByMembershipId = loadPaymentsByMembershipId(memberships);
         Map<Long, java.math.BigDecimal> appliedCreditByMembershipId = memberCreditLedgerService.appliedCreditForMemberships(
             memberships.stream().map(MemberMembership::getId).toList()
@@ -62,6 +60,7 @@ public class MemberMembershipService {
                 membership,
                 paymentsByMembershipId.getOrDefault(membership.getId(), List.of()),
                 appliedCreditByMembershipId.getOrDefault(membership.getId(), java.math.BigDecimal.ZERO),
+                walletBalance,
                 reminderDays
             ))
             .toList();
@@ -76,10 +75,72 @@ public class MemberMembershipService {
         }
     }
 
+    @Transactional
+    public Member requireActiveMember(Long memberId, Long organizationId) {
+        Member member = memberRepository.findByIdAndOrganizationIdAndDeletedFalseForUpdate(memberId, organizationId)
+            .orElseThrow(() -> new NotFoundException("Member not found"));
+        if (member.getStatus() == MemberStatus.DEACTIVATED) {
+            throw new BadRequestException("Re-activate the member before creating a new membership");
+        }
+        return member;
+    }
+
+    @Transactional
+    public MemberMembership findActiveMembership(Long memberId, Long organizationId) {
+        return memberMembershipRepository
+            .findByMemberIdAndOrganizationIdAndStatusAndDeletedFalse(memberId, organizationId, MembershipStatus.ACTIVE)
+            .orElse(null);
+    }
+
+    @Transactional
+    public MemberMembership findActiveMembershipForUpdate(Long memberId, Long organizationId) {
+        return memberMembershipRepository.findActiveMembershipForUpdate(memberId, organizationId)
+            .orElseThrow(() -> new BadRequestException("An active membership is required for package switch"));
+    }
+
+    @Transactional
+    public MemberMembership saveMembership(MemberMembership membership) {
+        return memberMembershipRepository.save(membership);
+    }
+
+    @Transactional(readOnly = true)
+    public MembershipResponse membershipResponse(Long membershipId, Long organizationId) {
+        MemberMembership membership = memberMembershipRepository.findByIdAndOrganizationIdAndDeletedFalse(membershipId, organizationId)
+            .orElseThrow(() -> new NotFoundException("Membership not found"));
+        int reminderDays = organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry();
+        return new MembershipResponse(
+            membership.getId(),
+            membership.getMember().getId(),
+            membership.getOrganization().getId(),
+            membership.getPlanName(),
+            membership.getDurationMonths(),
+            membership.getPlanAmount(),
+            membership.getStartDate(),
+            membership.getEndDate(),
+            membership.getStatus(),
+            memberCreditLedgerService.balanceForMember(membership.getMember().getId(), organizationId),
+            membership.getLastSentAt(),
+            membership.getCreatedAt(),
+            membership.getUpdatedAt(),
+            membershipLifecycleService.buildCoverageSummary(
+                membership,
+                paymentsForMembership(membershipId),
+                memberCreditLedgerService.appliedCreditForMembership(membershipId),
+                reminderDays
+            )
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<MemberPayment> paymentsForMembership(Long membershipId) {
+        return memberPaymentRepository.findByMembershipIdAndDeletedFalseOrderByPaymentDateAscCreatedAtAsc(membershipId);
+    }
+
     private MembershipResponse toResponse(
         MemberMembership membership,
         List<MemberPayment> payments,
         java.math.BigDecimal appliedCreditAmount,
+        java.math.BigDecimal walletBalance,
         int reminderDays
     ) {
         return new MembershipResponse(
@@ -92,7 +153,7 @@ public class MemberMembershipService {
             membership.getStartDate(),
             membership.getEndDate(),
             membership.getStatus(),
-            memberCreditLedgerService.balanceForMember(membership.getMember().getId(), membership.getOrganization().getId()),
+            walletBalance,
             membership.getLastSentAt(),
             membership.getCreatedAt(),
             membership.getUpdatedAt(),

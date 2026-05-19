@@ -2,6 +2,7 @@ package com.gymflow.repository;
 
 import com.gymflow.domain.Member;
 import com.gymflow.domain.enums.MemberStatus;
+import jakarta.persistence.LockModeType;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -9,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,6 +20,17 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     List<Member> findByOrganizationIdAndDeletedFalse(Long organizationId);
 
     Optional<Member> findByIdAndOrganizationIdAndDeletedFalse(Long id, Long organizationId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = "organization")
+    @Query("""
+        select member
+        from Member member
+        where member.id = :id
+          and member.organization.id = :organizationId
+          and member.deleted = false
+        """)
+    Optional<Member> findByIdAndOrganizationIdAndDeletedFalseForUpdate(@Param("id") Long id, @Param("organizationId") Long organizationId);
 
     Optional<Member> findByOrganizationIdAndPhoneAndDeletedFalse(Long organizationId, String phone);
 

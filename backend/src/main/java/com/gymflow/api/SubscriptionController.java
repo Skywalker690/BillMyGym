@@ -3,8 +3,12 @@ package com.gymflow.api;
 import com.gymflow.api.dto.SubscriptionDtos.CreateSubscriptionOrderRequest;
 import com.gymflow.api.dto.SubscriptionDtos.VerifySubscriptionPaymentRequest;
 import com.gymflow.api.response.ApiResponse;
-import com.gymflow.service.ApiRequestLogService;
+import com.gymflow.domain.enums.IdempotencyResourceType;
+import com.gymflow.domain.enums.MembershipOperationType;
+import com.gymflow.security.SecurityUtils;
+import com.gymflow.service.OrganizationPaymentWebhookService;
 import com.gymflow.service.SubscriptionService;
+import com.gymflow.shared.idempotency.IdempotencyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,66 +25,65 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class SubscriptionController {
 
-    private static final String CREATE_ENDPOINT = "POST:/api/subscription/create";
-    private static final String VERIFY_ENDPOINT = "POST:/api/subscription/verify";
-
     private final SubscriptionService subscriptionService;
-    private final ApiRequestLogService apiRequestLogService;
+    private final OrganizationPaymentWebhookService organizationPaymentWebhookService;
+    private final IdempotencyService idempotencyService;
 
     @PostMapping("/create")
     public ResponseEntity<?> createOrder(
         @RequestBody(required = false) CreateSubscriptionOrderRequest request,
-        @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey
+        @RequestHeader("X-Idempotency-Key") String idempotencyKey
     ) {
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            var stored = apiRequestLogService.findStoredResponse(
-                idempotencyKey,
-                CREATE_ENDPOINT,
-                com.gymflow.api.dto.SubscriptionDtos.CreateSubscriptionOrderResponse.class
-            );
-            if (stored.isPresent()) {
-                return ResponseEntity.ok(ApiResponse.success("Subscription order created", stored.get()));
-            }
-            var response = subscriptionService.createOrder(request);
+        Long organizationId = SecurityUtils.currentUser().organizationId();
+        String requiredKey = idempotencyService.requireKey(idempotencyKey);
+        var existing = idempotencyService.findExistingForOrganization(
+            organizationId,
+            MembershipOperationType.SUBSCRIPTION_CREATE,
+            requiredKey
+        ).orElse(null);
+        if (existing != null) {
             return ResponseEntity.ok(ApiResponse.success(
                 "Subscription order created",
-                apiRequestLogService.storeOrLoad(
-                    idempotencyKey,
-                    CREATE_ENDPOINT,
-                    response,
-                    com.gymflow.api.dto.SubscriptionDtos.CreateSubscriptionOrderResponse.class
-                )
+                subscriptionService.createOrderResponse(existing.getResourceId())
             ));
         }
-        return ResponseEntity.ok(ApiResponse.success("Subscription order created", subscriptionService.createOrder(request)));
+        var response = subscriptionService.createOrder(request);
+        var payment = organizationPaymentWebhookService.findPaymentByOrderId(response.razorpayOrderId());
+        idempotencyService.recordForOrganization(
+            organizationId,
+            MembershipOperationType.SUBSCRIPTION_CREATE,
+            requiredKey,
+            IdempotencyResourceType.SUBSCRIPTION_PAYMENT,
+            payment.getId()
+        );
+        return ResponseEntity.ok(ApiResponse.success("Subscription order created", response));
     }
 
     @PostMapping("/verify")
     public ResponseEntity<?> verifyPayment(
         @Valid @RequestBody VerifySubscriptionPaymentRequest request,
-        @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey
+        @RequestHeader("X-Idempotency-Key") String idempotencyKey
     ) {
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            var stored = apiRequestLogService.findStoredResponse(
-                idempotencyKey,
-                VERIFY_ENDPOINT,
-                com.gymflow.api.dto.SubscriptionDtos.SubscriptionStatusResponse.class
-            );
-            if (stored.isPresent()) {
-                return ResponseEntity.ok(ApiResponse.success("Subscription payment verified", stored.get()));
-            }
-            var response = subscriptionService.verifyPayment(request);
-            return ResponseEntity.ok(ApiResponse.success(
-                "Subscription payment verified",
-                apiRequestLogService.storeOrLoad(
-                    idempotencyKey,
-                    VERIFY_ENDPOINT,
-                    response,
-                    com.gymflow.api.dto.SubscriptionDtos.SubscriptionStatusResponse.class
-                )
-            ));
+        Long organizationId = SecurityUtils.currentUser().organizationId();
+        String requiredKey = idempotencyService.requireKey(idempotencyKey);
+        var existing = idempotencyService.findExistingForOrganization(
+            organizationId,
+            MembershipOperationType.SUBSCRIPTION_VERIFY,
+            requiredKey
+        ).orElse(null);
+        if (existing != null) {
+            return ResponseEntity.ok(ApiResponse.success("Subscription payment verified", subscriptionService.status()));
         }
-        return ResponseEntity.ok(ApiResponse.success("Subscription payment verified", subscriptionService.verifyPayment(request)));
+        var response = subscriptionService.verifyPayment(request);
+        var payment = organizationPaymentWebhookService.findPaymentByOrderId(request.razorpayOrderId());
+        idempotencyService.recordForOrganization(
+            organizationId,
+            MembershipOperationType.SUBSCRIPTION_VERIFY,
+            requiredKey,
+            IdempotencyResourceType.SUBSCRIPTION_PAYMENT,
+            payment.getId()
+        );
+        return ResponseEntity.ok(ApiResponse.success("Subscription payment verified", response));
     }
 
     @PostMapping("/webhook")

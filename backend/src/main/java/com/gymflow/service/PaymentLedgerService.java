@@ -8,11 +8,14 @@ import com.gymflow.api.error.NotFoundException;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.enums.AuditCategory;
+import com.gymflow.domain.enums.IdempotencyResourceType;
+import com.gymflow.domain.enums.MembershipOperationType;
 import com.gymflow.domain.enums.PaymentStatus;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberPaymentRepository;
 import com.gymflow.security.SecurityUtils;
-import jakarta.transaction.Transactional;
+import com.gymflow.shared.idempotency.IdempotencyService;
+import com.gymflow.shared.money.MoneyUtils;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
@@ -24,6 +27,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -34,12 +38,19 @@ public class PaymentLedgerService {
     private final MembershipLifecycleService membershipLifecycleService;
     private final OrganizationSettingService organizationSettingService;
     private final AuditLogService auditLogService;
+    private final IdempotencyService idempotencyService;
 
     @Transactional
     @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
-    public PaymentResponse recordPayment(RecordPaymentRequest request) {
+    public PaymentResponse recordPayment(RecordPaymentRequest request, String idempotencyKey) {
         Long organizationId = requireOrganizationId();
-        MemberMembership membership = memberMembershipRepository.findByIdAndOrganizationIdAndDeletedFalse(
+        String requiredKey = idempotencyService.requireKey(idempotencyKey);
+        var existing = idempotencyService.findExisting(organizationId, null, MembershipOperationType.PAYMENT_RECORD, requiredKey)
+            .orElse(null);
+        if (existing != null) {
+            return paymentResponse(existing.getResourceId(), organizationId);
+        }
+        MemberMembership membership = memberMembershipRepository.findByIdAndOrganizationIdAndDeletedFalseForUpdate(
             request.membershipId(),
             organizationId
         ).orElseThrow(() -> new NotFoundException("Membership not found"));
@@ -51,7 +62,7 @@ public class PaymentLedgerService {
         payment.setMember(membership.getMember());
         payment.setMembership(membership);
         payment.setOrganization(membership.getOrganization());
-        payment.setAmount(request.amount());
+        payment.setAmount(MoneyUtils.normalize(request.amount()));
         payment.setPaymentDate(request.paymentDate());
         payment.setBillingMonth(YearMonth.from(request.paymentDate()).toString());
         payment.setPaymentType(request.paymentType());
@@ -62,6 +73,14 @@ public class PaymentLedgerService {
         );
         payment.setPaymentStatus(resolvePaymentStatus(membership, previousPayments, request));
         payment = memberPaymentRepository.save(payment);
+        idempotencyService.record(
+            organizationId,
+            null,
+            MembershipOperationType.PAYMENT_RECORD,
+            requiredKey,
+            IdempotencyResourceType.PAYMENT,
+            payment.getId()
+        );
 
         auditLogService.log(
             "PAYMENT_CREATED",
@@ -75,6 +94,19 @@ public class PaymentLedgerService {
             .getOrCreateSettings(organizationId)
             .getReminderDaysBeforeExpiry();
         PaymentCoverageSummary coverage = membershipLifecycleService.buildCoverageSummary(membership, previousPayments, reminderDays);
+        return toResponse(payment, coverage);
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentResponse paymentResponse(Long paymentId, Long organizationId) {
+        MemberPayment payment = memberPaymentRepository.findByIdAndOrganizationIdAndDeletedFalse(paymentId, organizationId)
+            .orElseThrow(() -> new NotFoundException("Payment not found"));
+        int reminderDays = organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry();
+        PaymentCoverageSummary coverage = membershipLifecycleService.buildCoverageSummary(
+            payment.getMembership(),
+            memberPaymentRepository.findByMembershipIdAndDeletedFalseOrderByPaymentDateAscCreatedAtAsc(payment.getMembership().getId()),
+            reminderDays
+        );
         return toResponse(payment, coverage);
     }
 

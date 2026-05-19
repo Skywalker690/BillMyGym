@@ -21,6 +21,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -51,6 +53,8 @@ public class RevenueService {
         List<MemberPayment> payments = memberPaymentRepository.findByOrganizationIdAndDeletedFalseOrderByPaymentDateDescCreatedAtDesc(
             organization.getId()
         );
+        Map<Long, List<MemberPayment>> paymentsByMembershipId = payments.stream()
+            .collect(Collectors.groupingBy(payment -> payment.getMembership().getId()));
 
         BigDecimal currentRevenue = payments.stream()
             .filter(payment -> payment.getPaymentDate() != null)
@@ -70,7 +74,7 @@ public class RevenueService {
             }
             PaymentCoverageSummary coverage = membershipLifecycleService.buildCoverageSummary(
                 membership,
-                payments.stream().filter(payment -> payment.getMembership().getId().equals(membership.getId())).toList(),
+                paymentsByMembershipId.getOrDefault(membership.getId(), List.of()),
                 reminderDays
             );
             boolean isCurrentObligation = membership.getStatus() == MembershipStatus.ACTIVE

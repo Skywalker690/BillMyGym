@@ -24,6 +24,20 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
     @EntityGraph(attributePaths = {"member", "organization"})
     Optional<MemberMembership> findByIdAndOrganizationIdAndDeletedFalse(Long id, Long organizationId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"member", "organization"})
+    @Query("""
+        select membership
+        from MemberMembership membership
+        where membership.id = :id
+          and membership.organization.id = :organizationId
+          and membership.deleted = false
+        """)
+    Optional<MemberMembership> findByIdAndOrganizationIdAndDeletedFalseForUpdate(
+        @Param("id") Long id,
+        @Param("organizationId") Long organizationId
+    );
+
     @EntityGraph(attributePaths = {"member", "organization"})
     List<MemberMembership> findByOrganizationIdAndMemberIdInAndDeletedFalseOrderByMemberIdAscStartDateDescCreatedAtDesc(Long organizationId, Collection<Long> memberIds);
 

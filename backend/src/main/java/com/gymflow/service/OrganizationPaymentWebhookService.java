@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -34,13 +35,11 @@ public class OrganizationPaymentWebhookService {
     private final OrganizationRepository organizationRepository;
     private final ProcessedWebhookEventRepository processedWebhookEventRepository;
     private final UsageMetricService usageMetricService;
-    private final EmailService emailService;
     private final AuditLogService auditLogService;
-    private final NotificationDeliveryLogService notificationDeliveryLogService;
     private final BillingLifecycleService billingLifecycleService;
-    private final WhatsAppDeliveryService whatsAppDeliveryService;
     private final PlanAccessService planAccessService;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Value("${razorpay.key-secret:}")
     private String razorpayKeySecret;
@@ -63,6 +62,12 @@ public class OrganizationPaymentWebhookService {
         payment.setRazorpayPaymentId(request.razorpayPaymentId());
         payment.setGatewayTransactionId(request.razorpayPaymentId());
         markPaymentPaid(payment, LocalDate.now());
+    }
+
+    @Transactional
+    public OrganizationSubscriptionPayment findPaymentByOrderId(String orderId) {
+        return paymentRepository.findByRazorpayOrderIdAndDeletedFalse(orderId)
+            .orElseThrow(() -> new NotFoundException("Subscription order not found"));
     }
 
     @Transactional
@@ -166,18 +171,14 @@ public class OrganizationPaymentWebhookService {
         subscriptionRepository.save(subscription);
 
         UsageMetric usage = usageMetricService.refreshMonthlySnapshot(organization);
-        emailService.sendPaymentSuccessEmail(
+        applicationEventPublisher.publishEvent(new com.gymflow.subscription.event.SubscriptionPaymentPaidEvent(
             organization,
-            payment.getAmount(),
+            payment,
+            usage,
             periodStart,
             periodEnd,
-            usage.getMonthlyWhatsappCount(),
-            usage.getMonthlyEmailCount(),
-            usage.getActiveMembers(),
             billingSummary(usage)
-        );
-        notificationDeliveryLogService.recordSuccessfulDelivery(organization, com.gymflow.domain.enums.NotificationType.SUBSCRIPTION_PAYMENT_SUCCESS);
-        whatsAppDeliveryService.sendPaymentSuccess(organization, "%s - %s".formatted(periodStart, periodEnd));
+        ));
         auditLogService.log(
             "SUBSCRIPTION_PAYMENT_PAID",
             "Subscription paid for organization " + organization.getName() + " through " + periodEnd,
@@ -316,21 +317,11 @@ public class OrganizationPaymentWebhookService {
 
     private void notifyPaymentFailure(OrganizationSubscriptionPayment payment) {
         UsageMetric usage = usageMetricService.refreshMonthlySnapshot(payment.getOrganization());
-        emailService.sendPaymentFailedEmail(
-            payment.getOrganization(),
-            payment.getAmount(),
-            payment.getOrganization().getSubscriptionDueDate(),
-            "/app/subscription",
-            payment.getFailureReason(),
-            usage.getMonthlyWhatsappCount(),
-            usage.getMonthlyEmailCount(),
-            usage.getActiveMembers(),
+        applicationEventPublisher.publishEvent(new com.gymflow.subscription.event.SubscriptionPaymentFailedEvent(
+            payment,
+            usage,
             billingSummary(usage)
-        );
-        notificationDeliveryLogService.recordSuccessfulDelivery(
-            payment.getOrganization(),
-            com.gymflow.domain.enums.NotificationType.SUBSCRIPTION_PAYMENT_FAILED
-        );
+        ));
     }
 
     private String billingSummary(UsageMetric usage) {

@@ -237,9 +237,11 @@ public class MemberService {
     }
 
     private MemberLimitResponse toMemberLimitResponse(MemberLimitService.MemberLimitSummary summary) {
+        Long orgId = requireOrgId(SecurityUtils.currentUser());
         return new MemberLimitResponse(
             summary.plan(),
             summary.usedMembers(),
+            memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(orgId, MemberStatus.DEACTIVATED),
             summary.memberLimit(),
             summary.unlimited(),
             summary.remainingSlots(),

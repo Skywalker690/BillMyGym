@@ -19,6 +19,8 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -59,6 +61,8 @@ public class MonthlyOrganizationReportService {
         List<MemberPayment> payments = memberPaymentRepository.findByOrganizationIdAndDeletedFalseOrderByPaymentDateDescCreatedAtDesc(
             organization.getId()
         );
+        Map<Long, List<MemberPayment>> paymentsByMembershipId = payments.stream()
+            .collect(Collectors.groupingBy(payment -> payment.getMembership().getId()));
         BigDecimal collectedRevenue = payments.stream()
             .filter(payment -> payment.getPaymentDate() != null)
             .filter(payment -> !payment.getPaymentDate().isBefore(monthStart) && !payment.getPaymentDate().isAfter(monthEnd))
@@ -79,7 +83,7 @@ public class MonthlyOrganizationReportService {
             }
             PaymentCoverageSummary coverage = membershipLifecycleService.buildCoverageSummary(
                 membership,
-                payments.stream().filter(payment -> payment.getMembership().getId().equals(membership.getId())).toList(),
+                paymentsByMembershipId.getOrDefault(membership.getId(), List.of()),
                 0
             );
             pendingRevenue = pendingRevenue.add(coverage.pendingAmount());

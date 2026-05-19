@@ -10,6 +10,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -59,4 +60,8 @@ public class MemberPayment extends BaseEntity {
 
     @Column(name = "deleted_at")
     private OffsetDateTime deletedAt;
+
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
 }

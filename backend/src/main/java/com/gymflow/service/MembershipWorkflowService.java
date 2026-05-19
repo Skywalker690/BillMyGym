@@ -4,25 +4,18 @@ import com.gymflow.api.dto.MembershipDtos.CreateMembershipRequest;
 import com.gymflow.api.dto.MembershipDtos.MembershipResponse;
 import com.gymflow.api.dto.MembershipDtos.SwitchMembershipRequest;
 import com.gymflow.api.error.BadRequestException;
-import com.gymflow.api.error.NotFoundException;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
-import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.enums.AuditCategory;
 import com.gymflow.domain.enums.IdempotencyResourceType;
 import com.gymflow.domain.enums.MemberCreditLedgerReason;
 import com.gymflow.domain.enums.MemberCreditLedgerTransactionType;
-import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.MembershipOperationType;
 import com.gymflow.domain.enums.MembershipStatus;
-import com.gymflow.repository.MemberMembershipRepository;
-import com.gymflow.repository.MemberPaymentRepository;
-import com.gymflow.repository.MemberRepository;
+import com.gymflow.shared.money.MoneyUtils;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -32,9 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class MembershipWorkflowService {
 
-    private final MemberRepository memberRepository;
-    private final MemberMembershipRepository memberMembershipRepository;
-    private final MemberPaymentRepository memberPaymentRepository;
+    private final MemberMembershipService memberMembershipService;
     private final MembershipLifecycleService membershipLifecycleService;
     private final MemberCreditLedgerService memberCreditLedgerService;
     private final MembershipOperationIdempotencyService idempotencyService;
@@ -44,8 +35,8 @@ public class MembershipWorkflowService {
     @Transactional
     @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public MembershipResponse createMembership(Long memberId, CreateMembershipRequest request, String idempotencyKey) {
-        Member member = requireActiveMember(memberId);
-        Long organizationId = member.getOrganization().getId();
+        Long organizationId = requireOrganizationId();
+        Member member = memberMembershipService.requireActiveMember(memberId, organizationId);
         String requiredKey = idempotencyService.requireKey(idempotencyKey);
         var existing = idempotencyService.findExisting(
             organizationId,
@@ -54,12 +45,10 @@ public class MembershipWorkflowService {
             requiredKey
         ).orElse(null);
         if (existing != null) {
-            return membershipResponse(existing.getResourceId(), organizationId);
+            return memberMembershipService.membershipResponse(existing.getResourceId(), organizationId);
         }
 
-        MemberMembership activeMembership = memberMembershipRepository
-            .findByMemberIdAndOrganizationIdAndStatusAndDeletedFalse(memberId, organizationId, MembershipStatus.ACTIVE)
-            .orElse(null);
+        MemberMembership activeMembership = memberMembershipService.findActiveMembership(memberId, organizationId);
         if (activeMembership != null && isPackageSwitch(activeMembership, request)) {
             throw new BadRequestException("Use the package switch flow when changing an active membership package");
         }
@@ -78,7 +67,7 @@ public class MembershipWorkflowService {
             membership,
             organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry()
         );
-        membership = memberMembershipRepository.save(membership);
+        membership = memberMembershipService.saveMembership(membership);
 
         idempotencyService.record(
             organizationId,
@@ -94,14 +83,14 @@ public class MembershipWorkflowService {
             AuditCategory.MEMBER,
             "MEMBERSHIP"
         );
-        return membershipResponse(membership.getId(), organizationId);
+        return memberMembershipService.membershipResponse(membership.getId(), organizationId);
     }
 
     @Transactional
     @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public MembershipResponse switchMembership(Long memberId, SwitchMembershipRequest request, String idempotencyKey) {
-        Member member = requireActiveMember(memberId);
-        Long organizationId = member.getOrganization().getId();
+        Long organizationId = requireOrganizationId();
+        Member member = memberMembershipService.requireActiveMember(memberId, organizationId);
         String requiredKey = idempotencyService.requireKey(idempotencyKey);
         var existing = idempotencyService.findExisting(
             organizationId,
@@ -110,11 +99,10 @@ public class MembershipWorkflowService {
             requiredKey
         ).orElse(null);
         if (existing != null) {
-            return membershipResponse(existing.getResourceId(), organizationId);
+            return memberMembershipService.membershipResponse(existing.getResourceId(), organizationId);
         }
 
-        MemberMembership activeMembership = memberMembershipRepository.findActiveMembershipForUpdate(memberId, organizationId)
-            .orElseThrow(() -> new BadRequestException("An active membership is required for package switch"));
+        MemberMembership activeMembership = memberMembershipService.findActiveMembershipForUpdate(memberId, organizationId);
 
         LocalDate switchDate = request.switchDate();
         int completedMonths = resolveCompletedMonths(activeMembership, switchDate);
@@ -124,12 +112,12 @@ public class MembershipWorkflowService {
         }
 
         BigDecimal successfulPayments = membershipLifecycleService.successfulPaymentTotal(
-            memberPaymentRepository.findByMembershipIdAndDeletedFalseOrderByPaymentDateAscCreatedAtAsc(activeMembership.getId())
+            memberMembershipService.paymentsForMembership(activeMembership.getId())
         );
-        BigDecimal switchCredit = scale(
+        BigDecimal switchCredit = MoneyUtils.normalize(
             successfulPayments.min(activeMembership.getPlanAmount())
                 .multiply(BigDecimal.valueOf(remainingMonths))
-                .divide(BigDecimal.valueOf(activeMembership.getDurationMonths()), 2, RoundingMode.HALF_UP)
+                .divide(BigDecimal.valueOf(activeMembership.getDurationMonths()), MoneyUtils.SCALE, MoneyUtils.ROUNDING_MODE)
         );
 
         activeMembership.setStatus(MembershipStatus.COMPLETED);
@@ -158,7 +146,7 @@ public class MembershipWorkflowService {
             newMembership,
             organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry()
         );
-        newMembership = memberMembershipRepository.save(newMembership);
+        newMembership = memberMembershipService.saveMembership(newMembership);
 
         BigDecimal availableWallet = memberCreditLedgerService.balanceForMember(memberId, organizationId);
         BigDecimal debitAmount = availableWallet.min(newMembership.getPlanAmount()).max(BigDecimal.ZERO);
@@ -189,46 +177,7 @@ public class MembershipWorkflowService {
             AuditCategory.MEMBER,
             "MEMBERSHIP"
         );
-        return membershipResponse(newMembership.getId(), organizationId);
-    }
-
-    @Transactional(readOnly = true)
-    public MembershipResponse membershipResponse(Long membershipId, Long organizationId) {
-        MemberMembership membership = memberMembershipRepository.findByIdAndOrganizationIdAndDeletedFalse(membershipId, organizationId)
-            .orElseThrow(() -> new NotFoundException("Membership not found"));
-        int reminderDays = organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry();
-        List<MemberPayment> payments = memberPaymentRepository.findByMembershipIdAndDeletedFalseOrderByPaymentDateAscCreatedAtAsc(membershipId);
-        return new MembershipResponse(
-            membership.getId(),
-            membership.getMember().getId(),
-            membership.getOrganization().getId(),
-            membership.getPlanName(),
-            membership.getDurationMonths(),
-            membership.getPlanAmount(),
-            membership.getStartDate(),
-            membership.getEndDate(),
-            membership.getStatus(),
-            memberCreditLedgerService.balanceForMember(membership.getMember().getId(), organizationId),
-            membership.getLastSentAt(),
-            membership.getCreatedAt(),
-            membership.getUpdatedAt(),
-            membershipLifecycleService.buildCoverageSummary(
-                membership,
-                payments,
-                memberCreditLedgerService.appliedCreditForMembership(membershipId),
-                reminderDays
-            )
-        );
-    }
-
-    private Member requireActiveMember(Long memberId) {
-        Long organizationId = requireOrganizationId();
-        Member member = memberRepository.findByIdAndOrganizationIdAndDeletedFalse(memberId, organizationId)
-            .orElseThrow(() -> new NotFoundException("Member not found"));
-        if (member.getStatus() == MemberStatus.DEACTIVATED) {
-            throw new BadRequestException("Re-activate the member before creating a new membership");
-        }
-        return member;
+        return memberMembershipService.membershipResponse(newMembership.getId(), organizationId);
     }
 
     private Long requireOrganizationId() {
@@ -281,6 +230,6 @@ public class MembershipWorkflowService {
     }
 
     private BigDecimal scale(BigDecimal amount) {
-        return amount.setScale(2, RoundingMode.HALF_UP);
+        return MoneyUtils.normalize(amount);
     }
 }

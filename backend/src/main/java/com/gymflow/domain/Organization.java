@@ -8,6 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -66,5 +67,9 @@ public class Organization extends BaseEntity {
     private OffsetDateTime pausedAt;
     private OffsetDateTime deactivatedAt;
     private OffsetDateTime deletedAt;
+
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
 
 }

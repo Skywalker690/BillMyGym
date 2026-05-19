@@ -16,12 +16,12 @@ import com.gymflow.repository.MemberCreditLedgerRepository;
 import com.gymflow.repository.MemberRepository;
 import com.gymflow.security.AuthenticatedUser;
 import com.gymflow.security.SecurityUtils;
+import com.gymflow.shared.idempotency.IdempotencyService;
+import com.gymflow.shared.money.MoneyUtils;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -34,7 +34,7 @@ public class MemberCreditLedgerService {
 
     private final MemberCreditLedgerRepository memberCreditLedgerRepository;
     private final MemberRepository memberRepository;
-    private final MembershipOperationIdempotencyService idempotencyService;
+    private final IdempotencyService idempotencyService;
 
     public BigDecimal balanceForMember(Long memberId, Long organizationId) {
         return scale(memberCreditLedgerRepository.balanceForMember(memberId, organizationId));
@@ -149,7 +149,7 @@ public class MemberCreditLedgerService {
         if (existing != null) {
             return wallet(memberId, organizationId);
         }
-        Member member = memberRepository.findByIdAndOrganizationIdAndDeletedFalse(memberId, organizationId)
+        Member member = memberRepository.findByIdAndOrganizationIdAndDeletedFalseForUpdate(memberId, organizationId)
             .orElseThrow(() -> new NotFoundException("Member not found"));
         MemberCreditLedgerEntry entry = createEntry(
             member,
@@ -172,6 +172,6 @@ public class MemberCreditLedgerService {
     }
 
     private BigDecimal scale(BigDecimal amount) {
-        return (amount == null ? BigDecimal.ZERO : amount).setScale(2, RoundingMode.HALF_UP);
+        return MoneyUtils.normalize(amount);
     }
 }

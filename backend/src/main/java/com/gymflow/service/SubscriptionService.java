@@ -16,7 +16,9 @@ import com.gymflow.domain.OrganizationSubscription;
 import com.gymflow.domain.OrganizationSubscriptionPayment;
 import com.gymflow.domain.UsageMetric;
 import com.gymflow.domain.enums.AuditCategory;
+import com.gymflow.domain.enums.IdempotencyResourceType;
 import com.gymflow.domain.enums.OrganizationType;
+import com.gymflow.domain.enums.MembershipOperationType;
 import com.gymflow.domain.enums.Role;
 import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.domain.enums.SubscriptionPaymentStatus;
@@ -27,9 +29,9 @@ import com.gymflow.repository.OrganizationSubscriptionRepository;
 import com.gymflow.repository.UsageMetricRepository;
 import com.gymflow.security.AuthenticatedUser;
 import com.gymflow.security.SecurityUtils;
-import jakarta.transaction.Transactional;
+import com.gymflow.shared.idempotency.IdempotencyService;
+import com.gymflow.shared.money.MoneyUtils;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -46,6 +48,7 @@ import javax.crypto.spec.SecretKeySpec;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -63,6 +66,7 @@ public class SubscriptionService {
     private final AuditLogService auditLogService;
     private final OrganizationPaymentWebhookService organizationPaymentWebhookService;
     private final BillingLifecycleService billingLifecycleService;
+    private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
 
     @Value("${razorpay.key-id:}")
@@ -87,7 +91,7 @@ public class SubscriptionService {
             throw new BadRequestException("Subscription is already active through " + organization.getSubscriptionDueDate().minusDays(1));
         }
         SubscriptionPlan selectedPlan = resolveCheckoutPlan(request, organization);
-        BigDecimal monthlyAmount = selectedPlan.monthlyAmount();
+        BigDecimal monthlyAmount = MoneyUtils.normalize(selectedPlan.monthlyAmount());
         LocalDate start = resolveNextSubscriptionStart(organization);
         LocalDate end = billingLifecycleService.billingPeriodEnd(start);
         OrganizationSubscriptionPayment existingPending = subscriptionPaymentRepository
@@ -107,14 +111,14 @@ public class SubscriptionService {
                 paymentsEnabled,
                 selectedPlan,
                 existingPending.getAmount(),
-                existingPending.getAmount().multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).longValueExact(),
+                MoneyUtils.toMinorUnits(existingPending.getAmount()),
                 CURRENCY,
                 existingPending.getSubscriptionStart(),
                 existingPending.getSubscriptionEnd(),
                 existingPending.getPaymentStatus()
             );
         }
-        long amountInPaise = monthlyAmount.multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).longValueExact();
+        long amountInPaise = MoneyUtils.toMinorUnits(monthlyAmount);
         String receipt = "gymflow_org_%d_%d".formatted(organization.getId(), System.currentTimeMillis());
         String razorpayOrderId = paymentsEnabled ? createRazorpayOrder(amountInPaise, receipt, selectedPlan) : "order_local_" + receipt;
 
@@ -181,6 +185,26 @@ public class SubscriptionService {
         Organization organization = organizationRepository.findByIdAndDeletedFalse(organizationId)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
         return toStatusResponse(organization);
+    }
+
+    @Transactional(readOnly = true)
+    public CreateSubscriptionOrderResponse createOrderResponse(Long paymentId) {
+        Organization organization = resolveCurrentOrganization();
+        OrganizationSubscriptionPayment payment = subscriptionPaymentRepository.findById(paymentId)
+            .filter(existing -> existing.getOrganization().getId().equals(organization.getId()))
+            .orElseThrow(() -> new NotFoundException("Subscription payment not found"));
+        return new CreateSubscriptionOrderResponse(
+            payment.getRazorpayOrderId(),
+            razorpayKeyId,
+            paymentsEnabled,
+            resolvePaymentPlan(payment, organization),
+            payment.getAmount(),
+            MoneyUtils.toMinorUnits(payment.getAmount()),
+            CURRENCY,
+            payment.getSubscriptionStart(),
+            payment.getSubscriptionEnd(),
+            payment.getPaymentStatus()
+        );
     }
 
     private SubscriptionStatusResponse toStatusResponse(Organization organization) {

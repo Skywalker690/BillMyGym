@@ -9,6 +9,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.Setter;
@@ -44,4 +45,8 @@ public class Member extends BaseEntity {
 
     @Column(length = 1000)
     private String notes;
+
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
 }
