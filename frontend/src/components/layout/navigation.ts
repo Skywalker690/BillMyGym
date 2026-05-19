@@ -3,6 +3,7 @@ import {
   Bell,
   Building2,
   Clock3,
+  CreditCard,
   LayoutDashboard,
   type LucideIcon,
   Settings,
@@ -61,6 +62,12 @@ export const getSidebarNavItems = (role: AppRole | null | undefined): NavItemCon
       icon: Bell,
       section: "Operations",
     },
+    {
+      label: "Subscription",
+      href: "/app/subscription",
+      icon: CreditCard,
+      section: "Billing",
+    },
   ];
 };
 
@@ -81,6 +88,12 @@ export const getProfileNavItems = (role: AppRole | null | undefined): NavItemCon
       label: "Organization Profile",
       href: "/app/organization",
       icon: Building2,
+      section: "Account",
+    },
+    {
+      label: "Subscription",
+      href: "/app/subscription",
+      icon: CreditCard,
       section: "Account",
     },
     {
@@ -143,8 +156,14 @@ export const getPageContext = (pathname: string, role: AppRole | null | undefine
       description: "Review digests and system notices delivered to organization admins.",
     },
     {
+      match: "/app/subscription",
+      eyebrow: "SaaS Billing",
+      title: "Subscription",
+      description: "Review your BillMyGym access status, usage, billing period, and payment ledger.",
+    },
+    {
       match: "/app/settings",
-      eyebrow: "GymFlow Controls",
+      eyebrow: "BillMyGym Controls",
       title: "Settings",
       description: "Configure reminder windows, branding, and org-level operational defaults.",
     },
@@ -164,12 +183,13 @@ export const getPageContext = (pathname: string, role: AppRole | null | undefine
   return role === "SUPER_ADMIN"
     ? {
         eyebrow: "Platform Command",
-        title: "GymFlow",
+        title: "BillMyGym",
         description: "Manage tenants and monitor platform operations from a single command surface.",
       }
     : {
         eyebrow: "Operations Hub",
-        title: "GymFlow",
+        title: "BillMyGym",
         description: "Run your membership, billing, and renewal workflow from one focused workspace.",
       };
 };
+

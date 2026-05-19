@@ -60,6 +60,11 @@ public class AuthController {
         return ResponseEntity.ok(authService.changePassword(request));
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        return ResponseEntity.ok(ApiResponse.success("Logout successful"));
+    }
+
     @PostMapping("/password/request-otp")
     public ResponseEntity<?> requestPasswordUpdateOtp(@Valid @RequestBody UpdatePasswordOtpRequest request) {
         return ResponseEntity.ok(authService.requestPasswordUpdateOtp(SecurityUtils.currentUser().email(), request));

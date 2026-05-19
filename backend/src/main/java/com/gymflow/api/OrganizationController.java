@@ -1,5 +1,6 @@
 package com.gymflow.api;
 
+import com.gymflow.api.dto.OrganizationDtos.ReplaceOrganizationAdminRequest;
 import com.gymflow.api.dto.OrganizationDtos.UpdateOrganizationRequest;
 import com.gymflow.api.response.ApiResponse;
 import com.gymflow.service.OrganizationService;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,6 +36,14 @@ public class OrganizationController {
     @PatchMapping("/{id}")
     public ResponseEntity<?> updateOrganization(@PathVariable Long id, @Valid @RequestBody UpdateOrganizationRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Organization updated successfully", organizationService.updateOrganization(id, request)));
+    }
+
+    @PutMapping("/{id}/admin")
+    public ResponseEntity<?> replaceOrganizationAdmin(@PathVariable Long id, @Valid @RequestBody ReplaceOrganizationAdminRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+            "Organization admin replaced successfully",
+            organizationService.replaceOrganizationAdmin(id, request)
+        ));
     }
 
     @DeleteMapping("/{id}")

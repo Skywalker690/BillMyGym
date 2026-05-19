@@ -160,7 +160,7 @@ export default function OrganizationProfile() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-8">
-      <div className="gymflow-shell flex items-center space-x-4 mb-4 p-6 rounded-[2rem] backdrop-blur-xl">
+      <div className="billmygym-shell flex items-center space-x-4 mb-4 p-6 rounded-[2rem] backdrop-blur-xl">
         <div className="h-16 w-16 rounded-2xl flex items-center justify-center text-emerald-700 ring-4 ring-white/60 shadow-md bg-[linear-gradient(135deg,#e7f6ee_0%,#fff7ed_100%)]">
           <Building className="h-8 w-8" />
         </div>
@@ -293,7 +293,7 @@ export default function OrganizationProfile() {
               </div>
 
               {passwordOtpSent && (
-                <div className="rounded-[1.5rem] border border-amber-200 bg-[var(--gymflow-amber-bg)] p-5">
+                <div className="rounded-[1.5rem] border border-amber-200 bg-[var(--billmygym-amber-bg)] p-5">
                   <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3 items-end">
                     <div className="space-y-2">
                       <Label htmlFor="otp" className="font-semibold text-slate-700">Verification Code</Label>
@@ -317,7 +317,7 @@ export default function OrganizationProfile() {
                 Security Flow
               </div>
               <div className="mt-5 space-y-4 text-sm text-slate-600">
-                <p className="font-semibold text-slate-900">Your password update follows the same protected flow as GymFlow email verification.</p>
+                <p className="font-semibold text-slate-900">Your password update follows the same protected flow as BillMyGym email verification.</p>
                 <p>1. Enter your current password and new password.</p>
                 <p>2. We send a one-time code to your admin email.</p>
                 <p>3. Verify the code and confirm the update.</p>
@@ -336,3 +336,4 @@ export default function OrganizationProfile() {
     </div>
   );
 }
+

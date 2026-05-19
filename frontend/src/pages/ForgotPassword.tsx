@@ -60,7 +60,7 @@ export default function ForgotPassword() {
             Reset your password
           </h1>
           <p className="mt-3 text-center text-sm leading-6 text-slate-600">
-            Enter the email address for your GymFlow account and we will send you a one-time reset code.
+            Enter the email address for your BillMyGym account and we will send you a one-time reset code.
           </p>
 
           <form className="mt-8 space-y-6" onSubmit={handleSubmit((values) => mutation.mutate(values))}>
@@ -101,3 +101,4 @@ export default function ForgotPassword() {
     </div>
   );
 }
+

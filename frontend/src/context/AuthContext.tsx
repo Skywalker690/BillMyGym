@@ -21,6 +21,10 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AUTH_TOKEN_KEY = "billmygym_token";
+const AUTH_USER_KEY = "billmygym_user";
+const LEGACY_AUTH_TOKEN_KEY = "gymflow_token";
+const LEGACY_AUTH_USER_KEY = "gymflow_user";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -28,11 +32,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("gymflow_token");
-    const storedUser = localStorage.getItem("gymflow_user");
+    const storedToken = localStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem(LEGACY_AUTH_TOKEN_KEY);
+    const storedUser = localStorage.getItem(AUTH_USER_KEY) || localStorage.getItem(LEGACY_AUTH_USER_KEY);
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
+      localStorage.setItem(AUTH_TOKEN_KEY, storedToken);
+      localStorage.setItem(AUTH_USER_KEY, storedUser);
+      localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
+      localStorage.removeItem(LEGACY_AUTH_USER_KEY);
     }
     setIsLoading(false);
   }, []);
@@ -40,15 +48,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = (newToken: string, newUser: User) => {
     setToken(newToken);
     setUser(newUser);
-    localStorage.setItem("gymflow_token", newToken);
-    localStorage.setItem("gymflow_user", JSON.stringify(newUser));
+    localStorage.setItem(AUTH_TOKEN_KEY, newToken);
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(newUser));
+    localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
+    localStorage.removeItem(LEGACY_AUTH_USER_KEY);
   };
 
   const logout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem("gymflow_token");
-    localStorage.removeItem("gymflow_user");
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
+    localStorage.removeItem(LEGACY_AUTH_USER_KEY);
   };
 
   if (isLoading) {

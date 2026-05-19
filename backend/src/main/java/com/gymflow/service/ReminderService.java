@@ -54,7 +54,8 @@ public class ReminderService {
             .atStartOfDay(APP_ZONE)
             .toOffsetDateTime();
         List<MemberMembership> candidates = memberMembershipRepository.findReminderCandidatesForDay(organizationId, dayStart).stream()
-            .filter(membership -> membership.getOrganization().getStatus() == OrganizationStatus.ACTIVE)
+            .filter(membership -> membership.getOrganization().getStatus() == OrganizationStatus.ACTIVE
+                || membership.getOrganization().getStatus() == OrganizationStatus.TRIAL)
             .toList();
         if (notificationLogRepository.existsByOrganizationIdAndNotificationDateAndTypeAndDeletedFalse(
             organizationId,
@@ -99,7 +100,9 @@ public class ReminderService {
         int processedMemberships = 0;
         int organizationsGrouped = 0;
         int digestsSent = 0;
-        for (Organization organization : organizationRepository.findAllByDeletedFalseAndStatus(OrganizationStatus.ACTIVE)) {
+        for (Organization organization : organizationRepository.findAllByDeletedFalseAndStatusIn(
+            List.of(OrganizationStatus.ACTIVE, OrganizationStatus.TRIAL)
+        )) {
             ReminderRunResponse response = runReminders(organization.getId());
             processedMemberships += response.processedMembers();
             organizationsGrouped += response.organizationsGrouped();

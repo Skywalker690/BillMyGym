@@ -25,6 +25,7 @@ import Reminders from "./pages/org/Reminders";
 import Notifications from "./pages/org/Notifications";
 import Settings from "./pages/org/Settings";
 import OrganizationProfile from "./pages/org/OrganizationProfile";
+import Subscription from "./pages/org/Subscription";
 
 // SUPER_ADMIN pages
 import PlatformOverview from "./pages/admin/PlatformOverview";
@@ -63,6 +64,7 @@ export default function App() {
                 <Route path="/app/members/:id/edit" element={<MemberForm isEdit />} />
                 <Route path="/app/reminders" element={<Reminders />} />
                 <Route path="/app/notifications" element={<Notifications />} />
+                <Route path="/app/subscription" element={<Subscription />} />
                 <Route path="/app/settings" element={<Settings />} />
                 <Route path="/app/organization" element={<OrganizationProfile />} />
               </Route>

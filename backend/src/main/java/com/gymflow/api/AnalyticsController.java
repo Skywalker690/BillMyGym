@@ -2,7 +2,7 @@ package com.gymflow.api;
 
 import com.gymflow.api.response.ApiResponse;
 import com.gymflow.service.AnalyticsService;
-import com.gymflow.service.RevenueAnalyticsService;
+import com.gymflow.service.RevenueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;
-    private final RevenueAnalyticsService revenueAnalyticsService;
+    private final RevenueService revenueService;
 
     @GetMapping("/platform")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
@@ -33,7 +33,7 @@ public class AnalyticsController {
     public ResponseEntity<?> revenueAnalytics() {
         return ResponseEntity.ok(ApiResponse.success(
             "Revenue analytics fetched successfully",
-            revenueAnalyticsService.revenueSummary()
+            revenueService.revenueSummary()
         ));
     }
 
@@ -41,7 +41,7 @@ public class AnalyticsController {
     public ResponseEntity<?> monthlyRevenueAnalytics() {
         return ResponseEntity.ok(ApiResponse.success(
             "Monthly revenue analytics fetched successfully",
-            revenueAnalyticsService.monthlyRevenue()
+            revenueService.monthlyRevenue()
         ));
     }
 }

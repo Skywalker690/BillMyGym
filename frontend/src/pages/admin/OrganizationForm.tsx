@@ -14,6 +14,7 @@ import api from "@/lib/api";
 const orgSchema = z.object({
   name: z.string().min(1, "Organization name is required"),
   district: z.string().min(1, "District is required"),
+  organizationType: z.enum(["REGULAR", "PILOT"]),
   adminName: z.string().min(1, "Admin name is required"),
   adminEmail: z.string().email("Invalid email address"),
   adminPhone: z.string().min(1, "Admin phone is required"),
@@ -33,7 +34,10 @@ export default function OrganizationForm() {
 
   const { register, handleSubmit, trigger, watch, formState: { errors, isSubmitting } } = useForm<OrgFormValues>({
     resolver: zodResolver(orgSchema),
-    mode: "onTouched"
+    mode: "onTouched",
+    defaultValues: {
+      organizationType: "REGULAR",
+    },
   });
   const values = watch();
 
@@ -48,6 +52,7 @@ export default function OrganizationForm() {
       adminPhoneNumber: data.adminPhone,
       adminEmail: data.adminEmail,
       organizationDescription: data.description || null,
+      organizationType: data.organizationType,
       password: data.password,
     }),
     onSuccess: () => {
@@ -65,7 +70,7 @@ export default function OrganizationForm() {
   const nextStep = async () => {
     let isValid = false;
     if (step === 1) {
-      isValid = await trigger(["name", "district"]);
+      isValid = await trigger(["name", "district", "organizationType"]);
     } else if (step === 2) {
       isValid = await trigger(["adminName", "adminEmail", "adminPhone", "password"]);
     }
@@ -121,6 +126,22 @@ export default function OrganizationForm() {
                   <Input id="district" {...register("district")} placeholder="e.g. Downtown" className="bg-white/50 dark:bg-slate-900/50 border-black/5 dark:border-white/10 rounded-xl focus-visible:ring-indigo-500/50 h-11 backdrop-blur-sm" />
                   {errors.district && <p className="text-red-500 text-sm font-medium">{errors.district.message}</p>}
                 </div>
+              </div>
+
+              <div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50/60 p-5">
+                <Label htmlFor="organizationType" className="font-semibold text-slate-700 dark:text-slate-300">Access Type <span className="text-red-500">*</span></Label>
+                <select
+                  id="organizationType"
+                  {...register("organizationType")}
+                  className="mt-2 w-full h-11 px-4 py-2 rounded-xl border border-black/5 dark:border-white/10 bg-white/75 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/50 backdrop-blur-sm"
+                >
+                  <option value="REGULAR">Regular - 14 day trial, then monthly billing</option>
+                  <option value="PILOT">Pilot - 90 day free license, billing bypassed</option>
+                </select>
+                {errors.organizationType && <p className="text-red-500 text-sm font-medium mt-2">{errors.organizationType.message}</p>}
+                <p className="mt-2 text-xs font-semibold text-emerald-800">
+                  Regular organizations start in TRIAL. Pilot organizations start ACTIVE and bypass subscription enforcement until the pilot window ends.
+                </p>
               </div>
               
               <div className="space-y-2">
@@ -211,6 +232,7 @@ export default function OrganizationForm() {
                    <div className="grid grid-cols-2 gap-3 text-sm">
                       <div className="text-slate-500 dark:text-slate-400 font-medium">Name:</div><div className="font-bold text-slate-900 dark:text-white">{values.name || "Untitled organization"}</div>
                       <div className="text-slate-500 dark:text-slate-400 font-medium">District:</div><div className="font-bold text-slate-900 dark:text-white">{values.district || "-"}</div>
+                      <div className="text-slate-500 dark:text-slate-400 font-medium">Access Type:</div><div className="font-bold text-slate-900 dark:text-white">{values.organizationType || "REGULAR"}</div>
                       <div className="text-slate-500 dark:text-slate-400 font-medium">Admin:</div><div className="font-bold text-slate-900 dark:text-white">{values.adminName || "-"}</div>
                       <div className="text-slate-500 dark:text-slate-400 font-medium">Email:</div><div className="font-bold text-slate-900 dark:text-white">{values.adminEmail || "-"}</div>
                    </div>

@@ -18,6 +18,7 @@ import com.gymflow.domain.OrganizationSetting;
 import com.gymflow.domain.User;
 import com.gymflow.domain.enums.AuditCategory;
 import com.gymflow.domain.enums.OrganizationStatus;
+import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.Role;
 import com.gymflow.domain.enums.UserStatus;
 import com.gymflow.repository.AppUserRepository;
@@ -36,6 +37,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.time.LocalDate;
 import java.util.Collections;
 
 @Service
@@ -64,12 +66,28 @@ public class AuthService {
         if (organizationRepository.existsByNameAndDeletedFalse(request.organizationName())) {
             throw new BadRequestException("Organization already exists");
         }
-        if (userRepository.findByEmailAndDeletedFalse(request.adminEmail()).isPresent()) {
+        if (userRepository.findByEmailAndDeletedFalse(request.adminEmail()).isPresent()
+            || organizationRepository.existsByAdminEmailAndDeletedFalse(request.adminEmail())) {
             throw new BadRequestException("Admin email already exists");
         }
+        if (organizationRepository.existsByAdminPhoneNumberAndDeletedFalse(request.adminPhoneNumber())) {
+            throw new BadRequestException("Admin phone number already exists");
+        }
 
+        LocalDate today = LocalDate.now();
         Organization organization = organizationMapper.toNewOrganization(request);
-        organization.setStatus(OrganizationStatus.ACTIVE);
+        if (organization.getOrganizationType() == OrganizationType.PILOT) {
+            organization.setStatus(OrganizationStatus.ACTIVE);
+            organization.setPilotStartDate(today);
+            organization.setPilotEndDate(today.plusDays(90));
+            organization.setSubscriptionDueDate(today.plusDays(90));
+        } else {
+            organization.setOrganizationType(OrganizationType.REGULAR);
+            organization.setStatus(OrganizationStatus.TRIAL);
+            organization.setTrialStartDate(today);
+            organization.setTrialEndDate(today.plusDays(14));
+            organization.setSubscriptionDueDate(today.plusDays(14));
+        }
         Organization savedOrganization = organizationRepository.save(organization);
 
         OrganizationSetting setting = new OrganizationSetting();
@@ -86,11 +104,13 @@ public class AuthService {
         userRepository.save(admin);
 
         emailService.sendOrganizationAdminWelcomeEmail(
+            savedOrganization,
             request.adminEmail(),
             request.adminFullName(),
-            savedOrganization.getName(),
             request.password(),
-            savedOrganization.getDistrict()
+            savedOrganization.getOrganizationType() == OrganizationType.PILOT
+                ? savedOrganization.getPilotEndDate()
+                : savedOrganization.getTrialEndDate()
         );
 
         auditLogService.log(
@@ -101,6 +121,7 @@ public class AuthService {
         );
     }
 
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         User user = resolveActiveUser(request.email());
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
@@ -116,6 +137,7 @@ public class AuthService {
         return buildLoginResponse(user, "PASSWORD_LOGIN");
     }
 
+    @Transactional
     public LoginResponse loginWithGoogle(GoogleLoginRequest request) {
         try {
             if (googleClientId == null || googleClientId.trim().isEmpty()) {
@@ -166,6 +188,15 @@ public class AuthService {
             .orElseThrow(() -> new BadRequestException("Invalid credentials"));
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new BadRequestException("User account is inactive");
+        }
+        if (user.getRole() == Role.ORG_ADMIN && user.getOrganization() != null) {
+            Organization organization = user.getOrganization();
+            if (organization.getStatus() == OrganizationStatus.PAUSED) {
+                throw new BadRequestException("Organization subscription is paused. Please complete subscription payment.");
+            }
+            if (organization.getStatus() == OrganizationStatus.DEACTIVATED) {
+                throw new BadRequestException("Organization is deactivated. Please contact BillMyGym support.");
+            }
         }
         return user;
     }
@@ -326,7 +357,10 @@ public class AuthService {
             .role(user.getRole() == null ? null : user.getRole().name())
             .googleId(user.getGoogleId())
             .avatarUrl(user.getAvatarUrl())
-            .createdAt(user.getCreatedAt() == null ? null : user.getCreatedAt().toLocalDateTime())
+            .createdAt(user.getCreatedAt() == null ? null : user.getCreatedAt().toInstant())
+            .termsAccepted(user.getTermsAccepted())
+            .policyVersion(user.getPolicyVersion())
             .build();
     }
 }
+

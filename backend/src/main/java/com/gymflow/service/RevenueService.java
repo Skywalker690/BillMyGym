@@ -27,7 +27,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class RevenueAnalyticsService {
+public class RevenueService {
 
     private final OrganizationRepository organizationRepository;
     private final MemberRepository memberRepository;

@@ -1,16 +1,75 @@
 import { useQuery } from "@tanstack/react-query";
-import { Building2, Activity as ActivityIcon, Plus, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Activity as ActivityIcon, AlertTriangle, Building2, ChevronRight, Mail, MessageCircle, PauseCircle, Plus, Rocket, ShieldOff, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
 
+type PlatformAnalytics = {
+  totalOrganizations: number;
+  activeOrganizations: number;
+  trialOrganizations: number;
+  pilotOrganizations: number;
+  pausedOrganizations: number;
+  deactivatedOrganizations: number;
+  monthlySaasRevenue: number;
+  paymentFailures: number;
+  whatsappUsage: number;
+  emailUsage: number;
+};
+
+const money = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
+
+const metricCards = [
+  {
+    key: "activeOrganizations",
+    label: "Active Organizations",
+    tone: "text-emerald-700 bg-emerald-50 border-emerald-100",
+    icon: ActivityIcon,
+  },
+  {
+    key: "trialOrganizations",
+    label: "Trial Organizations",
+    tone: "text-amber-700 bg-amber-50 border-amber-100",
+    icon: Rocket,
+  },
+  {
+    key: "pilotOrganizations",
+    label: "Pilot Organizations",
+    tone: "text-sky-700 bg-sky-50 border-sky-100",
+    icon: Sparkles,
+  },
+  {
+    key: "pausedOrganizations",
+    label: "Paused Organizations",
+    tone: "text-orange-700 bg-orange-50 border-orange-100",
+    icon: PauseCircle,
+  },
+  {
+    key: "deactivatedOrganizations",
+    label: "Deactivated Organizations",
+    tone: "text-rose-700 bg-rose-50 border-rose-100",
+    icon: ShieldOff,
+  },
+  {
+    key: "paymentFailures",
+    label: "Payment Failures",
+    tone: "text-red-700 bg-red-50 border-red-100",
+    icon: AlertTriangle,
+  },
+] as const;
+
 export default function PlatformOverview() {
-  const { data: analytics, isLoading } = useQuery({
+  const { data: analytics, isLoading } = useQuery<PlatformAnalytics>({
     queryKey: ["platformAnalytics"],
     queryFn: async () => {
       const res = await api.get("/analytics/platform");
       return res.data;
-    }
+    },
+    staleTime: 60_000,
   });
 
   if (isLoading) {
@@ -18,76 +77,96 @@ export default function PlatformOverview() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-slate-900 to-indigo-900 rounded-[2rem] p-10 text-white shadow-xl flex flex-col justify-between overflow-hidden relative">
-        <div className="relative z-10">
-          <h1 className="text-4xl font-bold tracking-tight mb-4">GymFlow Platform</h1>
-          <p className="text-indigo-200 max-w-xl text-lg mb-8 font-medium">
-            Manage all onboarded organizations, monitor global activity, and provision new gym instances from the command center.
+    <div className="mx-auto max-w-7xl space-y-8 p-8">
+      <div className="billmygym-dark-shell relative overflow-hidden rounded-[2rem] p-10 text-white">
+        <div className="relative z-10 max-w-3xl">
+          <div className="mb-4 inline-flex items-center rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.28em] text-emerald-200">
+            SaaS Command
+          </div>
+          <h1 className="text-4xl font-black tracking-tight">BillMyGym Platform</h1>
+          <p className="mt-4 max-w-xl text-lg font-medium text-emerald-50/80">
+            Monitor subscription health, pilot rollout, SaaS revenue, payment failures, and monthly communication usage from one server-computed dashboard.
           </p>
-          <div className="flex gap-4">
+          <div className="mt-8 flex flex-wrap gap-4">
             <Link to="/app/organizations/new">
-              <Button size="lg" className="bg-white text-indigo-900 hover:bg-slate-100 font-bold gap-3 rounded-full border-0 px-8">
-                <Plus className="w-5 h-5"/> Provision New Organization
+              <Button size="lg" className="h-12 rounded-full border-0 bg-white px-8 font-bold text-slate-950 hover:bg-emerald-50">
+                <Plus className="mr-2 h-5 w-5" /> Provision Organization
+              </Button>
+            </Link>
+            <Link to="/app/organizations">
+              <Button size="lg" variant="outline" className="h-12 rounded-full border-white/20 bg-white/5 px-8 font-bold text-white hover:bg-white/10 hover:text-white">
+                Open Directory
               </Button>
             </Link>
           </div>
         </div>
-        
-        {/* Decorative background elements */}
-        <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none translate-x-1/4 translate-y-1/4">
-          <Building2 className="w-96 h-96" />
+        <Building2 className="absolute -bottom-20 -right-20 h-96 w-96 text-white/5" />
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-3">
+        <div className="glass-panel rounded-[1.75rem] p-7 md:col-span-1">
+          <Building2 className="h-8 w-8 text-emerald-700" />
+          <p className="mt-6 text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Total Organizations</p>
+          <h2 className="mt-2 text-5xl font-black tracking-tight text-slate-950">{analytics?.totalOrganizations ?? 0}</h2>
+        </div>
+
+        <div className="glass-panel rounded-[1.75rem] p-7 md:col-span-2">
+          <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Monthly SaaS Revenue</p>
+          <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+            <h2 className="text-5xl font-black tracking-tight text-emerald-700">{money.format(analytics?.monthlySaasRevenue ?? 0)}</h2>
+            <div className="rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">
+              Payment-ledger derived
+            </div>
+          </div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/80 bg-white/70 p-4">
+              <MessageCircle className="h-5 w-5 text-emerald-700" />
+              <p className="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">WhatsApp Usage</p>
+              <p className="mt-1 text-2xl font-black text-slate-950">{analytics?.whatsappUsage ?? 0}</p>
+            </div>
+            <div className="rounded-2xl border border-white/80 bg-white/70 p-4">
+              <Mail className="h-5 w-5 text-emerald-700" />
+              <p className="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Email Usage</p>
+              <p className="mt-1 text-2xl font-black text-slate-950">{analytics?.emailUsage ?? 0}</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="glass-panel overflow-hidden hover:bg-white/60 dark:hover:bg-slate-800/80 transition-colors">
-          <div className="p-8 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-widest">Total Onboarded Orgs</p>
-              <h2 className="text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">{analytics?.totalOrganizations || 0}</h2>
-            </div>
-            <div className="p-5 bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100/50 dark:border-indigo-800/30 text-indigo-600 dark:text-indigo-400 rounded-3xl shadow-sm">
-              <Building2 className="w-10 h-10" />
-            </div>
-          </div>
-        </div>
-        
-        <div className="glass-panel overflow-hidden hover:bg-white/60 dark:hover:bg-slate-800/80 transition-colors">
-          <div className="p-8 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-widest">Active Subscriptions</p>
-              <h2 className="text-5xl font-extrabold text-green-600 dark:text-green-400 tracking-tight">{analytics?.activeSubscriptions || 0}</h2>
-            </div>
-            <div className="p-5 bg-green-50/50 dark:bg-green-900/20 border border-green-100/50 dark:border-green-800/30 text-green-600 dark:text-green-400 rounded-3xl shadow-sm">
-              <ActivityIcon className="w-10 h-10" />
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="mt-8">
-         <Link to="/app/organizations">
-           <div className="glass-panel overflow-hidden border-indigo-100/50 dark:border-indigo-900/30 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/20 transition-all cursor-pointer group shadow-sm">
-              <div className="p-8 flex justify-between items-center">
-                 <div className="flex items-center">
-                    <div className="bg-white/80 dark:bg-slate-800/80 p-4 rounded-2xl shadow-sm border border-black/5 dark:border-white/5 mr-5 group-hover:scale-105 transition-transform">
-                       <Building2 className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 dark:text-white text-xl tracking-tight">Manage Organizations Directory</h3>
-                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">View, edit or deactivate registered gym clients.</p>
-                    </div>
-                 </div>
-                 <div className="bg-white/80 dark:bg-slate-800/80 rounded-full p-3 text-indigo-600 dark:text-indigo-400 shadow-sm border border-black/5 dark:border-white/5 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all text-white">
-                   <ChevronRight className="w-6 h-6"/>
-                 </div>
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {metricCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <div key={card.key} className="glass-panel rounded-[1.5rem] p-6">
+              <div className={`inline-flex rounded-2xl border p-3 ${card.tone}`}>
+                <Icon className="h-6 w-6" />
               </div>
-           </div>
-         </Link>
+              <p className="mt-5 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{card.label}</p>
+              <p className="mt-2 text-4xl font-black text-slate-950">{analytics?.[card.key] ?? 0}</p>
+            </div>
+          );
+        })}
       </div>
 
+      <Link to="/app/organizations" className="block">
+        <div className="glass-panel group overflow-hidden rounded-[1.8rem] border-emerald-100/60 transition-all hover:-translate-y-0.5 hover:border-emerald-200">
+          <div className="flex items-center justify-between p-8">
+            <div className="flex items-center gap-5">
+              <div className="rounded-2xl border border-white/80 bg-white/80 p-4 shadow-sm transition-transform group-hover:scale-105">
+                <Building2 className="h-8 w-8 text-emerald-700" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black tracking-tight text-slate-950">Manage Organizations Directory</h3>
+                <p className="mt-1 text-sm font-medium text-slate-500">Review lifecycle state, pilot/trial windows, billing dates, and tenant ownership.</p>
+              </div>
+            </div>
+            <div className="rounded-full border border-white/80 bg-white/80 p-3 text-emerald-700 shadow-sm transition-all group-hover:bg-emerald-600 group-hover:text-white">
+              <ChevronRight className="h-6 w-6" />
+            </div>
+          </div>
+        </div>
+      </Link>
     </div>
   );
 }
+

@@ -61,7 +61,7 @@ class PaymentLedgerServiceTest {
         );
         SecurityContextHolder.getContext().setAuthentication(
             new UsernamePasswordAuthenticationToken(
-                new AuthenticatedUser(1L, "admin@gymflow.local", Role.ORG_ADMIN, 100L),
+                new AuthenticatedUser(1L, "admin@billmygym.local", Role.ORG_ADMIN, 100L),
                 null,
                 List.of()
             )
@@ -137,3 +137,4 @@ class PaymentLedgerServiceTest {
         }
     }
 }
+

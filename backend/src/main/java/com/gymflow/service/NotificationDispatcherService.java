@@ -3,16 +3,13 @@ package com.gymflow.service;
 import com.gymflow.domain.NotificationLog;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationSetting;
-import com.gymflow.domain.UsageMetric;
 import com.gymflow.domain.enums.NotificationChannel;
+import com.gymflow.domain.enums.NotificationDeliveryStatus;
 import com.gymflow.domain.enums.NotificationStatus;
 import com.gymflow.domain.enums.NotificationType;
 import com.gymflow.repository.NotificationLogRepository;
-import com.gymflow.repository.UsageMetricRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.YearMonth;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -24,10 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationDispatcherService {
 
     private static final int MAX_ATTEMPTS = 3;
-    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
-
     private final NotificationLogRepository notificationLogRepository;
-    private final UsageMetricRepository usageMetricRepository;
+    private final NotificationDeliveryLogService notificationDeliveryLogService;
+    private final UsageMetricService usageMetricService;
 
     @Transactional
     public DispatchResult dispatchDigest(
@@ -59,18 +55,16 @@ public class NotificationDispatcherService {
 
         int digestsSent = (int) deliveryLogs.stream().filter(log -> log.getStatus() == NotificationStatus.SENT).count();
         if (digestsSent > 0) {
-            UsageMetric metric = resolveMetric(organization);
             for (NotificationLog log : deliveryLogs) {
                 if (log.getStatus() == NotificationStatus.SENT) {
                     if (log.getChannel() == NotificationChannel.WHATSAPP) {
-                        metric.incrementMonthlyWhatsappCount();
+                        usageMetricService.recordWhatsappDelivered(organization);
                     } else if (log.getChannel() == NotificationChannel.EMAIL) {
-                        metric.incrementMonthlyEmailCount();
+                        usageMetricService.recordEmailSent(organization);
                     }
                 }
             }
-            metric.incrementMonthlyDigestCount();
-            usageMetricRepository.save(metric);
+            usageMetricService.recordDigestSent(organization);
         }
 
         return new DispatchResult(digestsSent > 0, digestsSent);
@@ -84,26 +78,33 @@ public class NotificationDispatcherService {
         int memberCount
     ) {
         NotificationLog log = buildPendingLog(organization, channel, recipient, message, memberCount);
+        NotificationLog persistedLog = notificationLogRepository.save(log);
+        var deliveryLog = notificationDeliveryLogService.create(persistedLog, organization, NotificationType.ORGANIZATION_RENEWAL_DIGEST);
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-            log.setAttemptCount(attempt);
+            persistedLog.setAttemptCount(attempt);
             if (attempt > 1) {
-                log.setStatus(NotificationStatus.RETRY);
+                persistedLog.setStatus(NotificationStatus.RETRYING);
+                notificationDeliveryLogService.markAttempt(deliveryLog, attempt, NotificationDeliveryStatus.RETRYING);
+            } else {
+                notificationDeliveryLogService.markAttempt(deliveryLog, attempt, NotificationDeliveryStatus.PENDING);
             }
 
             DeliveryResult result = simulateSend(channel, recipient);
             if (result.success()) {
-                log.setStatus(NotificationStatus.SENT);
-                log.setFailureReason(null);
-                log.setSentAt(OffsetDateTime.now(APP_ZONE));
-                return notificationLogRepository.save(log);
+                persistedLog.setStatus(NotificationStatus.SENT);
+                persistedLog.setFailureReason(null);
+                persistedLog.setSentAt(OffsetDateTime.now());
+                notificationDeliveryLogService.markAttempt(deliveryLog, attempt, NotificationDeliveryStatus.SENT);
+                return notificationLogRepository.save(persistedLog);
             }
 
-            log.setFailureReason(result.failureReason());
+            persistedLog.setFailureReason(result.failureReason());
         }
 
-        log.setStatus(NotificationStatus.FAILED);
-        return notificationLogRepository.save(log);
+        persistedLog.setStatus(NotificationStatus.FAILED);
+        notificationDeliveryLogService.markAttempt(deliveryLog, MAX_ATTEMPTS, NotificationDeliveryStatus.FAILED);
+        return notificationLogRepository.save(persistedLog);
     }
 
     private NotificationLog buildPendingLog(
@@ -123,17 +124,8 @@ public class NotificationDispatcherService {
         log.setStatus(NotificationStatus.PENDING);
         log.setMessage(message);
         log.setAttemptCount(0);
-        log.setNotificationDate(LocalDate.now(APP_ZONE));
+        log.setNotificationDate(LocalDate.now());
         return log;
-    }
-
-    private UsageMetric resolveMetric(Organization organization) {
-        YearMonth currentMonth = YearMonth.now();
-        return usageMetricRepository.findByOrganizationIdAndYearAndMonthAndDeletedFalse(
-            organization.getId(),
-            currentMonth.getYear(),
-            currentMonth.getMonthValue()
-        ).orElseGet(() -> UsageMetric.empty(organization, currentMonth));
     }
 
     private DeliveryResult simulateSend(NotificationChannel channel, String recipient) {

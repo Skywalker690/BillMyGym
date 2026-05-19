@@ -78,7 +78,7 @@ export function Sidebar({
     }, {});
   }, [navItems]);
 
-  const displayName = (user?.name || user?.email || "GymFlow").split(" ")[0];
+  const displayName = (user?.name || user?.email || "BillMyGym").split(" ")[0];
   const initials = (user?.name || user?.email || "G").trim().charAt(0).toUpperCase();
 
   return (
@@ -91,17 +91,17 @@ export function Sidebar({
           collapsed ? "w-24 lg:w-28" : "w-[92vw] max-w-[22rem] sm:w-80",
         )}
       >
-        <div className="gymflow-dark-shell relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-white/10">
+        <div className="billmygym-dark-shell relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-white/10">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.12),transparent_46%),radial-gradient(circle_at_bottom_left,rgba(251,191,36,0.08),transparent_34%)] pointer-events-none" />
 
           <div className={cn("relative z-10 flex items-center pt-9 pb-7", collapsed ? "justify-center px-0" : "justify-between px-7")}>
             <div className="flex items-center gap-4 text-white">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.35rem] bg-white shadow-sm">
-                <span className="text-lg font-black tracking-tight text-slate-900">GF</span>
+                <span className="text-lg font-black tracking-tight text-slate-900">BM</span>
               </div>
               {!collapsed && (
                 <div className="min-w-0">
-                  <div className="text-2xl font-black tracking-tight leading-none">GymFlow</div>
+                  <div className="text-2xl font-black tracking-tight leading-none">BillMyGym</div>
                   <div className="mt-2 text-[10px] font-black uppercase tracking-[0.34em] text-emerald-300">Revenue OS</div>
                 </div>
               )}
@@ -172,3 +172,4 @@ export function Sidebar({
     </>
   );
 }
+

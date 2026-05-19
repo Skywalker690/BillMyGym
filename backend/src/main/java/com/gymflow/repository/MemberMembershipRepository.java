@@ -5,9 +5,11 @@ import com.gymflow.domain.enums.MembershipStatus;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,6 +26,24 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
 
     @EntityGraph(attributePaths = {"member", "organization"})
     List<MemberMembership> findByOrganizationIdAndMemberIdInAndDeletedFalseOrderByMemberIdAscStartDateDescCreatedAtDesc(Long organizationId, Collection<Long> memberIds);
+
+    @EntityGraph(attributePaths = {"member", "organization"})
+    Optional<MemberMembership> findByMemberIdAndOrganizationIdAndStatusAndDeletedFalse(Long memberId, Long organizationId, MembershipStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"member", "organization"})
+    @Query("""
+        select membership
+        from MemberMembership membership
+        where membership.deleted = false
+          and membership.member.id = :memberId
+          and membership.organization.id = :organizationId
+          and membership.status = 'ACTIVE'
+        """)
+    Optional<MemberMembership> findActiveMembershipForUpdate(
+        @Param("memberId") Long memberId,
+        @Param("organizationId") Long organizationId
+    );
 
     @Query("""
         select membership

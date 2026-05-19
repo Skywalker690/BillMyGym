@@ -3,6 +3,7 @@ package com.gymflow.api.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import com.gymflow.domain.enums.OrganizationType;
 
 public class AuthDtos {
 
@@ -28,6 +29,7 @@ public class AuthDtos {
         @NotBlank String adminPhoneNumber,
         @Email @NotBlank String adminEmail,
         String organizationDescription,
+        OrganizationType organizationType,
         @NotBlank @Size(min = 8) String password
     ) {
     }

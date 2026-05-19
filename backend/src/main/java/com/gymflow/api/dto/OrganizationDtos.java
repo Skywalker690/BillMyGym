@@ -1,10 +1,13 @@
 package com.gymflow.api.dto;
 
 import com.gymflow.domain.enums.OrganizationStatus;
+import com.gymflow.domain.enums.OrganizationType;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 public class OrganizationDtos {
 
@@ -20,7 +23,15 @@ public class OrganizationDtos {
         String adminEmail,
         String description,
         BigDecimal monthlyMembershipFee,
-        OrganizationStatus status
+        OrganizationType organizationType,
+        OrganizationStatus status,
+        LocalDate trialStartDate,
+        LocalDate trialEndDate,
+        LocalDate pilotStartDate,
+        LocalDate pilotEndDate,
+        LocalDate subscriptionDueDate,
+        OffsetDateTime pausedAt,
+        OffsetDateTime deactivatedAt
     ) {
     }
 
@@ -35,7 +46,16 @@ public class OrganizationDtos {
         @Email @NotBlank String adminEmail,
         String description,
         @PositiveOrZero BigDecimal monthlyMembershipFee,
+        OrganizationType organizationType,
         OrganizationStatus status
+    ) {
+    }
+
+    public record ReplaceOrganizationAdminRequest(
+        @NotBlank String adminFullName,
+        @NotBlank String adminPhoneNumber,
+        @Email @NotBlank String adminEmail,
+        @NotBlank String password
     ) {
     }
 }

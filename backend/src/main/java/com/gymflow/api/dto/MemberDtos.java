@@ -39,6 +39,7 @@ public class MemberDtos {
 
     public record CurrentMembershipSummary(
         Long id,
+        String planName,
         int durationMonths,
         BigDecimal planAmount,
         LocalDate startDate,
@@ -47,7 +48,9 @@ public class MemberDtos {
         boolean expiringSoon,
         PaymentStatus paymentStatus,
         BigDecimal paidAmount,
-        BigDecimal pendingAmount
+        BigDecimal appliedCreditAmount,
+        BigDecimal pendingAmount,
+        BigDecimal walletBalance
     ) {
     }
 

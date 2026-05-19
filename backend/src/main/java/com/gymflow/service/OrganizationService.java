@@ -1,20 +1,27 @@
 package com.gymflow.service;
 
+import com.gymflow.api.dto.OrganizationDtos.ReplaceOrganizationAdminRequest;
 import com.gymflow.api.dto.OrganizationDtos.OrganizationResponse;
 import com.gymflow.api.dto.OrganizationDtos.UpdateOrganizationRequest;
+import com.gymflow.api.error.BadRequestException;
 import com.gymflow.api.error.ForbiddenException;
 import com.gymflow.api.error.NotFoundException;
 import com.gymflow.api.mapper.OrganizationMapper;
 import com.gymflow.domain.Organization;
+import com.gymflow.domain.User;
 import com.gymflow.domain.enums.AuditCategory;
 import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.domain.enums.Role;
+import com.gymflow.domain.enums.UserStatus;
+import com.gymflow.repository.AppUserRepository;
 import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.security.AuthenticatedUser;
 import com.gymflow.security.SecurityUtils;
 import jakarta.transaction.Transactional;
+import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -22,8 +29,10 @@ import org.springframework.stereotype.Service;
 public class OrganizationService {
 
     private final OrganizationRepository organizationRepository;
+    private final AppUserRepository appUserRepository;
     private final OrganizationMapper organizationMapper;
     private final AuditLogService auditLogService;
+    private final PasswordEncoder passwordEncoder;
 
     public List<OrganizationResponse> listOrganizations() {
         AuthenticatedUser user = SecurityUtils.currentUser();
@@ -58,6 +67,7 @@ public class OrganizationService {
 
         Organization organization = organizationRepository.findByIdAndDeletedFalse(id)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
+        validateAdminUniqueness(request.adminEmail(), request.adminPhoneNumber(), organization.getId());
         organizationMapper.applyUpdate(organization, request);
 
         auditLogService.log(
@@ -75,7 +85,8 @@ public class OrganizationService {
         Organization organization = organizationRepository.findByIdAndDeletedFalse(id)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
         organization.setDeleted(true);
-        organization.setStatus(OrganizationStatus.INACTIVE);
+        organization.setDeletedAt(OffsetDateTime.now());
+        organization.setStatus(OrganizationStatus.DEACTIVATED);
 
         auditLogService.log(
             "ORGANIZATION_SOFT_DELETED",
@@ -83,5 +94,46 @@ public class OrganizationService {
             AuditCategory.ORGANIZATION,
             "ORGANIZATION"
         );
+    }
+
+    @Transactional
+    public OrganizationResponse replaceOrganizationAdmin(Long id, ReplaceOrganizationAdminRequest request) {
+        SecurityUtils.requireRole(Role.SUPER_ADMIN);
+        Organization organization = organizationRepository.findByIdAndDeletedFalse(id)
+            .orElseThrow(() -> new NotFoundException("Organization not found"));
+        validateAdminUniqueness(request.adminEmail(), request.adminPhoneNumber(), organization.getId());
+
+        for (User existingAdmin : appUserRepository.findByOrganizationIdAndRoleAndDeletedFalse(id, Role.ORG_ADMIN)) {
+            existingAdmin.setStatus(UserStatus.INACTIVE);
+        }
+
+        User admin = new User();
+        admin.setOrganization(organization);
+        admin.setEmail(request.adminEmail());
+        admin.setPasswordHash(passwordEncoder.encode(request.password()));
+        admin.setRole(Role.ORG_ADMIN);
+        admin.setStatus(UserStatus.ACTIVE);
+        appUserRepository.save(admin);
+
+        organization.setAdminFullName(request.adminFullName());
+        organization.setAdminPhoneNumber(request.adminPhoneNumber());
+        organization.setAdminEmail(request.adminEmail());
+
+        auditLogService.log(
+            "ORGANIZATION_ADMIN_REPLACED",
+            "Replaced organization admin for " + organization.getName() + " (id=" + organization.getId() + ")",
+            AuditCategory.ORGANIZATION,
+            "ORGANIZATION"
+        );
+        return organizationMapper.toResponse(organization);
+    }
+
+    private void validateAdminUniqueness(String adminEmail, String adminPhoneNumber, Long organizationId) {
+        if (organizationRepository.existsByAdminEmailAndDeletedFalseAndIdNot(adminEmail, organizationId)) {
+            throw new BadRequestException("Admin email already exists");
+        }
+        if (organizationRepository.existsByAdminPhoneNumberAndDeletedFalseAndIdNot(adminPhoneNumber, organizationId)) {
+            throw new BadRequestException("Admin phone number already exists");
+        }
     }
 }

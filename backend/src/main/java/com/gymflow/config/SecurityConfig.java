@@ -4,6 +4,7 @@ import com.gymflow.security.JwtAuthenticationFilter;
 import com.gymflow.security.RateLimitingFilter;
 import com.gymflow.security.RestAccessDeniedHandler;
 import com.gymflow.security.RestAuthenticationEntryPoint;
+import com.gymflow.security.SubscriptionGuardFilter;
 import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RateLimitingFilter rateLimitingFilter;
+    private final SubscriptionGuardFilter subscriptionGuardFilter;
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
 
@@ -49,7 +51,8 @@ public class SecurityConfig {
                     "/api/auth/google-login",
                     "/api/auth/forgot-password",
                     "/api/auth/verify-otp",
-                    "/api/auth/change-password"
+                    "/api/auth/change-password",
+                    "/api/subscription/webhook"
                 ).permitAll()
                 .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
                 .requestMatchers("/actuator/**").denyAll()
@@ -57,7 +60,8 @@ public class SecurityConfig {
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(rateLimitingFilter, JwtAuthenticationFilter.class);
+            .addFilterAfter(subscriptionGuardFilter, JwtAuthenticationFilter.class)
+            .addFilterAfter(rateLimitingFilter, SubscriptionGuardFilter.class);
 
         return http.build();
     }

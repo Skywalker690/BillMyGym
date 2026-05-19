@@ -60,7 +60,7 @@ export default function Login() {
           <Dumbbell className="h-12 w-12 text-indigo-600" />
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-900 tracking-tight">
-          Sign in to GymFlow
+          Sign in to BillMyGym
         </h2>
         <p className="mt-2 text-center text-sm text-slate-600">
           Enter your platform or organization credentials to continue.
@@ -126,3 +126,4 @@ export default function Login() {
     </div>
   );
 }
+

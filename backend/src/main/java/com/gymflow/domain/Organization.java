@@ -1,6 +1,7 @@
 package com.gymflow.domain;
 
 import com.gymflow.domain.enums.OrganizationStatus;
+import com.gymflow.domain.enums.OrganizationType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -10,6 +11,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 @Entity
 @Getter
@@ -43,7 +46,20 @@ public class Organization extends BaseEntity {
     private BigDecimal monthlyMembershipFee = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "organization_type", nullable = false)
+    private OrganizationType organizationType = OrganizationType.REGULAR;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private OrganizationStatus status = OrganizationStatus.ACTIVE;
+    private OrganizationStatus status = OrganizationStatus.TRIAL;
+
+    private LocalDate trialStartDate;
+    private LocalDate trialEndDate;
+    private LocalDate pilotStartDate;
+    private LocalDate pilotEndDate;
+    private LocalDate subscriptionDueDate;
+    private OffsetDateTime pausedAt;
+    private OffsetDateTime deactivatedAt;
+    private OffsetDateTime deletedAt;
 
 }

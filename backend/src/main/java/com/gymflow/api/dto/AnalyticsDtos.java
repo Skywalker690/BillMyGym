@@ -7,7 +7,15 @@ public class AnalyticsDtos {
 
     public record PlatformAnalyticsResponse(
         long totalOrganizations,
-        long activeSubscriptions
+        long activeOrganizations,
+        long trialOrganizations,
+        long pilotOrganizations,
+        long pausedOrganizations,
+        long deactivatedOrganizations,
+        BigDecimal monthlySaasRevenue,
+        long paymentFailures,
+        long whatsappUsage,
+        long emailUsage
     ) {
     }
 

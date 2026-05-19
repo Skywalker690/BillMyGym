@@ -19,6 +19,12 @@ public class PaymentDtos {
     ) {
     }
 
+    public record PaymentRecordResult(
+        PaymentResponse payment,
+        MembershipDtos.MemberWalletResponse wallet
+    ) {
+    }
+
     public record PaymentResponse(
         Long id,
         Long memberId,

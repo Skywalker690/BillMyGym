@@ -3,6 +3,7 @@ import {
   Bell,
   Building2,
   ChevronDown,
+  CreditCard,
   LogOut,
   Menu,
   PanelLeft,
@@ -62,13 +63,13 @@ export function Topbar({
     setProfileOpen(false);
   }, [location.pathname]);
 
-  const primaryName = (user?.name || user?.email || "GymFlow").split(" ")[0];
+  const primaryName = (user?.name || user?.email || "BillMyGym").split(" ")[0];
   const initials = (user?.name || user?.email || "G").trim().charAt(0).toUpperCase();
   const isOrgAdmin = role === "ORG_ADMIN";
 
   return (
     <header className="sticky top-0 z-40 bg-transparent px-4 py-4 lg:px-8 lg:py-6">
-      <div className="gymflow-shell pointer-events-auto flex min-h-[84px] flex-wrap items-center justify-between gap-4 rounded-[2rem] px-4 py-4 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.28)] backdrop-blur-xl">
+      <div className="billmygym-shell pointer-events-auto flex min-h-[84px] flex-wrap items-center justify-between gap-4 rounded-[2rem] px-4 py-4 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.28)] backdrop-blur-xl">
         <div className="flex min-w-0 flex-1 items-center gap-3 lg:gap-6">
           <button
             onClick={onOpenMobileSidebar}
@@ -116,6 +117,13 @@ export function Topbar({
               >
                 <Settings className="h-4 w-4 text-emerald-700" />
                 <span className="hidden sm:inline">Settings</span>
+              </Link>
+              <Link
+                to="/app/subscription"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+              >
+                <CreditCard className="h-4 w-4 text-emerald-700" />
+                <span className="hidden sm:inline">Billing</span>
               </Link>
             </>
           )}
@@ -205,3 +213,4 @@ export function Topbar({
     </header>
   );
 }
+

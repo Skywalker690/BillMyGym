@@ -167,7 +167,7 @@ export default function Settings() {
                 <div className="bg-white p-4 rounded-xl shadow-sm text-sm border space-y-2 max-w-[280px] mx-auto ml-auto relative">
                   <div className="absolute -top-3 -left-3 text-[10px] bg-green-500 text-white px-2 py-1 rounded-full font-bold shadow-sm">WhatsApp</div>
                   <div className="font-bold text-slate-800 flex justify-between">
-                    <span>{watchConfig.brandingName || "GymFlow"} System</span>
+                    <span>{watchConfig.brandingName || "BillMyGym"} System</span>
                   </div>
                   <p className="text-slate-600 leading-relaxed whitespace-pre-line">
                     Members needing renewal:
@@ -185,7 +185,7 @@ export default function Settings() {
                   <div className="border-b pb-3 border-slate-100">
                     <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-1">Incoming Email</p>
                     <p className="font-semibold text-slate-800">Membership Renewal Summary</p>
-                    <p className="text-xs text-slate-500 mt-1">From: {watchConfig.brandingName || "GymFlow"} System</p>
+                    <p className="text-xs text-slate-500 mt-1">From: {watchConfig.brandingName || "BillMyGym"} System</p>
                   </div>
                   <div className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">
                     Members needing attention:
@@ -209,3 +209,4 @@ export default function Settings() {
     </div>
   );
 }
+

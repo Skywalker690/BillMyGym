@@ -21,7 +21,7 @@ public class OrganizationDigestBuilderService {
     }
 
     private String buildWhatsappDigest(List<MemberMembership> memberships) {
-        StringBuilder builder = new StringBuilder("GymFlow Alert\n\nExpired or overdue memberships:\n\n");
+        StringBuilder builder = new StringBuilder("BillMyGym Alert\n\nExpired or overdue memberships:\n\n");
         for (int index = 0; index < memberships.size(); index++) {
             MemberMembership membership = memberships.get(index);
             builder.append(index + 1)
@@ -81,3 +81,4 @@ public class OrganizationDigestBuilderService {
     ) {
     }
 }
+

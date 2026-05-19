@@ -58,12 +58,24 @@ public class MembershipLifecycleService {
         List<MemberPayment> payments,
         int reminderDaysBeforeExpiry
     ) {
+        return buildCoverageSummary(membership, payments, BigDecimal.ZERO, reminderDaysBeforeExpiry);
+    }
+
+    public PaymentCoverageSummary buildCoverageSummary(
+        MemberMembership membership,
+        List<MemberPayment> payments,
+        BigDecimal appliedCreditAmount,
+        int reminderDaysBeforeExpiry
+    ) {
         BigDecimal paidAmount = successfulPaymentTotal(payments);
-        BigDecimal pendingAmount = membership.getPlanAmount().subtract(paidAmount).max(BigDecimal.ZERO);
-        PaymentStatus paymentStatus = resolveCoverageStatus(membership.getPlanAmount(), paidAmount);
+        BigDecimal normalizedAppliedCredit = appliedCreditAmount == null ? BigDecimal.ZERO : appliedCreditAmount;
+        BigDecimal coveredAmount = paidAmount.add(normalizedAppliedCredit);
+        BigDecimal pendingAmount = membership.getPlanAmount().subtract(coveredAmount).max(BigDecimal.ZERO);
+        PaymentStatus paymentStatus = resolveCoverageStatus(membership.getPlanAmount(), coveredAmount);
         return new PaymentCoverageSummary(
             membership.getPlanAmount(),
             paidAmount,
+            normalizedAppliedCredit,
             pendingAmount,
             paymentStatus,
             isExpiringSoon(LocalDate.now(), membership.getEndDate(), reminderDaysBeforeExpiry)

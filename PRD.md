@@ -1,8 +1,8 @@
-# GymFlow — Main Product Requirements Document (PRD)
+# BillMyGym — Main Product Requirements Document (PRD)
 
 ## Product Vision
 
-GymFlow is a production-ready, multi-tenant SaaS platform for gym owners to manage memberships, payments, renewals, reminders, and revenue operations.
+BillMyGym is a production-ready, multi-tenant SaaS platform for gym owners to manage memberships, payments, renewals, reminders, and revenue operations.
 
 The system is admin-focused.
 
@@ -231,7 +231,7 @@ Send ONE WhatsApp/email
 Example:
 
 ```text
-GymFlow Alert
+BillMyGym Alert
 
 John — Overdue 2 days
 Rahul — Expired today
@@ -272,3 +272,4 @@ notification_logs
 # Product Goal
 
 Build a simple operational SaaS for gyms that replaces notebook tracking with automated membership and revenue workflows.
+

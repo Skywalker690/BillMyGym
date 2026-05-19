@@ -9,6 +9,7 @@ import com.gymflow.domain.MemberPayment;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberPaymentRepository;
 import com.gymflow.security.SecurityUtils;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ReportService {
 
-    private final RevenueAnalyticsService revenueAnalyticsService;
+    private final RevenueService revenueService;
     private final MemberService memberService;
     private final MemberMembershipRepository memberMembershipRepository;
     private final MemberPaymentRepository memberPaymentRepository;
@@ -50,7 +51,7 @@ public class ReportService {
         List<MemberDirectoryItem> overdueItems = toDirectoryItems(overdue, reminderDays);
 
         return new DashboardReportResponse(
-            revenueAnalyticsService.revenueSummary(),
+            revenueService.revenueSummary(),
             memberService.memberDirectorySummary(organizationId, reminderDays),
             expiringItems,
             overdueItems,
@@ -77,10 +78,21 @@ public class ReportService {
             .findByMembershipIdInAndDeletedFalse(membershipIds)
             .stream()
             .collect(Collectors.groupingBy(payment -> payment.getMembership().getId()));
+        Map<Long, BigDecimal> walletBalanceByMemberId = memberService.toDirectoryItems(
+            memberships.stream().map(MemberMembership::getMember).toList(),
+            reminderDays
+        ).stream().collect(Collectors.toMap(
+            MemberDirectoryItem::id,
+            item -> item.currentMembership() == null ? BigDecimal.ZERO : item.currentMembership().walletBalance()
+        ));
+        Map<Long, BigDecimal> appliedCreditByMembershipId = memberships.stream()
+            .collect(Collectors.toMap(MemberMembership::getId, membership -> BigDecimal.ZERO));
         return memberships.stream()
             .map(membership -> memberService.toDirectoryItem(
                 membership.getMember(),
                 membership,
+                walletBalanceByMemberId.getOrDefault(membership.getMember().getId(), BigDecimal.ZERO),
+                appliedCreditByMembershipId,
                 paymentsByMembershipId,
                 reminderDays
             ))

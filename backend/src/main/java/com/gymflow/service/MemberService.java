@@ -52,6 +52,7 @@ public class MemberService {
     private final OrganizationRepository organizationRepository;
     private final MemberMapper memberMapper;
     private final MembershipLifecycleService membershipLifecycleService;
+    private final MemberCreditLedgerService memberCreditLedgerService;
     private final OrganizationSettingService organizationSettingService;
     private final AuditLogService auditLogService;
 
@@ -180,6 +181,10 @@ public class MemberService {
             .filter(Objects::nonNull)
             .map(MemberMembership::getId)
             .toList();
+        Map<Long, BigDecimal> walletBalanceByMemberId = memberCreditLedgerService.balancesForMembers(orgId, memberIds);
+        Map<Long, BigDecimal> appliedCreditByMembershipId = membershipIds.isEmpty()
+            ? Map.of()
+            : memberCreditLedgerService.appliedCreditForMemberships(membershipIds);
         Map<Long, List<MemberPayment>> paymentsByMembershipId = membershipIds.isEmpty()
             ? Map.of()
             : memberPaymentRepository.findByMembershipIdInAndDeletedFalse(membershipIds).stream()
@@ -189,6 +194,8 @@ public class MemberService {
             .map(member -> toDirectoryItem(
                 member,
                 currentMembershipByMemberId.get(member.getId()),
+                walletBalanceByMemberId.getOrDefault(member.getId(), BigDecimal.ZERO),
+                appliedCreditByMembershipId,
                 paymentsByMembershipId,
                 reminderDays
             ))
@@ -211,6 +218,8 @@ public class MemberService {
     public MemberDirectoryItem toDirectoryItem(
         Member member,
         MemberMembership membership,
+        BigDecimal walletBalance,
+        Map<Long, BigDecimal> appliedCreditByMembershipId,
         Map<Long, List<MemberPayment>> paymentsByMembershipId,
         int reminderDays
     ) {
@@ -225,6 +234,8 @@ public class MemberService {
             membership == null ? null : toCurrentMembershipSummary(
                 membership,
                 paymentsByMembershipId.getOrDefault(membership.getId(), List.of()),
+                appliedCreditByMembershipId.getOrDefault(membership.getId(), BigDecimal.ZERO),
+                walletBalance,
                 reminderDays
             )
         );
@@ -233,13 +244,19 @@ public class MemberService {
     private CurrentMembershipSummary toCurrentMembershipSummary(
         MemberMembership membership,
         List<MemberPayment> payments,
+        BigDecimal appliedCreditAmount,
+        BigDecimal walletBalance,
         int reminderDays
     ) {
         BigDecimal paidAmount = membershipLifecycleService.successfulPaymentTotal(payments);
-        BigDecimal pendingAmount = membership.getPlanAmount().subtract(paidAmount).max(BigDecimal.ZERO);
-        PaymentStatus paymentStatus = membershipLifecycleService.resolveCoverageStatus(membership.getPlanAmount(), paidAmount);
+        BigDecimal pendingAmount = membership.getPlanAmount().subtract(paidAmount.add(appliedCreditAmount)).max(BigDecimal.ZERO);
+        PaymentStatus paymentStatus = membershipLifecycleService.resolveCoverageStatus(
+            membership.getPlanAmount(),
+            paidAmount.add(appliedCreditAmount)
+        );
         return new CurrentMembershipSummary(
             membership.getId(),
+            membership.getPlanName(),
             membership.getDurationMonths(),
             membership.getPlanAmount(),
             membership.getStartDate(),
@@ -248,7 +265,9 @@ public class MemberService {
             membershipLifecycleService.isExpiringSoon(LocalDate.now(), membership.getEndDate(), reminderDays),
             paymentStatus,
             paidAmount,
-            pendingAmount
+            appliedCreditAmount,
+            pendingAmount,
+            walletBalance
         );
     }
 

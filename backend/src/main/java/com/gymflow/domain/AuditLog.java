@@ -7,8 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.Instant;
 
 @Entity
 @Table(name = "audit_logs", indexes = {
@@ -21,8 +20,6 @@ import java.time.ZoneId;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AuditLog {
-    private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -47,12 +44,12 @@ public class AuditLog {
     private String zone;
 
     @Column(nullable = false, updatable = false)
-    private LocalDateTime timestamp;
+    private Instant timestamp;
 
     @PrePersist
     public void onCreate() {
         if (timestamp == null) {
-            timestamp = LocalDateTime.now(IST);
+            timestamp = Instant.now();
         }
     }
 }
