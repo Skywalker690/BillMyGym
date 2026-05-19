@@ -32,10 +32,17 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response?.status === 402 && !window.location.pathname.startsWith("/app/subscription")) {
-      window.location.href = "/app/subscription";
+    const status = error.response?.status;
+    const errorCode = error.response?.data?.errorCode;
+    const message = String(error.response?.data?.message || "");
+    const subscriptionInactive =
+      status === 402 ||
+      (status === 403 && (errorCode === "SUBSCRIPTION_INACTIVE" || message.toLowerCase().includes("subscription")));
+
+    if (subscriptionInactive && !window.location.pathname.startsWith("/app/subscription/recovery")) {
+      window.location.href = "/app/subscription/recovery";
     }
-    if (error.response?.status === 401) {
+    if (status === 401) {
       localStorage.removeItem(AUTH_TOKEN_KEY);
       localStorage.removeItem(AUTH_USER_KEY);
       localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);

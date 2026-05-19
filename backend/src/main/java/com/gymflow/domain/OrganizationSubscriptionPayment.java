@@ -1,5 +1,6 @@
 package com.gymflow.domain;
 
+import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.domain.enums.SubscriptionPaymentStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -26,6 +27,10 @@ public class OrganizationSubscriptionPayment extends BaseEntity {
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "subscription_plan")
+    private SubscriptionPlan subscriptionPlan;
 
     private LocalDate paymentDate;
 

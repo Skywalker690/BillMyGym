@@ -47,6 +47,11 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
+            <Route element={<ProtectedRoute allowedRoles={["ORG_ADMIN"]} />}>
+              <Route path="/app/subscription/recovery" element={<Subscription immersive />} />
+              <Route path="/app/subscription/recovery/plans" element={<Subscription immersive showPlans />} />
+            </Route>
+
             <Route element={<AppLayout />}>
               {/* SUPER_ADMIN Routes */}
               <Route element={<ProtectedRoute allowedRoles={["SUPER_ADMIN"]} />}>
@@ -66,6 +71,7 @@ export default function App() {
                 <Route path="/app/reminders" element={<Reminders />} />
                 <Route path="/app/notifications" element={<Notifications />} />
                 <Route path="/app/subscription" element={<Subscription />} />
+                <Route path="/app/subscription/plans" element={<Subscription showPlans />} />
                 <Route path="/app/settings" element={<Settings />} />
                 <Route path="/app/organization" element={<OrganizationProfile />} />
               </Route>

@@ -12,10 +12,16 @@ import java.util.List;
 
 public class SubscriptionDtos {
 
+    public record CreateSubscriptionOrderRequest(
+        SubscriptionPlan subscriptionPlan
+    ) {
+    }
+
     public record CreateSubscriptionOrderResponse(
         String razorpayOrderId,
         String keyId,
         boolean paymentsEnabled,
+        SubscriptionPlan subscriptionPlan,
         BigDecimal amount,
         long amountInPaise,
         String currency,
@@ -56,6 +62,7 @@ public class SubscriptionDtos {
     public record MemberLimitResponse(
         SubscriptionPlan plan,
         long usedMembers,
+        long deactivatedMembers,
         Integer memberLimit,
         boolean unlimited,
         long remainingSlots,

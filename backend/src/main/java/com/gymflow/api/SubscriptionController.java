@@ -1,5 +1,6 @@
 package com.gymflow.api;
 
+import com.gymflow.api.dto.SubscriptionDtos.CreateSubscriptionOrderRequest;
 import com.gymflow.api.dto.SubscriptionDtos.VerifySubscriptionPaymentRequest;
 import com.gymflow.api.response.ApiResponse;
 import com.gymflow.service.ApiRequestLogService;
@@ -28,6 +29,7 @@ public class SubscriptionController {
 
     @PostMapping("/create")
     public ResponseEntity<?> createOrder(
+        @RequestBody(required = false) CreateSubscriptionOrderRequest request,
         @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey
     ) {
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
@@ -39,7 +41,7 @@ public class SubscriptionController {
             if (stored.isPresent()) {
                 return ResponseEntity.ok(ApiResponse.success("Subscription order created", stored.get()));
             }
-            var response = subscriptionService.createOrder();
+            var response = subscriptionService.createOrder(request);
             return ResponseEntity.ok(ApiResponse.success(
                 "Subscription order created",
                 apiRequestLogService.storeOrLoad(
@@ -50,7 +52,7 @@ public class SubscriptionController {
                 )
             ));
         }
-        return ResponseEntity.ok(ApiResponse.success("Subscription order created", subscriptionService.createOrder()));
+        return ResponseEntity.ok(ApiResponse.success("Subscription order created", subscriptionService.createOrder(request)));
     }
 
     @PostMapping("/verify")

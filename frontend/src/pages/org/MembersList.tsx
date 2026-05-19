@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Clock3, Pencil, Plus, RefreshCw, Search, ShieldAlert, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, Clock3, Info, Pencil, Plus, RefreshCw, Search, ShieldAlert, Trash2, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,20 +17,23 @@ const formatDate = (value?: string) =>
     : "-";
 
 export default function MembersList() {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [memberTab, setMemberTab] = useState<"ALL" | "ACTIVE" | "DEACTIVATED">("ACTIVE");
   const [page, setPage] = useState(0);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["members", page, searchTerm, statusFilter],
+    queryKey: ["members", page, appliedSearch, statusFilter, memberTab],
     queryFn: async () => {
       const res = await api.get("/members", {
         params: {
           page,
           size: PAGE_SIZE,
-          search: searchTerm || undefined,
+          search: appliedSearch || undefined,
           membershipStatus: statusFilter === "ALL" ? undefined : statusFilter,
+          memberStatus: memberTab === "ALL" ? undefined : memberTab,
         },
       });
       return res.data;
@@ -50,6 +53,11 @@ export default function MembersList() {
   const members = data?.members ?? [];
   const summary = data?.summary ?? {};
   const memberLimit = summary.memberLimit;
+  const memberTabs = [
+    { id: "ALL" as const, label: "All Members", count: summary.totalMembers ?? 0 },
+    { id: "ACTIVE" as const, label: "Active", count: summary.activeMembers ?? 0 },
+    { id: "DEACTIVATED" as const, label: "Deactivated", count: summary.deactivatedMembers ?? 0 },
+  ];
 
   if (isLoading) {
     return <div className="p-8">Loading members...</div>;
@@ -63,7 +71,7 @@ export default function MembersList() {
             <div className="text-[10px] font-black uppercase tracking-[0.26em] text-emerald-700">Member Operations</div>
             <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">Members Directory</h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-600">
-              Search your member base, spot payment risk, and move directly from directory management into renewal action.
+              Search across the full organization member base, switch between active and deactivated members, and move directly into renewal action.
             </p>
           </div>
           <Link to="/app/members/new">
@@ -78,39 +86,85 @@ export default function MembersList() {
       <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         <SummaryTile label="Total Members" value={summary.totalMembers} tone="slate" />
         <SummaryTile label="Active Members" value={summary.activeMembers} tone="emerald" />
+        <SummaryTile label="Deactivated Members" value={summary.deactivatedMembers} tone="indigo" />
         <SummaryTile label="Expiring Soon" value={summary.expiringSoonMemberships} tone="amber" />
-        <SummaryTile label="Overdue" value={summary.overdueMemberships} tone="rose" />
       </section>
 
       <section className="glass-panel rounded-[1.8rem] p-4">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="relative w-full flex-1 md:max-w-md">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              placeholder="Search by name, phone, or email..."
-              className="h-11 rounded-xl border-black/5 bg-white/60 pl-11"
-              value={searchTerm}
-              onChange={(event) => {
-                setPage(0);
-                setSearchTerm(event.target.value);
-              }}
-            />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-2">
+            {memberTabs.map((tab) => {
+              const active = memberTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setPage(0);
+                    setMemberTab(tab.id);
+                  }}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition-colors",
+                    active
+                      ? "border-emerald-200 bg-emerald-100 text-emerald-800 shadow-sm"
+                      : "border-black/5 bg-white/60 text-slate-600 hover:bg-white",
+                  )}
+                >
+                  <span>{tab.label}</span>
+                  <span className={cn("rounded-full px-2 py-0.5 text-xs", active ? "bg-white/85 text-emerald-700" : "bg-slate-100 text-slate-500")}>
+                    {tab.count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-          <div className="w-full md:w-auto md:min-w-[220px]">
-            <select
-              className="h-11 w-full rounded-xl border border-black/5 bg-white/60 px-4 text-sm font-semibold text-slate-700"
-              value={statusFilter}
-              onChange={(event) => {
-                setPage(0);
-                setStatusFilter(event.target.value);
-              }}
-            >
-              <option value="ALL">All Memberships</option>
-              <option value="ACTIVE">Active</option>
-              <option value="EXPIRING_SOON">Expiring Soon</option>
-              <option value="EXPIRED">Expired</option>
-              <option value="OVERDUE">Overdue</option>
-            </select>
+
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex w-full flex-1 flex-col gap-3 md:max-w-2xl md:flex-row">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  placeholder="Search by name, phone, or email..."
+                  className="h-11 rounded-xl border-black/5 bg-white/60 pl-11"
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      setPage(0);
+                      setAppliedSearch(searchInput.trim());
+                    }
+                  }}
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={() => {
+                  setPage(0);
+                  setAppliedSearch(searchInput.trim());
+                }}
+                className="h-11 rounded-xl bg-slate-950 px-5 font-bold text-white hover:bg-slate-800"
+              >
+                <Search className="mr-2 h-4 w-4" />
+                Search
+              </Button>
+            </div>
+
+            <div className="w-full md:w-auto md:min-w-[220px]">
+              <select
+                className="h-11 w-full rounded-xl border border-black/5 bg-white/60 px-4 text-sm font-semibold text-slate-700"
+                value={statusFilter}
+                onChange={(event) => {
+                  setPage(0);
+                  setStatusFilter(event.target.value);
+                }}
+              >
+                <option value="ALL">All Memberships</option>
+                <option value="ACTIVE">Active</option>
+                <option value="EXPIRING_SOON">Expiring Soon</option>
+                <option value="EXPIRED">Expired</option>
+                <option value="OVERDUE">Overdue</option>
+              </select>
+            </div>
           </div>
         </div>
       </section>
@@ -142,6 +196,16 @@ export default function MembersList() {
                           <div className="min-w-0">
                             <div className="font-black text-slate-950">{member.fullName}</div>
                             <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{member.phone}</div>
+                            <div className="mt-2">
+                              <Badge
+                                className={cn(
+                                  "rounded-full border-transparent px-2.5 py-1 font-black tracking-[0.14em]",
+                                  member.status === "DEACTIVATED" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700",
+                                )}
+                              >
+                                {member.status}
+                              </Badge>
+                            </div>
                           </div>
                           <Link
                             to={`/app/members/${member.id}/edit`}
@@ -221,7 +285,11 @@ export default function MembersList() {
       </div>
 
       <section className="flex justify-end">
-        <MemberLimitCard memberLimit={memberLimit} activeMembers={summary.activeMembers ?? 0} />
+        <MemberLimitCard
+          memberLimit={memberLimit}
+          totalMembers={summary.totalMembers ?? 0}
+          deactivatedMembers={summary.deactivatedMembers ?? 0}
+        />
       </section>
     </div>
   );
@@ -229,7 +297,8 @@ export default function MembersList() {
 
 function MemberLimitCard({
   memberLimit,
-  activeMembers,
+  totalMembers,
+  deactivatedMembers,
 }: {
   memberLimit?: {
     plan?: string;
@@ -239,9 +308,10 @@ function MemberLimitCard({
     remainingSlots?: number;
     usagePercent?: number;
   };
-  activeMembers: number;
+  totalMembers: number;
+  deactivatedMembers: number;
 }) {
-  const usedMembers = Number(memberLimit?.usedMembers ?? activeMembers ?? 0);
+  const usedMembers = Number(memberLimit?.usedMembers ?? totalMembers ?? 0);
   const limit = memberLimit?.memberLimit ?? null;
   const unlimited = Boolean(memberLimit?.unlimited);
   const usagePercent = unlimited ? 0 : Number(memberLimit?.usagePercent ?? 0);
@@ -251,7 +321,21 @@ function MemberLimitCard({
     <div className="glass-panel w-full max-w-sm rounded-[1.7rem] p-5">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">Members Used</div>
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">
+            <span>Members Used</span>
+            <div className="group relative">
+              <button
+                type="button"
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-emerald-200 bg-white/85 text-emerald-700 shadow-sm"
+                aria-label="Member usage info"
+              >
+                <Info className="h-3.5 w-3.5" />
+              </button>
+              <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-3 w-56 -translate-x-1/2 rounded-2xl border border-emerald-100 bg-slate-950 px-4 py-3 text-left text-[11px] font-bold normal-case tracking-normal text-white opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100">
+                {deactivatedMembers} deactivated members are included in this usage limit.
+              </div>
+            </div>
+          </div>
           <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
             {unlimited ? `${usedMembers} / Unlimited` : `${usedMembers} / ${limit ?? 0}`}
           </div>
@@ -280,12 +364,12 @@ function MemberLimitCard({
   );
 }
 
-function SummaryTile({ label, value, tone }: { label: string; value?: number; tone: "slate" | "emerald" | "amber" | "rose" }) {
+function SummaryTile({ label, value, tone }: { label: string; value?: number; tone: "slate" | "emerald" | "amber" | "indigo" }) {
   const toneClasses = {
     slate: "from-slate-900/10 via-slate-400/5 to-transparent",
     emerald: "from-emerald-500/18 via-emerald-300/8 to-transparent",
     amber: "from-amber-500/18 via-amber-300/8 to-transparent",
-    rose: "from-rose-500/18 via-rose-300/8 to-transparent",
+    indigo: "from-indigo-500/18 via-sky-300/8 to-transparent",
   }[tone];
 
   return (

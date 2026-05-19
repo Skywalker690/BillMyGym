@@ -11,6 +11,7 @@ import com.gymflow.domain.OrganizationSubscriptionPayment;
 import com.gymflow.domain.ProcessedWebhookEvent;
 import com.gymflow.domain.UsageMetric;
 import com.gymflow.domain.enums.AuditCategory;
+import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.domain.enums.SubscriptionPaymentStatus;
 import com.gymflow.domain.enums.SubscriptionStatus;
 import com.gymflow.repository.OrganizationRepository;
@@ -146,6 +147,9 @@ public class OrganizationPaymentWebhookService {
         payment.setNextRetryDate(null);
 
         Organization organization = payment.getOrganization();
+        if (payment.getSubscriptionPlan() != null) {
+            organization.setSubscriptionPlan(payment.getSubscriptionPlan());
+        }
         billingLifecycleService.activatePaidPeriod(organization, periodStart, periodEnd);
 
         OrganizationSubscription subscription = subscriptionRepository
@@ -215,11 +219,16 @@ public class OrganizationPaymentWebhookService {
         if (organization == null) {
             return null;
         }
+        SubscriptionPlan selectedPlan = resolveSubscriptionPlan(root);
+        if (selectedPlan == null) {
+            selectedPlan = planAccessService.resolvePlan(organization);
+        }
 
         LocalDate today = LocalDate.now();
         OrganizationSubscriptionPayment payment = new OrganizationSubscriptionPayment();
         payment.setOrganization(organization);
-        payment.setAmount(planAccessService.resolvePlan(organization).monthlyAmount());
+        payment.setAmount(selectedPlan.monthlyAmount());
+        payment.setSubscriptionPlan(selectedPlan);
         payment.setSubscriptionStart(today);
         payment.setSubscriptionEnd(billingLifecycleService.billingPeriodEnd(today));
         payment.setPaymentStatus(SubscriptionPaymentStatus.PENDING);
@@ -282,6 +291,25 @@ public class OrganizationPaymentWebhookService {
         try {
             return Long.valueOf(raw);
         } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private SubscriptionPlan resolveSubscriptionPlan(JsonNode root) {
+        String raw = text(root.path("payload").path("payment").path("entity").path("notes"), "subscription_plan");
+        if (raw == null) {
+            raw = text(root.path("payload").path("order").path("entity").path("notes"), "subscription_plan");
+        }
+        if (raw == null) {
+            raw = text(root.path("payload").path("subscription").path("entity").path("notes"), "subscription_plan");
+        }
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            SubscriptionPlan plan = SubscriptionPlan.valueOf(raw.trim().toUpperCase());
+            return plan == SubscriptionPlan.PILOT ? null : plan;
+        } catch (IllegalArgumentException ex) {
             return null;
         }
     }

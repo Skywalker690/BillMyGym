@@ -77,7 +77,11 @@ public class MemberService {
             normalizedMembershipStatus,
             today,
             today.plusDays(reminderDays),
-            PageRequest.of(Math.max(page, 0), normalizedSize, Sort.by(Sort.Direction.DESC, "createdAt"))
+            PageRequest.of(
+                Math.max(page, 0),
+                normalizedSize,
+                Sort.by(Sort.Direction.ASC, "status").and(Sort.by(Sort.Direction.DESC, "createdAt"))
+            )
         );
         List<MemberDirectoryItem> items = toDirectoryItems(memberPage.getContent(), reminderDays);
         return new MemberPageResponse(

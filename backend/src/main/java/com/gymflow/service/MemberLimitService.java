@@ -22,7 +22,7 @@ public class MemberLimitService {
         MemberLimitSummary usage = usage(organization);
         if (!usage.unlimited() && usage.usedMembers() >= usage.memberLimit()) {
             throw new BadRequestException(
-                "Member limit reached for the %s plan (%d/%d active members)."
+                "Member limit reached for the %s plan (%d/%d total members)."
                     .formatted(usage.plan().name(), usage.usedMembers(), usage.memberLimit())
             );
         }
@@ -37,10 +37,7 @@ public class MemberLimitService {
 
     public MemberLimitSummary usage(Organization organization) {
         SubscriptionPlan plan = planAccessService.resolvePlan(organization);
-        long usedMembers = memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(
-            organization.getId(),
-            MemberStatus.ACTIVE
-        );
+        long usedMembers = memberRepository.countByOrganizationIdAndDeletedFalse(organization.getId());
         Integer limit = plan.memberLimit();
         boolean unlimited = limit == null;
         long remaining = unlimited ? Long.MAX_VALUE : Math.max(limit - usedMembers, 0);

@@ -121,14 +121,15 @@ export function Topbar({
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 overflow-x-clip px-4 transition-all duration-300 lg:px-8",
-        scrolled ? "py-2 lg:py-3" : "py-4 lg:py-6",
+        "sticky top-0 z-40 overflow-x-clip px-4 py-3 lg:px-8 lg:py-4",
       )}
     >
       <div
         className={cn(
-          "billmygym-shell pointer-events-auto flex min-h-[84px] min-w-0 flex-wrap items-center justify-between gap-4 overflow-hidden rounded-[2rem] px-4 py-4 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.28)] backdrop-blur-xl transition-all duration-300",
-          scrolled && "border border-white/80 bg-white/92 shadow-[0_20px_45px_-28px_rgba(15,23,42,0.35)]",
+          "billmygym-shell pointer-events-auto flex min-h-[84px] min-w-0 flex-wrap items-center justify-between gap-4 overflow-visible rounded-[2rem] border border-transparent px-4 py-4 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.28)] backdrop-blur-xl transition-[border-color,background-color,box-shadow] duration-300",
+          scrolled
+            ? "border-white/80 bg-white/92 shadow-[0_20px_45px_-28px_rgba(15,23,42,0.35)]"
+            : "bg-white/78 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.22)]",
         )}
       >
         <div className="flex min-w-0 flex-1 items-center gap-3 lg:gap-6">
@@ -184,7 +185,7 @@ export function Topbar({
             </Link>
           )}
 
-          <div className="relative" ref={profileRef}>
+          <div className="relative z-50" ref={profileRef}>
             <button
               onClick={() => setProfileOpen((open) => !open)}
               className={cn(
@@ -209,7 +210,7 @@ export function Topbar({
             </button>
 
             {profileOpen && (
-              <div className="absolute right-0 mt-4 w-[min(21rem,calc(100vw-1rem))] overflow-hidden rounded-[2rem] border border-white/70 bg-white/95 p-2 shadow-[0_22px_60px_-24px_rgba(15,23,42,0.32)] backdrop-blur-xl">
+              <div className="absolute right-0 top-full z-[60] mt-4 w-[min(21rem,calc(100vw-1rem))] overflow-hidden rounded-[2rem] border border-white/70 bg-white/95 p-2 shadow-[0_22px_60px_-24px_rgba(15,23,42,0.32)] backdrop-blur-xl">
                 <div className="mb-2 flex items-center gap-4 rounded-[1.6rem] border border-white/80 bg-white/70 p-5 shadow-sm">
                   {user?.avatarUrl ? (
                     <img src={user.avatarUrl} alt={primaryName} referrerPolicy="no-referrer" className="h-14 w-14 rounded-[1.1rem] object-cover" />

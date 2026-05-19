@@ -59,9 +59,9 @@ public class SubscriptionGuardFilter extends OncePerRequestFilter {
         }
         errorWriter.write(
             response,
-            HttpStatus.FORBIDDEN.value(),
+            HttpStatus.PAYMENT_REQUIRED.value(),
             "Access denied because the organization subscription is not active.",
-            "ACCESS_DENIED"
+            "SUBSCRIPTION_INACTIVE"
         );
     }
 

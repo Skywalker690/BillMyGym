@@ -1,6 +1,7 @@
 package com.gymflow.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gymflow.api.dto.SubscriptionDtos.CreateSubscriptionOrderRequest;
 import com.gymflow.api.dto.SubscriptionDtos.CreateSubscriptionOrderResponse;
 import com.gymflow.api.dto.SubscriptionDtos.MemberLimitResponse;
 import com.gymflow.api.dto.SubscriptionDtos.PlanAccessResponse;
@@ -77,18 +78,16 @@ public class SubscriptionService {
     private boolean paymentsEnabled;
 
     @Transactional
-    public CreateSubscriptionOrderResponse createOrder() {
+    public CreateSubscriptionOrderResponse createOrder(CreateSubscriptionOrderRequest request) {
         Organization organization = resolveCurrentOrganization();
         if (organization.getOrganizationType() == OrganizationType.PILOT) {
             throw new BadRequestException("Pilot organizations have billing bypass enabled until the pilot period ends");
         }
-        if (billingLifecycleService.isDeactivated(organization)) {
-            throw new BadRequestException("Organization is deactivated. Contact support before renewing the subscription.");
-        }
         if (billingLifecycleService.hasCurrentPaidAccess(organization, LocalDate.now())) {
             throw new BadRequestException("Subscription is already active through " + organization.getSubscriptionDueDate().minusDays(1));
         }
-        BigDecimal monthlyAmount = planAccessService.resolvePlan(organization).monthlyAmount();
+        SubscriptionPlan selectedPlan = resolveCheckoutPlan(request, organization);
+        BigDecimal monthlyAmount = selectedPlan.monthlyAmount();
         LocalDate start = resolveNextSubscriptionStart(organization);
         LocalDate end = billingLifecycleService.billingPeriodEnd(start);
         OrganizationSubscriptionPayment existingPending = subscriptionPaymentRepository
@@ -96,13 +95,17 @@ public class SubscriptionService {
                 organization.getId(),
                 List.of(SubscriptionPaymentStatus.PENDING, SubscriptionPaymentStatus.FAILED)
             )
-            .filter(payment -> payment.getSubscriptionStart().equals(start) && payment.getSubscriptionEnd().equals(end))
+            .filter(payment -> payment.getSubscriptionStart().equals(start)
+                && payment.getSubscriptionEnd().equals(end)
+                && selectedPlan == resolvePaymentPlan(payment, organization)
+                && payment.getAmount().compareTo(monthlyAmount) == 0)
             .orElse(null);
         if (existingPending != null) {
             return new CreateSubscriptionOrderResponse(
                 existingPending.getRazorpayOrderId(),
                 razorpayKeyId,
                 paymentsEnabled,
+                selectedPlan,
                 existingPending.getAmount(),
                 existingPending.getAmount().multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).longValueExact(),
                 CURRENCY,
@@ -113,11 +116,12 @@ public class SubscriptionService {
         }
         long amountInPaise = monthlyAmount.multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).longValueExact();
         String receipt = "gymflow_org_%d_%d".formatted(organization.getId(), System.currentTimeMillis());
-        String razorpayOrderId = paymentsEnabled ? createRazorpayOrder(amountInPaise, receipt) : "order_local_" + receipt;
+        String razorpayOrderId = paymentsEnabled ? createRazorpayOrder(amountInPaise, receipt, selectedPlan) : "order_local_" + receipt;
 
         OrganizationSubscriptionPayment payment = new OrganizationSubscriptionPayment();
         payment.setOrganization(organization);
         payment.setAmount(monthlyAmount);
+        payment.setSubscriptionPlan(selectedPlan);
         payment.setSubscriptionStart(start);
         payment.setSubscriptionEnd(end);
         payment.setPaymentStatus(SubscriptionPaymentStatus.PENDING);
@@ -131,7 +135,7 @@ public class SubscriptionService {
 
         auditLogService.log(
             "SUBSCRIPTION_ORDER_CREATED",
-            "Created subscription order " + razorpayOrderId + " for organization " + organization.getName(),
+            "Created " + selectedPlan + " subscription order " + razorpayOrderId + " for organization " + organization.getName(),
             AuditCategory.ORGANIZATION,
             "SUBSCRIPTION"
         );
@@ -140,6 +144,7 @@ public class SubscriptionService {
             razorpayOrderId,
             razorpayKeyId,
             paymentsEnabled,
+            selectedPlan,
             monthlyAmount,
             amountInPaise,
             CURRENCY,
@@ -213,16 +218,20 @@ public class SubscriptionService {
                 organization.getId(),
                 com.gymflow.domain.enums.MemberStatus.ACTIVE
             ),
-            toMemberLimitResponse(memberLimitService.usage(organization)),
+            toMemberLimitResponse(organization, memberLimitService.usage(organization)),
             toPlanAccessResponse(planAccessService.summary(organization)),
             payments
         );
     }
 
-    private MemberLimitResponse toMemberLimitResponse(MemberLimitService.MemberLimitSummary summary) {
+    private MemberLimitResponse toMemberLimitResponse(Organization organization, MemberLimitService.MemberLimitSummary summary) {
         return new MemberLimitResponse(
             summary.plan(),
             summary.usedMembers(),
+            memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(
+                organization.getId(),
+                com.gymflow.domain.enums.MemberStatus.DEACTIVATED
+            ),
             summary.memberLimit(),
             summary.unlimited(),
             summary.remainingSlots(),
@@ -255,6 +264,20 @@ public class SubscriptionService {
         );
     }
 
+    private SubscriptionPlan resolveCheckoutPlan(CreateSubscriptionOrderRequest request, Organization organization) {
+        SubscriptionPlan selectedPlan = request == null || request.subscriptionPlan() == null
+            ? planAccessService.resolvePlan(organization)
+            : request.subscriptionPlan();
+        if (selectedPlan == SubscriptionPlan.PILOT) {
+            throw new BadRequestException("Pilot is an invitation-only evaluation plan and cannot be purchased from checkout");
+        }
+        return selectedPlan;
+    }
+
+    private SubscriptionPlan resolvePaymentPlan(OrganizationSubscriptionPayment payment, Organization organization) {
+        return payment.getSubscriptionPlan() == null ? planAccessService.resolvePlan(organization) : payment.getSubscriptionPlan();
+    }
+
     private LocalDate resolveNextSubscriptionStart(Organization organization) {
         return LocalDate.now();
     }
@@ -268,7 +291,7 @@ public class SubscriptionService {
             .orElseThrow(() -> new NotFoundException("Organization not found"));
     }
 
-    private String createRazorpayOrder(long amountInPaise, String receipt) {
+    private String createRazorpayOrder(long amountInPaise, String receipt, SubscriptionPlan selectedPlan) {
         if (razorpayKeyId == null || razorpayKeyId.isBlank() || razorpayKeySecret == null || razorpayKeySecret.isBlank()) {
             return "order_local_" + receipt;
         }
@@ -278,7 +301,10 @@ public class SubscriptionService {
                 amountInPaise,
                 CURRENCY,
                 receipt,
-                Map.of("organization_id", organizationId == null ? "" : organizationId.toString())
+                Map.of(
+                    "organization_id", organizationId == null ? "" : organizationId.toString(),
+                    "subscription_plan", selectedPlan.name()
+                )
             ));
             String credentials = Base64.getEncoder().encodeToString((razorpayKeyId + ":" + razorpayKeySecret).getBytes(StandardCharsets.UTF_8));
             HttpRequest request = HttpRequest.newBuilder()

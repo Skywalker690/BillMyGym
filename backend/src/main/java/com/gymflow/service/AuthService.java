@@ -17,7 +17,6 @@ import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationSetting;
 import com.gymflow.domain.User;
 import com.gymflow.domain.enums.AuditCategory;
-import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.Role;
 import com.gymflow.domain.enums.UserStatus;
@@ -188,15 +187,6 @@ public class AuthService {
             .orElseThrow(() -> new BadRequestException("Invalid credentials"));
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new BadRequestException("User account is inactive");
-        }
-        if (user.getRole() == Role.ORG_ADMIN && user.getOrganization() != null) {
-            Organization organization = user.getOrganization();
-            if (organization.getStatus() == OrganizationStatus.PAUSED) {
-                throw new BadRequestException("Organization subscription is paused. Please complete subscription payment.");
-            }
-            if (organization.getStatus() == OrganizationStatus.DEACTIVATED) {
-                throw new BadRequestException("Organization is deactivated. Please contact BillMyGym support.");
-            }
         }
         return user;
     }
