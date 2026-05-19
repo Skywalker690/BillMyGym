@@ -6,3 +6,10 @@ spring:
 gymflow:
   payments:
     enabled: true
+  whatsapp:
+    enabled: true
+    api-url: ${GYMFLOW_WHATSAPP_API_URL:https://graph.facebook.com}
+    access-token: ${GYMFLOW_WHATSAPP_ACCESS_TOKEN:}
+    phone-number-id: ${GYMFLOW_WHATSAPP_PHONE_NUMBER_ID:}
+    business-account-id: ${GYMFLOW_WHATSAPP_BUSINESS_ACCOUNT_ID:}
+    version: ${GYMFLOW_WHATSAPP_VERSION:v23.0}

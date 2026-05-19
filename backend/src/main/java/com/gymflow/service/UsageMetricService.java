@@ -1,10 +1,12 @@
 package com.gymflow.service;
 
 import com.gymflow.domain.Organization;
+import com.gymflow.domain.OrganizationUsageStats;
 import com.gymflow.domain.UsageMetric;
 import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.repository.AppUserRepository;
 import com.gymflow.repository.MemberRepository;
+import com.gymflow.repository.OrganizationUsageStatsRepository;
 import com.gymflow.repository.UsageMetricRepository;
 import java.time.YearMonth;
 import lombok.RequiredArgsConstructor;
@@ -18,12 +20,14 @@ public class UsageMetricService {
     private final UsageMetricRepository usageMetricRepository;
     private final MemberRepository memberRepository;
     private final AppUserRepository appUserRepository;
+    private final OrganizationUsageStatsRepository organizationUsageStatsRepository;
 
     @Transactional
     public UsageMetric recordEmailSent(Organization organization) {
         UsageMetric metric = resolveMetric(organization);
         metric.incrementMonthlyEmailCount();
         refreshSnapshot(metric);
+        recordOrganizationUsage(organization, false, true);
         return usageMetricRepository.save(metric);
     }
 
@@ -32,6 +36,7 @@ public class UsageMetricService {
         UsageMetric metric = resolveMetric(organization);
         metric.incrementMonthlyWhatsappCount();
         refreshSnapshot(metric);
+        recordOrganizationUsage(organization, true, false);
         return usageMetricRepository.save(metric);
     }
 
@@ -70,5 +75,21 @@ public class UsageMetricService {
             com.gymflow.domain.enums.Role.ORG_ADMIN
         ));
         metric.setSubscriptionStatus(organization.getStatus().name());
+    }
+
+    private void recordOrganizationUsage(Organization organization, boolean whatsappSent, boolean emailSent) {
+        YearMonth currentMonth = YearMonth.now();
+        OrganizationUsageStats stats = organizationUsageStatsRepository.findByOrganizationIdAndYearAndMonthAndDeletedFalse(
+            organization.getId(),
+            currentMonth.getYear(),
+            currentMonth.getMonthValue()
+        ).orElseGet(() -> OrganizationUsageStats.empty(organization, currentMonth));
+        if (whatsappSent) {
+            stats.incrementWhatsappSentCount();
+        }
+        if (emailSent) {
+            stats.incrementEmailSentCount();
+        }
+        organizationUsageStatsRepository.save(stats);
     }
 }

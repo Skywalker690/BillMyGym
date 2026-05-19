@@ -2,6 +2,8 @@ package com.gymflow.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gymflow.api.dto.SubscriptionDtos.CreateSubscriptionOrderResponse;
+import com.gymflow.api.dto.SubscriptionDtos.MemberLimitResponse;
+import com.gymflow.api.dto.SubscriptionDtos.PlanAccessResponse;
 import com.gymflow.api.dto.SubscriptionDtos.SubscriptionPaymentResponse;
 import com.gymflow.api.dto.SubscriptionDtos.SubscriptionStatusResponse;
 import com.gymflow.api.dto.SubscriptionDtos.VerifySubscriptionPaymentRequest;
@@ -15,6 +17,7 @@ import com.gymflow.domain.UsageMetric;
 import com.gymflow.domain.enums.AuditCategory;
 import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.Role;
+import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.domain.enums.SubscriptionPaymentStatus;
 import com.gymflow.repository.MemberRepository;
 import com.gymflow.repository.OrganizationRepository;
@@ -47,17 +50,18 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class SubscriptionService {
 
-    private static final BigDecimal MONTHLY_AMOUNT = new BigDecimal("299.00");
     private static final String CURRENCY = "INR";
-    private static final int BILLING_DAYS = 30;
 
     private final OrganizationRepository organizationRepository;
     private final OrganizationSubscriptionRepository subscriptionRepository;
     private final OrganizationSubscriptionPaymentRepository subscriptionPaymentRepository;
     private final UsageMetricRepository usageMetricRepository;
     private final MemberRepository memberRepository;
+    private final PlanAccessService planAccessService;
+    private final MemberLimitService memberLimitService;
     private final AuditLogService auditLogService;
     private final OrganizationPaymentWebhookService organizationPaymentWebhookService;
+    private final BillingLifecycleService billingLifecycleService;
     private final ObjectMapper objectMapper;
 
     @Value("${razorpay.key-id:}")
@@ -78,8 +82,15 @@ public class SubscriptionService {
         if (organization.getOrganizationType() == OrganizationType.PILOT) {
             throw new BadRequestException("Pilot organizations have billing bypass enabled until the pilot period ends");
         }
+        if (billingLifecycleService.isDeactivated(organization)) {
+            throw new BadRequestException("Organization is deactivated. Contact support before renewing the subscription.");
+        }
+        if (billingLifecycleService.hasCurrentPaidAccess(organization, LocalDate.now())) {
+            throw new BadRequestException("Subscription is already active through " + organization.getSubscriptionDueDate().minusDays(1));
+        }
+        BigDecimal monthlyAmount = planAccessService.resolvePlan(organization).monthlyAmount();
         LocalDate start = resolveNextSubscriptionStart(organization);
-        LocalDate end = start.plusDays(BILLING_DAYS - 1L);
+        LocalDate end = billingLifecycleService.billingPeriodEnd(start);
         OrganizationSubscriptionPayment existingPending = subscriptionPaymentRepository
             .findTopByOrganizationIdAndPaymentStatusInAndDeletedFalseOrderByCreatedAtDesc(
                 organization.getId(),
@@ -100,13 +111,13 @@ public class SubscriptionService {
                 existingPending.getPaymentStatus()
             );
         }
-        long amountInPaise = MONTHLY_AMOUNT.multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).longValueExact();
+        long amountInPaise = monthlyAmount.multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).longValueExact();
         String receipt = "gymflow_org_%d_%d".formatted(organization.getId(), System.currentTimeMillis());
         String razorpayOrderId = paymentsEnabled ? createRazorpayOrder(amountInPaise, receipt) : "order_local_" + receipt;
 
         OrganizationSubscriptionPayment payment = new OrganizationSubscriptionPayment();
         payment.setOrganization(organization);
-        payment.setAmount(MONTHLY_AMOUNT);
+        payment.setAmount(monthlyAmount);
         payment.setSubscriptionStart(start);
         payment.setSubscriptionEnd(end);
         payment.setPaymentStatus(SubscriptionPaymentStatus.PENDING);
@@ -129,7 +140,7 @@ public class SubscriptionService {
             razorpayOrderId,
             razorpayKeyId,
             paymentsEnabled,
-            MONTHLY_AMOUNT,
+            monthlyAmount,
             amountInPaise,
             CURRENCY,
             start,
@@ -189,7 +200,8 @@ public class SubscriptionService {
             organization.getName(),
             organization.getOrganizationType(),
             organization.getStatus(),
-            MONTHLY_AMOUNT,
+            planAccessService.resolvePlan(organization),
+            planAccessService.resolvePlan(organization).monthlyAmount(),
             organization.getTrialEndDate(),
             organization.getPilotEndDate(),
             organization.getSubscriptionDueDate(),
@@ -201,7 +213,30 @@ public class SubscriptionService {
                 organization.getId(),
                 com.gymflow.domain.enums.MemberStatus.ACTIVE
             ),
+            toMemberLimitResponse(memberLimitService.usage(organization)),
+            toPlanAccessResponse(planAccessService.summary(organization)),
             payments
+        );
+    }
+
+    private MemberLimitResponse toMemberLimitResponse(MemberLimitService.MemberLimitSummary summary) {
+        return new MemberLimitResponse(
+            summary.plan(),
+            summary.usedMembers(),
+            summary.memberLimit(),
+            summary.unlimited(),
+            summary.remainingSlots(),
+            summary.usagePercent()
+        );
+    }
+
+    private PlanAccessResponse toPlanAccessResponse(PlanAccessService.PlanAccessSummary summary) {
+        return new PlanAccessResponse(
+            summary.canCreateMembers(),
+            summary.canViewAdvancedAnalytics(),
+            summary.canReceiveMonthlyReports(),
+            summary.canExportReports(),
+            summary.canUsePremiumFeatures()
         );
     }
 
@@ -221,12 +256,7 @@ public class SubscriptionService {
     }
 
     private LocalDate resolveNextSubscriptionStart(Organization organization) {
-        LocalDate today = LocalDate.now();
-        return subscriptionRepository.findTopByOrganizationIdAndDeletedFalseOrderByEndDateDesc(organization.getId())
-            .map(subscription -> subscription.getEndDate().plusDays(1).isAfter(today)
-                ? subscription.getEndDate().plusDays(1)
-                : today)
-            .orElse(today);
+        return LocalDate.now();
     }
 
     private Organization resolveCurrentOrganization() {

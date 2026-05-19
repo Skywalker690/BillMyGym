@@ -2,6 +2,7 @@ package com.gymflow.repository;
 
 import com.gymflow.domain.Member;
 import com.gymflow.domain.enums.MemberStatus;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -21,6 +22,12 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     Optional<Member> findByOrganizationIdAndPhoneAndDeletedFalse(Long organizationId, String phone);
 
     long countByOrganizationIdAndDeletedFalseAndStatus(Long organizationId, MemberStatus status);
+
+    long countByOrganizationIdAndDeletedFalseAndCreatedAtBetween(
+        Long organizationId,
+        OffsetDateTime start,
+        OffsetDateTime end
+    );
 
     @EntityGraph(attributePaths = "organization")
     @Query("""

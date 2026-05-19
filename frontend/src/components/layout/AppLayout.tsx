@@ -27,7 +27,7 @@ export default function AppLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(187,247,208,0.42),transparent_26%),radial-gradient(circle_at_top_right,rgba(255,247,237,0.72),transparent_28%),linear-gradient(180deg,#f6fbf8_0%,#eef4f0_46%,#f8fbf9_100%)]">
+    <div className="relative min-h-screen overflow-x-clip bg-[radial-gradient(circle_at_top_left,rgba(187,247,208,0.42),transparent_26%),radial-gradient(circle_at_top_right,rgba(255,247,237,0.72),transparent_28%),linear-gradient(180deg,#f6fbf8_0%,#eef4f0_46%,#f8fbf9_100%)]">
       <Sidebar
         user={user}
         navItems={sidebarItems}
@@ -37,7 +37,7 @@ export default function AppLayout() {
         onLogout={handleLogout}
       />
 
-      <div className={`min-h-screen transition-all duration-500 ${sidebarCollapsed ? "lg:pl-28" : "lg:pl-80"}`}>
+      <div className={`min-h-screen min-w-0 overflow-x-clip transition-all duration-500 ${sidebarCollapsed ? "lg:pl-28" : "lg:pl-80"}`}>
         <Topbar
           user={user}
           role={role}
@@ -49,8 +49,8 @@ export default function AppLayout() {
           onLogout={handleLogout}
         />
 
-        <main className="px-2 pb-10 pt-1 sm:px-4 lg:px-8">
-          <div className="mx-auto max-w-[1600px]">
+        <main className="min-w-0 overflow-x-clip px-2 pb-10 pt-1 sm:px-4 lg:px-8">
+          <div className="mx-auto min-w-0 max-w-[1600px]">
             <Outlet />
           </div>
         </main>

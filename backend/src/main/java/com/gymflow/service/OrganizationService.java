@@ -11,6 +11,7 @@ import com.gymflow.domain.Organization;
 import com.gymflow.domain.User;
 import com.gymflow.domain.enums.AuditCategory;
 import com.gymflow.domain.enums.OrganizationStatus;
+import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.Role;
 import com.gymflow.domain.enums.UserStatus;
 import com.gymflow.repository.AppUserRepository;
@@ -18,6 +19,7 @@ import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.security.AuthenticatedUser;
 import com.gymflow.security.SecurityUtils;
 import jakarta.transaction.Transactional;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ public class OrganizationService {
     private final OrganizationMapper organizationMapper;
     private final AuditLogService auditLogService;
     private final PasswordEncoder passwordEncoder;
+    private final BillingLifecycleService billingLifecycleService;
 
     public List<OrganizationResponse> listOrganizations() {
         AuthenticatedUser user = SecurityUtils.currentUser();
@@ -68,7 +71,10 @@ public class OrganizationService {
         Organization organization = organizationRepository.findByIdAndDeletedFalse(id)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
         validateAdminUniqueness(request.adminEmail(), request.adminPhoneNumber(), organization.getId());
+        OrganizationType previousType = organization.getOrganizationType();
+        OrganizationStatus previousStatus = organization.getStatus();
         organizationMapper.applyUpdate(organization, request);
+        normalizeLifecycleAfterUpdate(organization, previousType, previousStatus);
 
         auditLogService.log(
             "ORGANIZATION_UPDATED",
@@ -134,6 +140,50 @@ public class OrganizationService {
         }
         if (organizationRepository.existsByAdminPhoneNumberAndDeletedFalseAndIdNot(adminPhoneNumber, organizationId)) {
             throw new BadRequestException("Admin phone number already exists");
+        }
+    }
+
+    private void normalizeLifecycleAfterUpdate(
+        Organization organization,
+        OrganizationType previousType,
+        OrganizationStatus previousStatus
+    ) {
+        LocalDate today = LocalDate.now();
+        if (organization.getOrganizationType() == OrganizationType.PILOT) {
+            if (previousType != OrganizationType.PILOT
+                || organization.getPilotStartDate() == null
+                || organization.getPilotEndDate() == null) {
+                billingLifecycleService.startPilotAccess(organization, today);
+            }
+            return;
+        }
+
+        if (previousType == OrganizationType.PILOT) {
+            billingLifecycleService.startRegularTrial(organization, today);
+            return;
+        }
+
+        if (organization.getStatus() == OrganizationStatus.TRIAL) {
+            if (previousStatus != OrganizationStatus.TRIAL
+                || organization.getTrialStartDate() == null
+                || organization.getTrialEndDate() == null) {
+                billingLifecycleService.startRegularTrial(organization, today);
+            }
+            return;
+        }
+
+        if (organization.getStatus() == OrganizationStatus.ACTIVE
+            && !billingLifecycleService.hasCurrentPaidAccess(organization, today)) {
+            throw new BadRequestException("Regular organizations become ACTIVE only after successful subscription payment.");
+        }
+
+        if (organization.getStatus() == OrganizationStatus.PAUSED) {
+            billingLifecycleService.markPaused(organization);
+            return;
+        }
+
+        if (organization.getStatus() == OrganizationStatus.DEACTIVATED && organization.getDeactivatedAt() == null) {
+            organization.setDeactivatedAt(OffsetDateTime.now());
         }
     }
 }

@@ -1,9 +1,12 @@
 package com.gymflow.service;
 
 import com.gymflow.domain.Organization;
+import com.gymflow.domain.enums.OrganizationType;
 import jakarta.mail.internet.MimeMessage;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.text.NumberFormat;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -248,6 +251,20 @@ public class EmailService {
         );
     }
 
+    @Async
+    public void sendMonthlyOrganizationReport(
+        Organization organization,
+        MonthlyOrganizationReportService.MonthlyOrganizationReport report
+    ) {
+        sendHtmlEmail(
+            organization.getAdminEmail(),
+            "Your Monthly GymFlow Report",
+            buildMonthlyOrganizationReportEmail(organization, report),
+            true,
+            organization
+        );
+    }
+
     private void sendHtmlEmail(String toEmail, String subject, String html, boolean swallowFailure, Organization organization) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -280,6 +297,9 @@ public class EmailService {
         String temporaryPassword,
         LocalDate accessEndsAt
     ) {
+        String accessEndLabel = organization.getOrganizationType() == OrganizationType.PILOT
+            ? "Pilot Access Ends"
+            : "Trial Ends";
         String content = """
             <p style="margin:0 0 16px 0;">Hello <strong>%s</strong>,</p>
             <p style="margin:0 0 16px 0;">Your organization workspace on <strong>BillMyGym</strong> is now ready. You can sign in and start managing memberships, payments, reminders, and reports from one place.</p>
@@ -308,7 +328,7 @@ public class EmailService {
             detailRow("District", organization.getDistrict()),
             detailRow("Access Type", organization.getOrganizationType().name()),
             detailRow("Lifecycle Status", organization.getStatus().name()),
-            detailRow("Free Access Ends", accessEndsAt == null ? "-" : accessEndsAt.toString()),
+            detailRow(accessEndLabel, accessEndsAt == null ? "-" : accessEndsAt.toString()),
             detailRow("Admin Email", toEmail),
             detailRow("Temporary Password", temporaryPassword),
             detailRow("Sign-in URL", "<a href=\"" + html(appUrl("/login")) + "\" style=\"color:#166534;font-weight:700;text-decoration:none;\">"
@@ -330,9 +350,6 @@ public class EmailService {
         StringBuilder details = new StringBuilder()
             .append(detailRow("Email", html(toEmail)))
             .append(detailRow("Role", html(formatRole(role))));
-        if (zone != null && !zone.isBlank() && !"-".equals(zone.trim())) {
-            details.append(detailRow("Assigned Zone", html(zone)));
-        }
 
         String content = """
             <p style="margin:0 0 16px 0;">Hello <strong>%s</strong>,</p>
@@ -580,6 +597,60 @@ public class EmailService {
         );
     }
 
+    private String buildMonthlyOrganizationReportEmail(
+        Organization organization,
+        MonthlyOrganizationReportService.MonthlyOrganizationReport report
+    ) {
+        long revenueTotal = report.collectedRevenue().add(report.pendingRevenue()).longValue();
+        int collectedPercent = revenueTotal <= 0
+            ? 0
+            : (int) Math.min(Math.round((report.collectedRevenue().longValue() * 100.0) / revenueTotal), 100);
+        String content = """
+            <p style="margin:0 0 18px 0;">Hello <strong>%s</strong>,</p>
+            <p style="margin:0 0 22px 0;">Here is your monthly GymFlow report for <strong>%s</strong>.</p>
+            <table width="100%%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:12px;margin:0 -12px 20px -12px;">
+              <tr>
+                %s
+                %s
+                %s
+              </tr>
+              <tr>
+                %s
+                %s
+                %s
+              </tr>
+            </table>
+            <div style="border:1px solid #d7e3dc;border-radius:18px;padding:20px;background:#f8fcfa;margin:0 0 22px 0;">
+              <div style="font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#166534;margin-bottom:14px;">Revenue Trend</div>
+              <div style="height:12px;background:#e2e8f0;border-radius:999px;overflow:hidden;">
+                <div style="height:12px;width:%d%%;background:#16a34a;border-radius:999px;"></div>
+              </div>
+              <p style="margin:12px 0 0 0;color:#475569;line-height:1.7;">Collected revenue compared with open pending revenue for the month.</p>
+            </div>
+            <p style="margin:0;">Keep growing, and keep your renewal follow-ups steady.</p>
+            """.formatted(
+            html(organization.getAdminFullName()),
+            html(report.label()),
+            summaryCard("New Members", String.valueOf(report.membersJoined()), "#e0f2fe", "#075985"),
+            summaryCard("Active Members", String.valueOf(report.activeMembers()), "#dcfce7", "#166534"),
+            summaryCard("Expired Members", String.valueOf(report.expiredMembers()), "#fff7ed", "#c2410c"),
+            summaryCard("Collected Revenue", currency(report.collectedRevenue()), "#ecfdf5", "#047857"),
+            summaryCard("Pending Revenue", currency(report.pendingRevenue()), "#fef3c7", "#92400e"),
+            summaryCard("Usage", report.whatsappSentCount() + " WhatsApp / " + report.emailSentCount() + " emails", "#f8fafc", "#334155"),
+            collectedPercent
+        );
+
+        return buildShell(
+            "Monthly GymFlow Report",
+            "Monthly report",
+            "Summary cards, usage details, revenue, and trend signals for your gym.",
+            content,
+            "Open Dashboard",
+            "/app/dashboard",
+            "Monthly reports are included with Growth, Pro, and Pilot access."
+        );
+    }
+
     private String buildBillingTemplate(
         String title,
         String eyebrow,
@@ -710,6 +781,19 @@ public class EmailService {
               <td style="padding:14px 18px;border-top:1px solid #d7e3dc;font-size:14px;color:#334155;">%s</td>
             </tr>
             """.formatted(html(label), value);
+    }
+
+    private String summaryCard(String label, String value, String background, String color) {
+        return """
+            <td width="33.33%%" style="background:%s;border-radius:16px;padding:18px;vertical-align:top;">
+              <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:%s;margin-bottom:10px;">%s</div>
+              <div style="font-size:22px;line-height:1.2;font-weight:800;color:#0f172a;">%s</div>
+            </td>
+            """.formatted(background, color, html(label), html(value));
+    }
+
+    private String currency(BigDecimal value) {
+        return NumberFormat.getCurrencyInstance(new Locale("en", "IN")).format(value == null ? BigDecimal.ZERO : value);
     }
 
     private String appUrl(String path) {

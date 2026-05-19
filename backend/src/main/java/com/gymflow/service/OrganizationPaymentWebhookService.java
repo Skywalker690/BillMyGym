@@ -11,8 +11,6 @@ import com.gymflow.domain.OrganizationSubscriptionPayment;
 import com.gymflow.domain.ProcessedWebhookEvent;
 import com.gymflow.domain.UsageMetric;
 import com.gymflow.domain.enums.AuditCategory;
-import com.gymflow.domain.enums.OrganizationStatus;
-import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.SubscriptionPaymentStatus;
 import com.gymflow.domain.enums.SubscriptionStatus;
 import com.gymflow.repository.OrganizationRepository;
@@ -38,6 +36,9 @@ public class OrganizationPaymentWebhookService {
     private final EmailService emailService;
     private final AuditLogService auditLogService;
     private final NotificationDeliveryLogService notificationDeliveryLogService;
+    private final BillingLifecycleService billingLifecycleService;
+    private final WhatsAppDeliveryService whatsAppDeliveryService;
+    private final PlanAccessService planAccessService;
     private final ObjectMapper objectMapper;
 
     @Value("${razorpay.key-secret:}")
@@ -135,26 +136,26 @@ public class OrganizationPaymentWebhookService {
         if (payment.getPaymentStatus() == SubscriptionPaymentStatus.PAID) {
             return;
         }
-        payment.setPaymentDate(paymentDate);
+        LocalDate periodStart = paymentDate == null ? LocalDate.now() : paymentDate;
+        LocalDate periodEnd = billingLifecycleService.billingPeriodEnd(periodStart);
+        payment.setPaymentDate(periodStart);
+        payment.setSubscriptionStart(periodStart);
+        payment.setSubscriptionEnd(periodEnd);
         payment.setPaymentStatus(SubscriptionPaymentStatus.PAID);
         payment.setFailureReason(null);
         payment.setNextRetryDate(null);
 
         Organization organization = payment.getOrganization();
-        organization.setOrganizationType(OrganizationType.REGULAR);
-        organization.setStatus(OrganizationStatus.ACTIVE);
-        organization.setPausedAt(null);
-        organization.setDeactivatedAt(null);
-        organization.setSubscriptionDueDate(payment.getSubscriptionEnd().plusDays(1));
+        billingLifecycleService.activatePaidPeriod(organization, periodStart, periodEnd);
 
         OrganizationSubscription subscription = subscriptionRepository
             .findTopByOrganizationIdAndDeletedFalseOrderByEndDateDesc(organization.getId())
-            .filter(existing -> existing.getStartDate().equals(payment.getSubscriptionStart())
-                && existing.getEndDate().equals(payment.getSubscriptionEnd()))
+            .filter(existing -> existing.getStartDate().equals(periodStart)
+                && existing.getEndDate().equals(periodEnd))
             .orElseGet(OrganizationSubscription::new);
         subscription.setOrganization(organization);
-        subscription.setStartDate(payment.getSubscriptionStart());
-        subscription.setEndDate(payment.getSubscriptionEnd());
+        subscription.setStartDate(periodStart);
+        subscription.setEndDate(periodEnd);
         subscription.setAmount(payment.getAmount());
         subscription.setStatus(SubscriptionStatus.ACTIVE);
         subscription.setRazorpaySubscriptionId(payment.getRazorpaySubscriptionId());
@@ -164,17 +165,18 @@ public class OrganizationPaymentWebhookService {
         emailService.sendPaymentSuccessEmail(
             organization,
             payment.getAmount(),
-            paymentDate,
-            payment.getSubscriptionEnd(),
+            periodStart,
+            periodEnd,
             usage.getMonthlyWhatsappCount(),
             usage.getMonthlyEmailCount(),
             usage.getActiveMembers(),
             billingSummary(usage)
         );
         notificationDeliveryLogService.recordSuccessfulDelivery(organization, com.gymflow.domain.enums.NotificationType.SUBSCRIPTION_PAYMENT_SUCCESS);
+        whatsAppDeliveryService.sendPaymentSuccess(organization, "%s - %s".formatted(periodStart, periodEnd));
         auditLogService.log(
             "SUBSCRIPTION_PAYMENT_PAID",
-            "Subscription paid for organization " + organization.getName() + " through " + payment.getSubscriptionEnd(),
+            "Subscription paid for organization " + organization.getName() + " through " + periodEnd,
             AuditCategory.ORGANIZATION,
             "SUBSCRIPTION"
         );
@@ -217,9 +219,9 @@ public class OrganizationPaymentWebhookService {
         LocalDate today = LocalDate.now();
         OrganizationSubscriptionPayment payment = new OrganizationSubscriptionPayment();
         payment.setOrganization(organization);
-        payment.setAmount(SubscriptionBillingService.MONTHLY_AMOUNT);
+        payment.setAmount(planAccessService.resolvePlan(organization).monthlyAmount());
         payment.setSubscriptionStart(today);
-        payment.setSubscriptionEnd(today.plusDays(29));
+        payment.setSubscriptionEnd(billingLifecycleService.billingPeriodEnd(today));
         payment.setPaymentStatus(SubscriptionPaymentStatus.PENDING);
         payment.setWebhookEventId(eventId);
         payment.setRazorpayOrderId(orderId);

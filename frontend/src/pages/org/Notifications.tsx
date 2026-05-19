@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, Search, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Bell, CheckCircle2, Clock3, Search, SendHorizonal, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import api from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 export default function Notifications() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -15,110 +16,125 @@ export default function Notifications() {
     queryFn: async () => {
       const res = await api.get("/notifications");
       return res.data;
-    }
+    },
   });
 
   if (isLoading) {
     return <div className="p-8">Loading notifications...</div>;
   }
 
-  const filteredNotifications = notifications?.filter((n: any) => {
-    const matchesSearch = 
-      n.recipient.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      n.message.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === "ALL" || n.status === statusFilter;
-    const matchesChannel = channelFilter === "ALL" || n.channel === channelFilter;
-    
-    return matchesSearch && matchesStatus && matchesChannel;
-  }) || [];
+  const filteredNotifications =
+    notifications?.filter((n: any) => {
+      const matchesSearch =
+        n.recipient.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        n.message.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesStatus = statusFilter === "ALL" || n.status === statusFilter;
+      const matchesChannel = channelFilter === "ALL" || n.channel === channelFilter;
+
+      return matchesSearch && matchesStatus && matchesChannel;
+    }) || [];
+
+  const sentCount = notifications?.filter((item: any) => item.status === "SENT").length ?? 0;
+  const pendingCount = notifications?.filter((item: any) => item.status === "PENDING" || item.status === "RETRYING").length ?? 0;
+  const failedCount = notifications?.filter((item: any) => item.status === "FAILED").length ?? 0;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-center bg-white/40 dark:bg-slate-900/40 p-6 rounded-[2rem] backdrop-blur-xl border border-white/60 dark:border-white/10 shadow-sm">
-        <div>
-          <h1 className="text-4xl font-bold text-slate-900 dark:text-white flex items-center tracking-tight">
-            <Bell className="w-8 h-8 mr-3 text-indigo-600 dark:text-indigo-400" /> Notifications Log
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium ml-11">Audit log of all digest messages sent to organization admins.</p>
-        </div>
-      </div>
-
-      <div className="glass-panel p-4 flex flex-col md:flex-row justify-between items-center gap-4">
-        <div className="relative flex-1 w-full md:max-w-md">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-          <Input 
-            placeholder="Search by recipient or message..." 
-            className="pl-11 bg-white/50 dark:bg-slate-900/50 border-black/5 dark:border-white/10 rounded-xl focus-visible:ring-indigo-500/50 h-11 backdrop-blur-sm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="flex gap-4 w-full md:w-auto">
-          <select 
-            className="flex-1 md:flex-none h-11 rounded-xl border border-black/5 dark:border-white/10 bg-white/50 dark:bg-slate-900/50 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 backdrop-blur-sm text-slate-700 dark:text-slate-300"
-            value={channelFilter}
-            onChange={(e) => setChannelFilter(e.target.value)}
-          >
-            <option value="ALL">All Channels</option>
-            <option value="WHATSAPP">WhatsApp</option>
-            <option value="EMAIL">Email</option>
-          </select>
-          <select 
-            className="flex-1 md:flex-none h-11 rounded-xl border border-black/5 dark:border-white/10 bg-white/50 dark:bg-slate-900/50 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 backdrop-blur-sm text-slate-700 dark:text-slate-300"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="SENT">Sent</option>
-            <option value="FAILED">Failed</option>
-            <option value="PENDING">Pending</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="glass-panel overflow-hidden">
-        {filteredNotifications.length === 0 ? (
-          <div className="p-16 text-center text-slate-500 font-medium">
-            <p>No notifications found matching your filters.</p>
+    <div className="mx-auto max-w-7xl space-y-8 p-8">
+      <section className="billmygym-shell rounded-[2rem] p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.26em] text-emerald-700">Admin Inbox</div>
+            <h1 className="mt-2 flex items-center gap-3 text-4xl font-black tracking-tight text-slate-950">
+              <Bell className="h-8 w-8 text-emerald-700" />
+              Notifications Log
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-600">
+              Review every digest and admin message delivered from the reminder engine, with delivery state and retry context.
+            </p>
           </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatChip label="Sent" value={sentCount} tone="emerald" />
+            <StatChip label="Pending" value={pendingCount} tone="amber" />
+            <StatChip label="Failed" value={failedCount} tone="rose" />
+          </div>
+        </div>
+      </section>
+
+      <section className="glass-panel rounded-[1.8rem] p-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="relative w-full flex-1 md:max-w-md">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Search by recipient or message..."
+              className="h-11 rounded-xl border-black/5 bg-white/60 pl-11"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="flex w-full gap-4 md:w-auto">
+            <select
+              className="h-11 flex-1 rounded-xl border border-black/5 bg-white/60 px-4 text-sm font-semibold text-slate-700 md:flex-none"
+              value={channelFilter}
+              onChange={(e) => setChannelFilter(e.target.value)}
+            >
+              <option value="ALL">All Channels</option>
+              <option value="WHATSAPP">WhatsApp</option>
+              <option value="EMAIL">Email</option>
+            </select>
+            <select
+              className="h-11 flex-1 rounded-xl border border-black/5 bg-white/60 px-4 text-sm font-semibold text-slate-700 md:flex-none"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="SENT">Sent</option>
+              <option value="FAILED">Failed</option>
+              <option value="PENDING">Pending</option>
+              <option value="RETRYING">Retrying</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section className="glass-panel overflow-hidden rounded-[1.9rem]">
+        {filteredNotifications.length === 0 ? (
+          <div className="p-16 text-center text-sm font-semibold text-slate-500">No notifications found matching your filters.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-white/30 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-b border-black/5 dark:border-white/5">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-black/5 bg-white/30 text-slate-500">
                 <tr>
-                  <th className="px-6 py-5 font-bold tracking-wider uppercase text-xs">Status</th>
-                  <th className="px-6 py-5 font-bold tracking-wider uppercase text-xs">Type / Channel</th>
-                  <th className="px-6 py-5 font-bold tracking-wider uppercase text-xs">Recipient</th>
-                  <th className="px-6 py-5 font-bold tracking-wider uppercase text-xs max-w-xs">Message</th>
-                  <th className="px-6 py-5 font-bold tracking-wider uppercase text-xs">Timing</th>
+                  <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Status</th>
+                  <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Type / Channel</th>
+                  <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Recipient</th>
+                  <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Message</th>
+                  <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Timing</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/5 dark:divide-white/5">
+              <tbody className="divide-y divide-black/5">
                 {filteredNotifications.map((n: any) => (
-                  <tr key={n.id} className="hover:bg-white/50 dark:hover:bg-white/5 transition-colors">
+                  <tr key={n.id} className="transition-colors hover:bg-white/50">
                     <td className="px-6 py-5">
-                      {n.status === "SENT" && <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100 rounded-full font-semibold px-3"><CheckCircle className="w-3 h-3 mr-1.5"/> Sent</Badge>}
-                      {n.status === "FAILED" && <Badge variant="destructive" className="rounded-full font-semibold px-3"><XCircle className="w-3 h-3 mr-1.5"/> Failed</Badge>}
-                      {n.status === "PENDING" && <Badge variant="outline" className="text-amber-600 border-amber-600 rounded-full font-semibold px-3"><Clock className="w-3 h-3 mr-1.5"/> Pending</Badge>}
+                      <NotificationStatus status={n.status} />
                       {n.status === "FAILED" && n.failureReason && (
-                        <p className="text-xs font-medium text-red-500 mt-1.5 max-w-[150px] truncate" title={n.failureReason}>{n.failureReason}</p>
+                        <p className="mt-2 max-w-[180px] truncate text-xs font-semibold text-rose-600" title={n.failureReason}>
+                          {n.failureReason}
+                        </p>
                       )}
                     </td>
                     <td className="px-6 py-5">
-                      <div className="font-bold text-slate-900 dark:text-white capitalize">{n.type.replace("_", " ").toLowerCase()}</div>
-                      <div className="text-slate-500 dark:text-slate-400 text-xs font-semibold tracking-wider mt-0.5">{n.channel}</div>
+                      <div className="font-black capitalize text-slate-950">{n.type.replaceAll("_", " ").toLowerCase()}</div>
+                      <div className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{n.channel}</div>
                     </td>
-                    <td className="px-6 py-5 font-bold text-slate-900 dark:text-white">
-                      {n.recipient}
+                    <td className="px-6 py-5 font-semibold text-slate-800">{n.recipient}</td>
+                    <td className="px-6 py-5 max-w-sm">
+                      <p className="truncate font-medium text-slate-600" title={n.message}>{n.message}</p>
                     </td>
-                    <td className="px-6 py-5 max-w-xs cursor-help">
-                      <p className="truncate text-slate-600 dark:text-slate-300 font-medium" title={n.message}>{n.message}</p>
-                    </td>
-                    <td className="px-6 py-5 text-xs font-medium text-slate-500 dark:text-slate-400 space-y-1">
+                    <td className="px-6 py-5 text-xs font-semibold text-slate-500">
                       <div>Created: {new Date(n.createdAt).toLocaleString()}</div>
-                      {n.sentAt && <div className="text-indigo-600 dark:text-indigo-400 font-semibold">Sent: {new Date(n.sentAt).toLocaleString()}</div>}
-                      {n.attemptCount > 1 && <div className="text-amber-600 dark:text-amber-500 font-semibold">Attempts: {n.attemptCount}</div>}
+                      {n.sentAt && <div className="mt-1 text-emerald-700">Sent: {new Date(n.sentAt).toLocaleString()}</div>}
+                      {n.attemptCount > 1 && <div className="mt-1 text-amber-700">Attempts: {n.attemptCount}</div>}
                     </td>
                   </tr>
                 ))}
@@ -126,7 +142,45 @@ export default function Notifications() {
             </table>
           </div>
         )}
-      </div>
+      </section>
     </div>
+  );
+}
+
+function StatChip({ label, value, tone }: { label: string; value: number; tone: "emerald" | "amber" | "rose" }) {
+  const styles = {
+    emerald: "bg-emerald-50 border-emerald-100 text-emerald-800",
+    amber: "bg-amber-50 border-amber-100 text-amber-800",
+    rose: "bg-rose-50 border-rose-100 text-rose-800",
+  }[tone];
+
+  return (
+    <div className={cn("rounded-[1.3rem] border px-4 py-3", styles)}>
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">{label}</div>
+      <div className="mt-1 text-2xl font-black tracking-tight">{value}</div>
+    </div>
+  );
+}
+
+function NotificationStatus({ status }: { status: string }) {
+  if (status === "SENT") {
+    return (
+      <Badge className="rounded-full border-emerald-200 bg-emerald-100 px-3 py-1 font-black tracking-[0.14em] text-emerald-800">
+        <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Sent
+      </Badge>
+    );
+  }
+  if (status === "FAILED") {
+    return (
+      <Badge className="rounded-full border-rose-200 bg-rose-100 px-3 py-1 font-black tracking-[0.14em] text-rose-800">
+        <XCircle className="mr-1.5 h-3.5 w-3.5" /> Failed
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="rounded-full border-amber-200 bg-amber-100 px-3 py-1 font-black tracking-[0.14em] text-amber-800">
+      {status === "RETRYING" ? <SendHorizonal className="mr-1.5 h-3.5 w-3.5" /> : <Clock3 className="mr-1.5 h-3.5 w-3.5" />}
+      {status === "RETRYING" ? "Retrying" : "Pending"}
+    </Badge>
   );
 }

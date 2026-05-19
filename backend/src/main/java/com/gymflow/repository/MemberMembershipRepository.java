@@ -68,7 +68,7 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
         where membership.deleted = false
           and membership.member.deleted = false
           and membership.member.status = 'ACTIVE'
-          and membership.organization.status = 'ACTIVE'
+          and membership.organization.status in ('ACTIVE', 'TRIAL')
           and membership.organization.id = :organizationId
           and membership.status in ('EXPIRED', 'OVERDUE')
         order by membership.organization.id, membership.endDate asc
@@ -83,7 +83,7 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
           and membership.member.deleted = false
           and membership.member.status = 'ACTIVE'
           and membership.organization.deleted = false
-          and membership.organization.status = 'ACTIVE'
+          and membership.organization.status in ('ACTIVE', 'TRIAL')
           and membership.organization.id = :organizationId
           and membership.status in ('EXPIRED', 'OVERDUE')
           and (membership.lastSentAt is null or membership.lastSentAt < :dayStart)
@@ -121,12 +121,33 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
           and membership.member.deleted = false
           and membership.member.status = 'ACTIVE'
           and membership.organization.id = :organizationId
-          and membership.status in ('EXPIRED', 'OVERDUE')
+          and membership.endDate <= :today
+          and membership.status <> 'COMPLETED'
         order by membership.endDate asc
         """)
-    List<MemberMembership> findOverdueOrExpiredMemberships(@Param("organizationId") Long organizationId, Pageable pageable);
+    List<MemberMembership> findOverdueOrExpiredMemberships(
+        @Param("organizationId") Long organizationId,
+        @Param("today") java.time.LocalDate today,
+        Pageable pageable
+    );
 
     long countByOrganizationIdAndDeletedFalseAndStatus(Long organizationId, MembershipStatus status);
+
+    @Query("""
+        select count(membership)
+        from MemberMembership membership
+        where membership.deleted = false
+          and membership.member.deleted = false
+          and membership.member.status = 'ACTIVE'
+          and membership.organization.id = :organizationId
+          and membership.endDate between :startDate and :endDate
+          and membership.status <> 'COMPLETED'
+        """)
+    long countExpiredBetween(
+        @Param("organizationId") Long organizationId,
+        @Param("startDate") java.time.LocalDate startDate,
+        @Param("endDate") java.time.LocalDate endDate
+    );
 
     @Query("""
         select count(membership)
@@ -140,5 +161,35 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
         @Param("organizationId") Long organizationId,
         @Param("today") java.time.LocalDate today,
         @Param("expiringThrough") java.time.LocalDate expiringThrough
+    );
+
+    @Query("""
+        select count(membership)
+        from MemberMembership membership
+        where membership.deleted = false
+          and membership.member.deleted = false
+          and membership.member.status = 'ACTIVE'
+          and membership.organization.id = :organizationId
+          and membership.endDate = :today
+          and membership.status <> 'COMPLETED'
+        """)
+    long countExpiredOn(
+        @Param("organizationId") Long organizationId,
+        @Param("today") java.time.LocalDate today
+    );
+
+    @Query("""
+        select count(membership)
+        from MemberMembership membership
+        where membership.deleted = false
+          and membership.member.deleted = false
+          and membership.member.status = 'ACTIVE'
+          and membership.organization.id = :organizationId
+          and membership.endDate < :today
+          and membership.status <> 'COMPLETED'
+        """)
+    long countOverdueBefore(
+        @Param("organizationId") Long organizationId,
+        @Param("today") java.time.LocalDate today
     );
 }

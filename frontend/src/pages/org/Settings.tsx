@@ -1,8 +1,9 @@
 import { useEffect } from "react";
+import type { ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Settings as SettingsIcon, MessageSquare, Mail, BellRing, Building } from "lucide-react";
+import { BellRing, Building, Mail, MessageSquare, Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +17,7 @@ export default function Settings() {
     queryFn: async () => {
       const res = await api.get("/settings");
       return res.data;
-    }
+    },
   });
 
   const { register, handleSubmit, reset, watch, formState: { isSubmitting } } = useForm({
@@ -25,7 +26,7 @@ export default function Settings() {
       reminderDaysBeforeExpiry: 3,
       whatsappEnabled: false,
       emailEnabled: false,
-    }
+    },
   });
 
   const watchConfig = watch();
@@ -49,160 +50,142 @@ export default function Settings() {
     },
     onError: () => {
       toast.error("Failed to save settings.");
-    }
+    },
   });
-
-  const onSubmit = (data: any) => {
-    mutation.mutate(data);
-  };
 
   if (isLoading) {
     return <div className="p-8">Loading settings...</div>;
   }
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-8">
-      <div className="flex items-center space-x-4 mb-8 bg-white/40 dark:bg-slate-900/40 p-6 rounded-[2rem] backdrop-blur-xl border border-white/60 dark:border-white/10 shadow-sm">
-        <div className="bg-indigo-100/50 dark:bg-indigo-900/40 p-4 rounded-2xl text-indigo-600 dark:text-indigo-400">
-          <SettingsIcon className="w-8 h-8" />
-        </div>
-        <div>
-          <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight">Organization Settings</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 font-medium">Configure automated reminders and brand preferences.</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <form id="settings-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="glass-panel overflow-hidden">
-              <div className="p-6 border-b border-black/5 dark:border-white/5">
-                <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center"><Building className="w-5 h-5 mr-3 text-indigo-500" /> Branding Configuration</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">This name will appear in automated communications.</p>
-              </div>
-              <div className="p-6 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="brandingName" className="font-semibold text-slate-700 dark:text-slate-300">Sender Name</Label>
-                  <Input id="brandingName" {...register("brandingName")} placeholder="e.g. Iron Athletics Gym" className="bg-white/50 dark:bg-slate-900/50 border-black/5 dark:border-white/10 rounded-xl focus-visible:ring-indigo-500/50 h-11 backdrop-blur-sm" />
-                </div>
-              </div>
-            </div>
-
-            <div className="glass-panel overflow-hidden">
-              <div className="p-6 border-b border-black/5 dark:border-white/5">
-                <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center"><BellRing className="w-5 h-5 mr-3 text-amber-500" /> Reminder Timing</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Control when automated reminders are triggered.</p>
-              </div>
-              <div className="p-6 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="reminderDaysBeforeExpiry" className="font-semibold text-slate-700 dark:text-slate-300">Days before expiry to flag members</Label>
-                  <Input 
-                    id="reminderDaysBeforeExpiry" 
-                    type="number" 
-                    min="1" 
-                    max="30" 
-                    {...register("reminderDaysBeforeExpiry", { valueAsNumber: true })} 
-                    className="bg-white/50 dark:bg-slate-900/50 border-black/5 dark:border-white/10 rounded-xl focus-visible:ring-indigo-500/50 h-11 backdrop-blur-sm"
-                  />
-                  <p className="text-xs text-slate-500 font-medium">Members hitting this threshold will show up in the automated digest.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="glass-panel overflow-hidden">
-              <div className="p-6 border-b border-black/5 dark:border-white/5">
-                <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center"><MessageSquare className="w-5 h-5 mr-3 text-green-500" /> Delivery Channels</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Select which channels to use for automated messages.</p>
-              </div>
-              <div className="p-6 space-y-6">
-                <div className="flex items-center justify-between p-5 border border-black/5 dark:border-white/10 rounded-2xl bg-white/40 dark:bg-slate-900/40 hover:bg-white/60 dark:hover:bg-slate-800/60 transition-colors">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-green-100/50 dark:bg-green-900/40 text-green-600 dark:text-green-400 rounded-xl">
-                      <MessageSquare className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 dark:text-white">WhatsApp Digest</h4>
-                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">Receive an admin summary via WhatsApp.</p>
-                    </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" {...register("whatsappEnabled")} />
-                    <div className="w-14 h-7 bg-slate-200/50 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-green-500"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-5 border border-black/5 dark:border-white/10 rounded-2xl bg-white/40 dark:bg-slate-900/40 hover:bg-white/60 dark:hover:bg-slate-800/60 transition-colors">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-blue-100/50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-xl">
-                      <Mail className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 dark:text-white">Email Digest</h4>
-                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">Receive an admin summary over email.</p>
-                    </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" {...register("emailEnabled")} />
-                    <div className="w-14 h-7 bg-slate-200/50 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-4">
-              <Button type="submit" form="settings-form" disabled={isSubmitting} className="w-full md:w-auto px-10 rounded-full shadow-md shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
-                {isSubmitting ? "Saving..." : "Save Preferences"}
-              </Button>
-            </div>
-          </form>
-        </div>
-
-        {/* Live Preview Panel */}
-        <div className="lg:col-span-1 glass-panel rounded-[2rem] overflow-hidden shadow-xl sticky top-8 border-t border-l border-white/60 dark:border-white/10 flex flex-col h-[500px]">
-          <div className="bg-slate-900/90 backdrop-blur-md text-white p-5 text-center text-sm font-bold tracking-widest uppercase border-b border-white/10">
-            Preview
+    <div className="mx-auto max-w-6xl space-y-8 p-8">
+      <section className="billmygym-shell rounded-[2rem] p-8">
+        <div className="flex items-start gap-5">
+          <div className="rounded-[1.6rem] bg-emerald-100 p-4 text-emerald-700">
+            <SettingsIcon className="h-8 w-8" />
           </div>
-          <div className="p-6 bg-slate-100/50 dark:bg-slate-900/30 flex-1 flex flex-col items-center justify-center relative overflow-hidden">
-             {watchConfig.whatsappEnabled ? (
-                <div className="bg-white p-4 rounded-xl shadow-sm text-sm border space-y-2 max-w-[280px] mx-auto ml-auto relative">
-                  <div className="absolute -top-3 -left-3 text-[10px] bg-green-500 text-white px-2 py-1 rounded-full font-bold shadow-sm">WhatsApp</div>
-                  <div className="font-bold text-slate-800 flex justify-between">
-                    <span>{watchConfig.brandingName || "BillMyGym"} System</span>
-                  </div>
-                  <p className="text-slate-600 leading-relaxed whitespace-pre-line">
-                    Members needing renewal:
-                    
-                    1. John — Expired Today
-                    2. Rahul — Overdue 2 days
-                    3. Alex — Overdue 1 day
-                    
-                    Total pending: 3
-                  </p>
-                  <div className="text-right text-[10px] text-slate-400 mt-1">12:30 PM</div>
-                </div>
-             ) : watchConfig.emailEnabled ? (
-                <div className="bg-white p-5 rounded-lg shadow-sm text-sm border space-y-3">
-                  <div className="border-b pb-3 border-slate-100">
-                    <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-1">Incoming Email</p>
-                    <p className="font-semibold text-slate-800">Membership Renewal Summary</p>
-                    <p className="text-xs text-slate-500 mt-1">From: {watchConfig.brandingName || "BillMyGym"} System</p>
-                  </div>
-                  <div className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">
-                    Members needing attention:
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.26em] text-emerald-700">Workspace Controls</div>
+            <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">Organization Settings</h1>
+            <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-600">
+              Tune reminder timing, delivery preferences, and sender branding so the member communication layer feels intentional and consistent.
+            </p>
+          </div>
+        </div>
+      </section>
 
-                    John
-                    Rahul
-                    Alex
+      <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+        <form id="settings-form" onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-6">
+          <div className="glass-panel overflow-hidden rounded-[1.9rem]">
+            <div className="border-b border-white/70 p-6">
+              <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-slate-950">
+                <Building className="h-5 w-5 text-emerald-700" />
+                Branding Configuration
+              </h2>
+            </div>
+            <div className="p-6">
+              <div className="space-y-2">
+                <Label htmlFor="brandingName" className="font-semibold text-slate-700">Sender Name</Label>
+                <Input id="brandingName" {...register("brandingName")} placeholder="e.g. Iron Athletics Gym" className="h-11 rounded-xl bg-white/60" />
+              </div>
+            </div>
+          </div>
 
-                    Please review pending renewals.
-                  </div>
+          <div className="glass-panel overflow-hidden rounded-[1.9rem]">
+            <div className="border-b border-white/70 p-6">
+              <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-slate-950">
+                <BellRing className="h-5 w-5 text-amber-600" />
+                Reminder Timing
+              </h2>
+            </div>
+            <div className="p-6">
+              <div className="space-y-2">
+                <Label htmlFor="reminderDaysBeforeExpiry" className="font-semibold text-slate-700">Days before expiry to flag members</Label>
+                <Input id="reminderDaysBeforeExpiry" type="number" min="1" max="30" {...register("reminderDaysBeforeExpiry", { valueAsNumber: true })} className="h-11 rounded-xl bg-white/60" />
+                <p className="text-xs font-medium text-slate-500">Members reaching this threshold show up in the digest and ops reports.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-panel overflow-hidden rounded-[1.9rem]">
+            <div className="border-b border-white/70 p-6">
+              <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-slate-950">
+                <MessageSquare className="h-5 w-5 text-emerald-700" />
+                Delivery Channels
+              </h2>
+            </div>
+            <div className="space-y-4 p-6">
+              <ChannelRow
+                icon={<MessageSquare className="h-5 w-5" />}
+                title="WhatsApp Digest"
+                description="Send the admin summary through WhatsApp."
+                register={register("whatsappEnabled")}
+                tone="emerald"
+              />
+              <ChannelRow
+                icon={<Mail className="h-5 w-5" />}
+                title="Email Digest"
+                description="Send the admin summary over email."
+                register={register("emailEnabled")}
+                tone="blue"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button type="submit" form="settings-form" disabled={isSubmitting} className="h-12 rounded-full bg-slate-950 px-8 font-bold text-white hover:bg-slate-800">
+              {isSubmitting ? "Saving..." : "Save Preferences"}
+            </Button>
+          </div>
+        </form>
+
+        <div className="glass-panel sticky top-24 overflow-hidden rounded-[1.9rem]">
+          <div className="border-b border-white/70 p-6 text-center">
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Live Preview</div>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Digest Experience</h2>
+          </div>
+          <div className="p-6">
+            {watchConfig.whatsappEnabled ? (
+              <div className="rounded-[1.6rem] border border-emerald-100 bg-white p-5 shadow-sm">
+                <div className="mb-4 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
+                  WhatsApp
                 </div>
-             ) : (
-               <div className="flex flex-col items-center justify-center h-full text-slate-400">
-                 <BellRing className="w-12 h-12 mb-4 opacity-50" />
-                 <p className="text-center text-sm">Enable a channel to see preview</p>
-               </div>
-             )}
+                <div className="text-sm font-black text-slate-900">{watchConfig.brandingName || "BillMyGym"} System</div>
+                <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600">
+                  Members needing renewal:
+
+                  1. John - Expired Today
+                  2. Rahul - Overdue 2 days
+                  3. Alex - Overdue 1 day
+
+                  Total pending: 3
+                </p>
+              </div>
+            ) : watchConfig.emailEnabled ? (
+              <div className="rounded-[1.6rem] border border-sky-100 bg-white p-5 shadow-sm">
+                <div className="mb-4 inline-flex rounded-full bg-sky-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-sky-700">
+                  Email
+                </div>
+                <div className="border-b border-slate-100 pb-3">
+                  <div className="text-sm font-black text-slate-900">Membership Renewal Summary</div>
+                  <div className="mt-1 text-xs font-semibold text-slate-500">From: {watchConfig.brandingName || "BillMyGym"} System</div>
+                </div>
+                <p className="mt-4 whitespace-pre-line text-sm leading-6 text-slate-600">
+                  Members needing attention:
+
+                  John
+                  Rahul
+                  Alex
+
+                  Please review pending renewals.
+                </p>
+              </div>
+            ) : (
+              <div className="flex min-h-[280px] flex-col items-center justify-center rounded-[1.6rem] border border-dashed border-slate-200 bg-white/50 text-center text-slate-400">
+                <BellRing className="mb-4 h-10 w-10 opacity-50" />
+                <p className="text-sm font-semibold">Enable a channel to preview the admin digest.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -210,3 +193,39 @@ export default function Settings() {
   );
 }
 
+function ChannelRow({
+  icon,
+  title,
+  description,
+  register,
+  tone,
+}: {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  register: any;
+  tone: "emerald" | "blue";
+}) {
+  const checkedClass =
+    tone === "emerald"
+      ? "peer-checked:bg-emerald-500 peer-checked:border-emerald-500"
+      : "peer-checked:bg-sky-500 peer-checked:border-sky-500";
+
+  return (
+    <div className="flex items-center justify-between rounded-[1.5rem] border border-white/80 bg-white/72 p-5 shadow-sm">
+      <div className="flex items-center gap-4">
+        <div className={`rounded-xl p-3 ${tone === "emerald" ? "bg-emerald-100/80 text-emerald-700" : "bg-sky-100/80 text-sky-700"}`}>{icon}</div>
+        <div>
+          <h4 className="font-black text-slate-950">{title}</h4>
+          <p className="mt-1 text-sm font-medium text-slate-500">{description}</p>
+        </div>
+      </div>
+      <label className="relative inline-flex cursor-pointer items-center">
+        <input type="checkbox" className="peer sr-only" {...register} />
+        <div
+          className={`relative h-8 w-16 rounded-full border border-slate-200 bg-slate-200/80 transition-colors after:absolute after:left-[3px] after:top-1/2 after:h-6 after:w-6 after:-translate-y-1/2 after:rounded-full after:bg-white after:shadow-sm after:transition-transform after:content-[''] peer-checked:after:translate-x-8 ${checkedClass}`}
+        />
+      </label>
+    </div>
+  );
+}

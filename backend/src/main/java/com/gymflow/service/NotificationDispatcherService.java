@@ -24,6 +24,8 @@ public class NotificationDispatcherService {
     private final NotificationLogRepository notificationLogRepository;
     private final NotificationDeliveryLogService notificationDeliveryLogService;
     private final UsageMetricService usageMetricService;
+    private final WhatsAppDeliveryService whatsAppDeliveryService;
+    private final WhatsAppTemplateService whatsAppTemplateService;
 
     @Transactional
     public DispatchResult dispatchDigest(
@@ -34,12 +36,10 @@ public class NotificationDispatcherService {
         List<NotificationLog> deliveryLogs = new ArrayList<>();
 
         if (setting.isWhatsappEnabled() && hasText(organization.getAdminPhoneNumber())) {
-            deliveryLogs.add(sendWithRetry(
+            deliveryLogs.add(sendWhatsappDigest(
                 organization,
-                NotificationChannel.WHATSAPP,
                 organization.getAdminPhoneNumber(),
-                digestContent.whatsappMessage(),
-                digestContent.memberCount()
+                digestContent
             ));
         }
 
@@ -57,9 +57,7 @@ public class NotificationDispatcherService {
         if (digestsSent > 0) {
             for (NotificationLog log : deliveryLogs) {
                 if (log.getStatus() == NotificationStatus.SENT) {
-                    if (log.getChannel() == NotificationChannel.WHATSAPP) {
-                        usageMetricService.recordWhatsappDelivered(organization);
-                    } else if (log.getChannel() == NotificationChannel.EMAIL) {
+                    if (log.getChannel() == NotificationChannel.EMAIL) {
                         usageMetricService.recordEmailSent(organization);
                     }
                 }
@@ -68,6 +66,40 @@ public class NotificationDispatcherService {
         }
 
         return new DispatchResult(digestsSent > 0, digestsSent);
+    }
+
+    private NotificationLog sendWhatsappDigest(
+        Organization organization,
+        String recipient,
+        OrganizationDigestBuilderService.DigestContent digestContent
+    ) {
+        NotificationLog log = buildPendingLog(
+            organization,
+            NotificationChannel.WHATSAPP,
+            recipient,
+            digestContent.whatsappMessage(),
+            digestContent.memberCount()
+        );
+        NotificationLog persistedLog = notificationLogRepository.save(log);
+        var result = whatsAppDeliveryService.sendTemplate(
+            organization,
+            persistedLog,
+            recipient,
+            WhatsAppTemplateService.TEMPLATE_EXPIRY_DIGEST,
+            whatsAppTemplateService.expiryDigestVariables(organization, digestContent),
+            NotificationType.ORGANIZATION_RENEWAL_DIGEST
+        );
+        persistedLog.setAttemptCount(result.attemptCount());
+        persistedLog.setFailureReason(result.errorMessage());
+        if (result.sent()) {
+            persistedLog.setStatus(NotificationStatus.SENT);
+            persistedLog.setSentAt(OffsetDateTime.now());
+        } else if (result.status() == NotificationDeliveryStatus.RETRYING) {
+            persistedLog.setStatus(NotificationStatus.RETRYING);
+        } else {
+            persistedLog.setStatus(NotificationStatus.FAILED);
+        }
+        return notificationLogRepository.save(persistedLog);
     }
 
     private NotificationLog sendWithRetry(

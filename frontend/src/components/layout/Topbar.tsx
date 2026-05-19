@@ -4,6 +4,7 @@ import {
   Building2,
   ChevronDown,
   CreditCard,
+  FolderPlus,
   LogOut,
   Menu,
   PanelLeft,
@@ -47,6 +48,7 @@ export function Topbar({
   const location = useLocation();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,13 +65,72 @@ export function Topbar({
     setProfileOpen(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const primaryName = (user?.name || user?.email || "BillMyGym").split(" ")[0];
   const initials = (user?.name || user?.email || "G").trim().charAt(0).toUpperCase();
   const isOrgAdmin = role === "ORG_ADMIN";
+  const isSuperAdmin = role === "SUPER_ADMIN";
+  const quickLinks = isSuperAdmin
+    ? [
+        {
+          to: "/app/platform-overview",
+          label: "Platform",
+          icon: Shield,
+          iconClassName: "text-emerald-700",
+        },
+        {
+          to: "/app/organizations",
+          label: "Organizations",
+          icon: Building2,
+          iconClassName: "text-emerald-600",
+        },
+        {
+          to: "/app/organizations/new",
+          label: "Add Org",
+          icon: FolderPlus,
+          iconClassName: "text-emerald-700",
+        },
+      ]
+    : [
+        {
+          to: "/app/organization",
+          label: "Organization",
+          icon: Building2,
+          iconClassName: "text-emerald-600",
+        },
+        {
+          to: "/app/settings",
+          label: "Settings",
+          icon: Settings,
+          iconClassName: "text-emerald-700",
+        },
+        {
+          to: "/app/subscription",
+          label: "Billing",
+          icon: CreditCard,
+          iconClassName: "text-emerald-700",
+        },
+      ];
 
   return (
-    <header className="sticky top-0 z-40 bg-transparent px-4 py-4 lg:px-8 lg:py-6">
-      <div className="billmygym-shell pointer-events-auto flex min-h-[84px] flex-wrap items-center justify-between gap-4 rounded-[2rem] px-4 py-4 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.28)] backdrop-blur-xl">
+    <header
+      className={cn(
+        "sticky top-0 z-40 overflow-x-clip px-4 transition-all duration-300 lg:px-8",
+        scrolled ? "py-2 lg:py-3" : "py-4 lg:py-6",
+      )}
+    >
+      <div
+        className={cn(
+          "billmygym-shell pointer-events-auto flex min-h-[84px] min-w-0 flex-wrap items-center justify-between gap-4 overflow-hidden rounded-[2rem] px-4 py-4 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.28)] backdrop-blur-xl transition-all duration-300",
+          scrolled && "border border-white/80 bg-white/92 shadow-[0_20px_45px_-28px_rgba(15,23,42,0.35)]",
+        )}
+      >
         <div className="flex min-w-0 flex-1 items-center gap-3 lg:gap-6">
           <button
             onClick={onOpenMobileSidebar}
@@ -101,40 +162,27 @@ export function Topbar({
 
         </div>
 
-        <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:gap-3">
-          {isOrgAdmin && (
-            <>
-              <Link
-                to="/app/organization"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-              >
-                <Building2 className="h-4 w-4 text-emerald-600" />
-                <span className="hidden sm:inline">Organization</span>
-              </Link>
-              <Link
-                to="/app/settings"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-              >
-                <Settings className="h-4 w-4 text-emerald-700" />
-                <span className="hidden sm:inline">Settings</span>
-              </Link>
-              <Link
-                to="/app/subscription"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-              >
-                <CreditCard className="h-4 w-4 text-emerald-700" />
-                <span className="hidden sm:inline">Billing</span>
-              </Link>
-            </>
-          )}
+        <div className="flex max-w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:gap-3">
+          {quickLinks.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+            >
+              <item.icon className={cn("h-4 w-4", item.iconClassName)} />
+              <span className="hidden sm:inline">{item.label}</span>
+            </Link>
+          ))}
 
-          <Link
-            to={role === "SUPER_ADMIN" ? "/app/platform-overview" : "/app/notifications"}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-          >
-            {role === "SUPER_ADMIN" ? <Shield className="h-4 w-4 text-emerald-700" /> : <Bell className="h-4 w-4 text-amber-600" />}
-            <span className="hidden sm:inline">{role === "SUPER_ADMIN" ? "Platform" : "Alerts"}</span>
-          </Link>
+          {isOrgAdmin && (
+            <Link
+              to="/app/notifications"
+              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+            >
+              <Bell className="h-4 w-4 text-amber-600" />
+              <span className="hidden sm:inline">Alerts</span>
+            </Link>
+          )}
 
           <div className="relative" ref={profileRef}>
             <button

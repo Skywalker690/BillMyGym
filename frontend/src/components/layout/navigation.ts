@@ -106,6 +106,22 @@ export const getProfileNavItems = (role: AppRole | null | undefined): NavItemCon
 };
 
 export const getPageContext = (pathname: string, role: AppRole | null | undefined) => {
+  if (pathname.startsWith("/app/members/") && pathname.endsWith("/renew")) {
+    return {
+      eyebrow: "Renewal Desk",
+      title: "Membership Renewal",
+      description: "Renew an existing member without mixing profile edits into the billing workflow.",
+    };
+  }
+
+  if (pathname.startsWith("/app/members/") && pathname.endsWith("/edit")) {
+    return {
+      eyebrow: "Member Workspace",
+      title: "Edit Member",
+      description: "Review and update only the selected member profile details.",
+    };
+  }
+
   const directMatches: Array<{ match: string; eyebrow: string; title: string; description: string }> = [
     {
       match: "/app/platform-overview",

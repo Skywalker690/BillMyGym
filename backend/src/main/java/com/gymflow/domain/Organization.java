@@ -2,6 +2,7 @@ package com.gymflow.domain;
 
 import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.domain.enums.OrganizationType;
+import com.gymflow.domain.enums.SubscriptionPlan;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -48,6 +49,10 @@ public class Organization extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "organization_type", nullable = false)
     private OrganizationType organizationType = OrganizationType.REGULAR;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "subscription_plan", nullable = false)
+    private SubscriptionPlan subscriptionPlan = SubscriptionPlan.STARTER;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

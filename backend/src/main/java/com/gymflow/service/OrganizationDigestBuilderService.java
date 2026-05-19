@@ -14,14 +14,22 @@ public class OrganizationDigestBuilderService {
 
     public DigestContent buildDigest(Organization organization, OrganizationSetting setting, List<MemberMembership> memberships) {
         String brandingName = hasText(setting.getBrandingName()) ? setting.getBrandingName() : organization.getName();
-        String whatsapp = buildWhatsappDigest(memberships);
+        String memberList = buildMemberList(memberships);
+        String whatsapp = buildWhatsappDigest(memberList, memberships.size());
         String emailSubject = "Membership Renewal Summary";
         String email = buildEmailDigest(brandingName, memberships);
-        return new DigestContent(brandingName, whatsapp, emailSubject, email, memberships.size());
+        return new DigestContent(brandingName, whatsapp, emailSubject, email, memberships.size(), memberList);
     }
 
-    private String buildWhatsappDigest(List<MemberMembership> memberships) {
+    private String buildWhatsappDigest(String memberList, int memberCount) {
         StringBuilder builder = new StringBuilder("BillMyGym Alert\n\nExpired or overdue memberships:\n\n");
+        builder.append(memberList);
+        builder.append("\n\nTotal pending: ").append(memberCount);
+        return builder.toString();
+    }
+
+    private String buildMemberList(List<MemberMembership> memberships) {
+        StringBuilder builder = new StringBuilder();
         for (int index = 0; index < memberships.size(); index++) {
             MemberMembership membership = memberships.get(index);
             builder.append(index + 1)
@@ -33,8 +41,7 @@ public class OrganizationDigestBuilderService {
                 .append(membershipStatusSummary(membership))
                 .append('\n');
         }
-        builder.append("\nTotal pending: ").append(memberships.size());
-        return builder.toString();
+        return builder.toString().trim();
     }
 
     private String buildEmailDigest(String brandingName, List<MemberMembership> memberships) {
@@ -77,8 +84,12 @@ public class OrganizationDigestBuilderService {
         String whatsappMessage,
         String emailSubject,
         String emailMessage,
-        int memberCount
+        int memberCount,
+        String memberList
     ) {
+        public DigestContent(String brandingName, String whatsappMessage, String emailSubject, String emailMessage, int memberCount) {
+            this(brandingName, whatsappMessage, emailSubject, emailMessage, memberCount, "");
+        }
     }
 }
 

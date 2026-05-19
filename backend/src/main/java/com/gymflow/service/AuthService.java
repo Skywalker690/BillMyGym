@@ -54,6 +54,8 @@ public class AuthService {
     private final AuditLogService auditLogService;
     private final OtpService otpService;
     private final EmailService emailService;
+    private final BillingLifecycleService billingLifecycleService;
+    private final WhatsAppDeliveryService whatsAppDeliveryService;
 
     @Value("${google.client.id}")
     private String googleClientId;
@@ -77,16 +79,9 @@ public class AuthService {
         LocalDate today = LocalDate.now();
         Organization organization = organizationMapper.toNewOrganization(request);
         if (organization.getOrganizationType() == OrganizationType.PILOT) {
-            organization.setStatus(OrganizationStatus.ACTIVE);
-            organization.setPilotStartDate(today);
-            organization.setPilotEndDate(today.plusDays(90));
-            organization.setSubscriptionDueDate(today.plusDays(90));
+            billingLifecycleService.startPilotAccess(organization, today);
         } else {
-            organization.setOrganizationType(OrganizationType.REGULAR);
-            organization.setStatus(OrganizationStatus.TRIAL);
-            organization.setTrialStartDate(today);
-            organization.setTrialEndDate(today.plusDays(14));
-            organization.setSubscriptionDueDate(today.plusDays(14));
+            billingLifecycleService.startRegularTrial(organization, today);
         }
         Organization savedOrganization = organizationRepository.save(organization);
 
@@ -111,6 +106,11 @@ public class AuthService {
             savedOrganization.getOrganizationType() == OrganizationType.PILOT
                 ? savedOrganization.getPilotEndDate()
                 : savedOrganization.getTrialEndDate()
+        );
+        whatsAppDeliveryService.sendOrganizationWelcome(
+            savedOrganization,
+            request.adminFullName(),
+            "https://gymmax.com/login"
         );
 
         auditLogService.log(

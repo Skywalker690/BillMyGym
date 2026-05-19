@@ -31,6 +31,7 @@ type SubscriptionStatus = {
   organizationName: string;
   organizationType: "REGULAR" | "PILOT";
   organizationStatus: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
+  subscriptionPlan: "STARTER" | "GROWTH" | "PRO" | "PILOT";
   monthlyAmount: number;
   trialEndsAt?: string | null;
   pilotEndsAt?: string | null;
@@ -40,6 +41,13 @@ type SubscriptionStatus = {
   whatsappUsage: number;
   emailUsage: number;
   activeMembers: number;
+  memberLimit?: {
+    usedMembers: number;
+    memberLimit?: number | null;
+    unlimited: boolean;
+    remainingSlots: number;
+    usagePercent: number;
+  };
   paymentHistory: SubscriptionPayment[];
 };
 
@@ -73,6 +81,9 @@ const statusStyles: Record<string, string> = {
   DEACTIVATED: "bg-rose-100 text-rose-800 border-rose-200",
   PILOT: "bg-sky-100 text-sky-800 border-sky-200",
   REGULAR: "bg-slate-100 text-slate-800 border-slate-200",
+  STARTER: "bg-slate-100 text-slate-800 border-slate-200",
+  GROWTH: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  PRO: "bg-indigo-100 text-indigo-800 border-indigo-200",
 };
 
 function loadRazorpayScript() {
@@ -183,8 +194,44 @@ export default function Subscription() {
     return <div className="p-8">Subscription status is unavailable.</div>;
   }
 
-  const accessEnds = subscription.organizationType === "PILOT" ? subscription.pilotEndsAt : subscription.trialEndsAt;
-  const isPaymentRestricted = subscription.organizationType !== "PILOT" && ["PAUSED", "DEACTIVATED", "TRIAL"].includes(subscription.organizationStatus);
+  const isPilot = subscription.organizationType === "PILOT";
+  const isActive = subscription.organizationStatus === "ACTIVE" && !isPilot;
+  const isTrial = subscription.organizationStatus === "TRIAL";
+  const isPaused = subscription.organizationStatus === "PAUSED";
+  const isDeactivated = subscription.organizationStatus === "DEACTIVATED";
+  const lifecycleCards = isPilot
+    ? [{ label: "Pilot Access Ends", value: dateText(subscription.pilotEndsAt), emphasis: "text-sky-700" }]
+    : isActive
+      ? [
+          {
+            label: "Current Billing Period",
+            value: `${dateText(subscription.currentPeriodStart)} - ${dateText(subscription.currentPeriodEnd)}`,
+            emphasis: "text-emerald-700",
+          },
+          { label: "Next Due Date", value: dateText(subscription.subscriptionDueDate), emphasis: "text-emerald-700" },
+        ]
+      : isPaused
+        ? [
+            { label: "Subscription Expired", value: dateText(subscription.subscriptionDueDate), emphasis: "text-orange-700" },
+            { label: "Renew Required", value: "Payment needed to restore access", emphasis: "text-orange-700" },
+          ]
+        : isDeactivated
+          ? [{ label: "Organization Deactivated", value: "Contact support to restore this workspace", emphasis: "text-rose-700" }]
+          : [{ label: "Trial Ends", value: dateText(subscription.trialEndsAt), emphasis: "text-amber-700" }];
+  const ctaLabel = createOrderMutation.isPending
+    ? "Creating order..."
+    : isPilot
+      ? "Pilot billing bypassed"
+      : isActive
+        ? "Subscription Active"
+        : isTrial
+          ? "Subscribe Now"
+          : isPaused
+            ? "Renew Subscription"
+            : isDeactivated
+              ? "Organization Deactivated"
+              : "Subscribe Now";
+  const ctaDisabled = createOrderMutation.isPending || verifyMutation.isPending || isPilot || isActive || isDeactivated;
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-8">
@@ -194,26 +241,19 @@ export default function Subscription() {
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <Badge className={statusStyles[subscription.organizationStatus]}>{subscription.organizationStatus}</Badge>
               <Badge className={statusStyles[subscription.organizationType]}>{subscription.organizationType}</Badge>
+              <Badge className={statusStyles[subscription.subscriptionPlan]}>{subscription.subscriptionPlan}</Badge>
             </div>
             <h1 className="text-4xl font-black tracking-tight text-slate-950">{subscription.organizationName} Subscription</h1>
             <p className="mt-3 max-w-2xl text-base font-medium text-slate-600">
-              BillMyGym SaaS access is billed monthly at {money.format(subscription.monthlyAmount || 299)}. Pilot tenants bypass billing until the pilot window ends.
+              BillMyGym SaaS access is billed monthly at {money.format(subscription.monthlyAmount || 0)} on the {subscription.subscriptionPlan} plan.
             </p>
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-sm">
-                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Due Date</div>
-                <div className="mt-2 text-lg font-black text-slate-950">{dateText(subscription.subscriptionDueDate)}</div>
-              </div>
-              <div className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-sm">
-                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Current Period</div>
-                <div className="mt-2 text-sm font-black text-slate-950">
-                  {dateText(subscription.currentPeriodStart)} - {dateText(subscription.currentPeriodEnd)}
+            <div className={`mt-6 grid gap-3 ${lifecycleCards.length === 1 ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
+              {lifecycleCards.map((card) => (
+                <div key={card.label} className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-sm">
+                  <div className={`text-[10px] font-black uppercase tracking-[0.24em] ${card.emphasis}`}>{card.label}</div>
+                  <div className="mt-2 text-lg font-black text-slate-950">{card.value}</div>
                 </div>
-              </div>
-              <div className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-sm">
-                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Free Access Ends</div>
-                <div className="mt-2 text-lg font-black text-slate-950">{dateText(accessEnds)}</div>
-              </div>
+              ))}
             </div>
           </div>
 
@@ -221,17 +261,23 @@ export default function Subscription() {
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
               <CreditCard className="h-7 w-7" />
             </div>
-            <div className="mt-5 text-sm font-black uppercase tracking-[0.24em] text-slate-500">Launch Plan</div>
+            <div className="mt-5 text-sm font-black uppercase tracking-[0.24em] text-slate-500">{subscription.subscriptionPlan} Plan</div>
             <div className="mt-2 flex items-end gap-1 text-slate-950">
               <span className="text-4xl font-black">{money.format(subscription.monthlyAmount || 299)}</span>
               <span className="pb-1 text-sm font-bold text-slate-500">/ month</span>
             </div>
             <Button
               onClick={() => createOrderMutation.mutate()}
-              disabled={createOrderMutation.isPending || verifyMutation.isPending || subscription.organizationType === "PILOT"}
-              className="mt-6 h-12 w-full rounded-full bg-emerald-600 font-bold text-white hover:bg-emerald-700"
+              disabled={ctaDisabled}
+              className={`mt-6 h-12 w-full rounded-full font-bold text-white ${
+                isActive
+                  ? "bg-slate-900 hover:bg-slate-900"
+                  : isDeactivated
+                    ? "bg-rose-500 hover:bg-rose-500"
+                    : "bg-emerald-600 hover:bg-emerald-700"
+              }`}
             >
-              {createOrderMutation.isPending ? "Creating order..." : subscription.organizationType === "PILOT" ? "Pilot billing bypassed" : isPaymentRestricted ? "Pay Now" : "Renew Subscription"}
+              {ctaLabel}
             </Button>
           </div>
         </div>
@@ -255,6 +301,37 @@ export default function Subscription() {
           <div className="mt-2 text-3xl font-black text-slate-950">{subscription.emailUsage}</div>
         </div>
       </div>
+
+      {subscription.memberLimit && (
+        <div className="glass-panel rounded-[1.75rem] p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Member Limit</div>
+              <div className="mt-2 text-3xl font-black text-slate-950">
+                {subscription.memberLimit.unlimited
+                  ? `${subscription.memberLimit.usedMembers} / Unlimited`
+                  : `${subscription.memberLimit.usedMembers} / ${subscription.memberLimit.memberLimit ?? 0}`}
+              </div>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                {subscription.memberLimit.unlimited
+                  ? "Unlimited member capacity"
+                  : `${subscription.memberLimit.remainingSlots} slots remaining`}
+              </p>
+            </div>
+            {!subscription.memberLimit.unlimited && (
+              <div className="w-full max-w-md">
+                <div className="h-3 overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className="h-full rounded-full bg-emerald-600"
+                    style={{ width: `${Math.min(Math.max(subscription.memberLimit.usagePercent, 0), 100)}%` }}
+                  />
+                </div>
+                <div className="mt-2 text-right text-sm font-black text-slate-600">{subscription.memberLimit.usagePercent}%</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {manualOrder && (
         <div className="glass-panel rounded-[1.8rem] p-6">

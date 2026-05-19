@@ -1,7 +1,6 @@
 package com.gymflow.service;
 
 import com.gymflow.domain.Organization;
-import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.repository.OrganizationRepository;
 import jakarta.transaction.Transactional;
@@ -15,6 +14,7 @@ public class PilotConversionService {
 
     private final OrganizationRepository organizationRepository;
     private final UsageMetricService usageMetricService;
+    private final BillingLifecycleService billingLifecycleService;
 
     @Transactional
     public void convertEligiblePilots() {
@@ -26,11 +26,7 @@ public class PilotConversionService {
             if (organization.getOrganizationType() != OrganizationType.PILOT) {
                 continue;
             }
-            organization.setOrganizationType(OrganizationType.REGULAR);
-            organization.setStatus(OrganizationStatus.TRIAL);
-            organization.setTrialStartDate(today);
-            organization.setTrialEndDate(today.plusDays(14));
-            organization.setSubscriptionDueDate(today.plusDays(14));
+            billingLifecycleService.startRegularTrial(organization, today);
             usageMetricService.refreshMonthlySnapshot(organization);
         }
     }

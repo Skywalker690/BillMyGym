@@ -41,4 +41,21 @@ public class NotificationDeliveryLog extends BaseEntity {
 
     @Column(name = "last_attempt")
     private Instant lastAttempt;
+
+    @Column(nullable = false)
+    private String provider = "SYSTEM";
+
+    private String templateName;
+
+    private String recipient;
+
+    private String providerMessageId;
+
+    @Column(length = 1000)
+    private String errorMessage;
+
+    private Instant nextRetryAt;
+
+    @Column(columnDefinition = "text")
+    private String requestPayload;
 }

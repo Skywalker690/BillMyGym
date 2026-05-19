@@ -52,7 +52,8 @@ public class SecurityConfig {
                     "/api/auth/forgot-password",
                     "/api/auth/verify-otp",
                     "/api/auth/change-password",
-                    "/api/subscription/webhook"
+                    "/api/subscription/webhook",
+                    "/api/whatsapp/webhook"
                 ).permitAll()
                 .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
                 .requestMatchers("/actuator/**").denyAll()

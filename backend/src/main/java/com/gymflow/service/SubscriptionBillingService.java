@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class SubscriptionBillingService {
 
-    static final BigDecimal MONTHLY_AMOUNT = new BigDecimal("299.00");
     private static final String PAYMENT_LINK = "/app/subscription";
     private static final List<Integer> REMINDER_OFFSETS = List.of(7, 3, 1);
 
@@ -29,6 +28,9 @@ public class SubscriptionBillingService {
     private final UsageMetricService usageMetricService;
     private final EmailService emailService;
     private final NotificationDeliveryLogService notificationDeliveryLogService;
+    private final BillingLifecycleService billingLifecycleService;
+    private final WhatsAppDeliveryService whatsAppDeliveryService;
+    private final PlanAccessService planAccessService;
 
     @Transactional
     public void processDailyBilling() {
@@ -57,10 +59,11 @@ public class SubscriptionBillingService {
                 }
                 UsageMetric usage = usageMetricService.refreshMonthlySnapshot(organization);
                 String summary = billingSummary(usage);
+                BigDecimal monthlyAmount = planAccessService.resolvePlan(organization).monthlyAmount();
                 if (organization.getStatus() == OrganizationStatus.TRIAL) {
                     emailService.sendTrialEndingEmail(
                         organization,
-                        MONTHLY_AMOUNT,
+                        monthlyAmount,
                         dueDate,
                         PAYMENT_LINK,
                         usage.getMonthlyWhatsappCount(),
@@ -69,11 +72,12 @@ public class SubscriptionBillingService {
                         summary
                     );
                     notificationDeliveryLogService.recordSuccessfulDelivery(organization, NotificationType.TRIAL_ENDING);
+                    whatsAppDeliveryService.sendSubscriptionDue(organization, monthlyAmount, dueDate, PAYMENT_LINK);
                 } else {
                     emailService.sendSubscriptionReminderEmail(
                         organization,
                         organization.getAdminEmail(),
-                        MONTHLY_AMOUNT,
+                        monthlyAmount,
                         dueDate,
                         PAYMENT_LINK,
                         usage.getMonthlyWhatsappCount(),
@@ -82,6 +86,7 @@ public class SubscriptionBillingService {
                         summary
                     );
                     notificationDeliveryLogService.recordSuccessfulDelivery(organization, NotificationType.SUBSCRIPTION_REMINDER);
+                    whatsAppDeliveryService.sendSubscriptionDue(organization, monthlyAmount, dueDate, PAYMENT_LINK);
                 }
             }
         }
@@ -105,10 +110,7 @@ public class SubscriptionBillingService {
     }
 
     private void pauseOrganization(Organization organization, LocalDate today) {
-        organization.setStatus(OrganizationStatus.PAUSED);
-        if (organization.getPausedAt() == null) {
-            organization.setPausedAt(OffsetDateTime.now());
-        }
+        billingLifecycleService.markPaused(organization);
         if (notificationDeliveryLogService.hasSuccessfulDeliveryForDay(
             organization.getId(),
             NotificationType.SUBSCRIPTION_PAUSED,
@@ -119,7 +121,7 @@ public class SubscriptionBillingService {
         UsageMetric usage = usageMetricService.refreshMonthlySnapshot(organization);
         emailService.sendPausedNotificationEmail(
             organization,
-            MONTHLY_AMOUNT,
+            planAccessService.resolvePlan(organization).monthlyAmount(),
             organization.getSubscriptionDueDate() == null ? today : organization.getSubscriptionDueDate(),
             PAYMENT_LINK,
             usage.getMonthlyWhatsappCount(),
@@ -150,7 +152,7 @@ public class SubscriptionBillingService {
             UsageMetric usage = usageMetricService.refreshMonthlySnapshot(organization);
             emailService.sendDeactivatedNotificationEmail(
                 organization,
-                MONTHLY_AMOUNT,
+                planAccessService.resolvePlan(organization).monthlyAmount(),
                 organization.getSubscriptionDueDate() == null ? today : organization.getSubscriptionDueDate(),
                 PAYMENT_LINK,
                 usage.getMonthlyWhatsappCount(),

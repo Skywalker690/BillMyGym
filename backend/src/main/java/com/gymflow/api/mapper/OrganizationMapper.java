@@ -23,6 +23,7 @@ public class OrganizationMapper {
             organization.getDescription(),
             organization.getMonthlyMembershipFee(),
             organization.getOrganizationType(),
+            organization.getSubscriptionPlan(),
             organization.getStatus(),
             organization.getTrialStartDate(),
             organization.getTrialEndDate(),
@@ -50,6 +51,9 @@ public class OrganizationMapper {
         if (request.organizationType() != null) {
             organization.setOrganizationType(request.organizationType());
         }
+        if (request.subscriptionPlan() != null) {
+            organization.setSubscriptionPlan(request.subscriptionPlan());
+        }
         if (request.status() != null) {
             organization.setStatus(request.status());
         }
@@ -68,6 +72,9 @@ public class OrganizationMapper {
         organization.setDescription(request.organizationDescription());
         if (request.organizationType() != null) {
             organization.setOrganizationType(request.organizationType());
+        }
+        if (request.subscriptionPlan() != null) {
+            organization.setSubscriptionPlan(request.subscriptionPlan());
         }
         return organization;
     }

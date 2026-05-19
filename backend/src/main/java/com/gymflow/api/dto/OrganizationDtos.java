@@ -2,6 +2,7 @@ package com.gymflow.api.dto;
 
 import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.domain.enums.OrganizationType;
+import com.gymflow.domain.enums.SubscriptionPlan;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -24,6 +25,7 @@ public class OrganizationDtos {
         String description,
         BigDecimal monthlyMembershipFee,
         OrganizationType organizationType,
+        SubscriptionPlan subscriptionPlan,
         OrganizationStatus status,
         LocalDate trialStartDate,
         LocalDate trialEndDate,
@@ -47,6 +49,7 @@ public class OrganizationDtos {
         String description,
         @PositiveOrZero BigDecimal monthlyMembershipFee,
         OrganizationType organizationType,
+        SubscriptionPlan subscriptionPlan,
         OrganizationStatus status
     ) {
     }

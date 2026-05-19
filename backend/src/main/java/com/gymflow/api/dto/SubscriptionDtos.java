@@ -2,6 +2,7 @@ package com.gymflow.api.dto;
 
 import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.domain.enums.OrganizationType;
+import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.domain.enums.SubscriptionPaymentStatus;
 import jakarta.validation.constraints.NotBlank;
 import java.math.BigDecimal;
@@ -36,6 +37,7 @@ public class SubscriptionDtos {
         String organizationName,
         OrganizationType organizationType,
         OrganizationStatus organizationStatus,
+        SubscriptionPlan subscriptionPlan,
         BigDecimal monthlyAmount,
         LocalDate trialEndsAt,
         LocalDate pilotEndsAt,
@@ -45,7 +47,28 @@ public class SubscriptionDtos {
         long whatsappUsage,
         long emailUsage,
         long activeMembers,
+        MemberLimitResponse memberLimit,
+        PlanAccessResponse planAccess,
         List<SubscriptionPaymentResponse> paymentHistory
+    ) {
+    }
+
+    public record MemberLimitResponse(
+        SubscriptionPlan plan,
+        long usedMembers,
+        Integer memberLimit,
+        boolean unlimited,
+        long remainingSlots,
+        int usagePercent
+    ) {
+    }
+
+    public record PlanAccessResponse(
+        boolean canCreateMembers,
+        boolean canViewAdvancedAnalytics,
+        boolean canReceiveMonthlyReports,
+        boolean canExportReports,
+        boolean canUsePremiumFeatures
     ) {
     }
 

@@ -15,6 +15,7 @@ const orgSchema = z.object({
   name: z.string().min(1, "Organization name is required"),
   district: z.string().min(1, "District is required"),
   organizationType: z.enum(["REGULAR", "PILOT"]),
+  subscriptionPlan: z.enum(["STARTER", "GROWTH", "PRO"]),
   adminName: z.string().min(1, "Admin name is required"),
   adminEmail: z.string().email("Invalid email address"),
   adminPhone: z.string().min(1, "Admin phone is required"),
@@ -37,6 +38,7 @@ export default function OrganizationForm() {
     mode: "onTouched",
     defaultValues: {
       organizationType: "REGULAR",
+      subscriptionPlan: "STARTER",
     },
   });
   const values = watch();
@@ -53,6 +55,7 @@ export default function OrganizationForm() {
       adminEmail: data.adminEmail,
       organizationDescription: data.description || null,
       organizationType: data.organizationType,
+      subscriptionPlan: data.organizationType === "PILOT" ? "PILOT" : data.subscriptionPlan,
       password: data.password,
     }),
     onSuccess: () => {
@@ -70,7 +73,7 @@ export default function OrganizationForm() {
   const nextStep = async () => {
     let isValid = false;
     if (step === 1) {
-      isValid = await trigger(["name", "district", "organizationType"]);
+      isValid = await trigger(["name", "district", "organizationType", "subscriptionPlan"]);
     } else if (step === 2) {
       isValid = await trigger(["adminName", "adminEmail", "adminPhone", "password"]);
     }
@@ -127,6 +130,22 @@ export default function OrganizationForm() {
                   {errors.district && <p className="text-red-500 text-sm font-medium">{errors.district.message}</p>}
                 </div>
               </div>
+
+              {values.organizationType !== "PILOT" && (
+                <div className="rounded-[1.5rem] border border-slate-200 bg-white/60 p-5">
+                  <Label htmlFor="subscriptionPlan" className="font-semibold text-slate-700 dark:text-slate-300">Subscription Plan <span className="text-red-500">*</span></Label>
+                  <select
+                    id="subscriptionPlan"
+                    {...register("subscriptionPlan")}
+                    className="mt-2 h-11 w-full rounded-xl border border-black/5 bg-white/75 px-4 py-2 text-sm font-semibold text-slate-900 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 dark:border-white/10 dark:bg-slate-900/50 dark:text-slate-100"
+                  >
+                    <option value="STARTER">Starter - Rs. 299/month - 100 members</option>
+                    <option value="GROWTH">Growth - Rs. 699/month - 500 members</option>
+                    <option value="PRO">Pro - Rs. 1499/month - unlimited members</option>
+                  </select>
+                  {errors.subscriptionPlan && <p className="text-red-500 text-sm font-medium mt-2">{errors.subscriptionPlan.message}</p>}
+                </div>
+              )}
 
               <div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50/60 p-5">
                 <Label htmlFor="organizationType" className="font-semibold text-slate-700 dark:text-slate-300">Access Type <span className="text-red-500">*</span></Label>
@@ -233,6 +252,7 @@ export default function OrganizationForm() {
                       <div className="text-slate-500 dark:text-slate-400 font-medium">Name:</div><div className="font-bold text-slate-900 dark:text-white">{values.name || "Untitled organization"}</div>
                       <div className="text-slate-500 dark:text-slate-400 font-medium">District:</div><div className="font-bold text-slate-900 dark:text-white">{values.district || "-"}</div>
                       <div className="text-slate-500 dark:text-slate-400 font-medium">Access Type:</div><div className="font-bold text-slate-900 dark:text-white">{values.organizationType || "REGULAR"}</div>
+                      <div className="text-slate-500 dark:text-slate-400 font-medium">Plan:</div><div className="font-bold text-slate-900 dark:text-white">{values.organizationType === "PILOT" ? "PILOT" : values.subscriptionPlan || "STARTER"}</div>
                       <div className="text-slate-500 dark:text-slate-400 font-medium">Admin:</div><div className="font-bold text-slate-900 dark:text-white">{values.adminName || "-"}</div>
                       <div className="text-slate-500 dark:text-slate-400 font-medium">Email:</div><div className="font-bold text-slate-900 dark:text-white">{values.adminEmail || "-"}</div>
                    </div>

@@ -6,6 +6,7 @@ import com.gymflow.api.dto.MemberDtos.MemberDirectoryItem;
 import com.gymflow.api.dto.MemberDtos.MemberDirectorySummary;
 import com.gymflow.api.dto.MemberDtos.MemberPageResponse;
 import com.gymflow.api.dto.MemberDtos.MemberResponse;
+import com.gymflow.api.dto.SubscriptionDtos.MemberLimitResponse;
 import com.gymflow.api.error.BadRequestException;
 import com.gymflow.api.error.NotFoundException;
 import com.gymflow.api.mapper.MemberMapper;
@@ -52,8 +53,10 @@ public class MemberService {
     private final OrganizationRepository organizationRepository;
     private final MemberMapper memberMapper;
     private final MembershipLifecycleService membershipLifecycleService;
+    private final MemberMembershipService memberMembershipService;
     private final MemberCreditLedgerService memberCreditLedgerService;
     private final OrganizationSettingService organizationSettingService;
+    private final MemberLimitService memberLimitService;
     private final AuditLogService auditLogService;
 
     @Transactional
@@ -62,6 +65,7 @@ public class MemberService {
         int normalizedSize = Math.min(Math.max(size, 1), 40);
         int reminderDays = organizationSettingService.getOrCreateSettings(orgId).getReminderDaysBeforeExpiry();
         LocalDate today = LocalDate.now();
+        memberMembershipService.refreshMembershipStatuses(orgId);
         String normalizedSearch = hasText(search) ? search.trim() : null;
         String normalizedMembershipStatus = hasText(membershipStatus) && !"ALL".equalsIgnoreCase(membershipStatus)
             ? membershipStatus.trim().toUpperCase()
@@ -103,6 +107,10 @@ public class MemberService {
         Organization organization = organizationRepository.findByIdAndDeletedFalse(orgId)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
         ensurePhoneUnique(orgId, request.phone(), null);
+        memberLimitService.validateCanCreateMember(
+            organization,
+            request.status() == null ? MemberStatus.ACTIVE : request.status()
+        );
 
         Member member = memberMapper.toNewEntity(request, organization);
         applyMemberStatusSideEffects(member);
@@ -124,6 +132,11 @@ public class MemberService {
         Member member = memberRepository.findByIdAndOrganizationIdAndDeletedFalse(memberId, orgId)
             .orElseThrow(() -> new NotFoundException("Member not found"));
         ensurePhoneUnique(orgId, request.phone(), memberId);
+        memberLimitService.validateCanActivateMember(
+            member.getOrganization(),
+            member.getStatus(),
+            request.status() == null ? MemberStatus.ACTIVE : request.status()
+        );
         memberMapper.apply(member, request);
         applyMemberStatusSideEffects(member);
 
@@ -210,8 +223,23 @@ public class MemberService {
             memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(orgId, MemberStatus.DEACTIVATED),
             memberMembershipRepository.countByOrganizationIdAndDeletedFalseAndStatus(orgId, MembershipStatus.ACTIVE),
             memberMembershipRepository.countExpiringSoon(orgId, today, today.plusDays(reminderDays)),
-            memberMembershipRepository.countByOrganizationIdAndDeletedFalseAndStatus(orgId, MembershipStatus.EXPIRED),
-            memberMembershipRepository.countByOrganizationIdAndDeletedFalseAndStatus(orgId, MembershipStatus.OVERDUE)
+            memberMembershipRepository.countExpiredOn(orgId, today),
+            memberMembershipRepository.countOverdueBefore(orgId, today),
+            toMemberLimitResponse(memberLimitService.usage(
+                organizationRepository.findByIdAndDeletedFalse(orgId)
+                    .orElseThrow(() -> new NotFoundException("Organization not found"))
+            ))
+        );
+    }
+
+    private MemberLimitResponse toMemberLimitResponse(MemberLimitService.MemberLimitSummary summary) {
+        return new MemberLimitResponse(
+            summary.plan(),
+            summary.usedMembers(),
+            summary.memberLimit(),
+            summary.unlimited(),
+            summary.remainingSlots(),
+            summary.usagePercent()
         );
     }
 

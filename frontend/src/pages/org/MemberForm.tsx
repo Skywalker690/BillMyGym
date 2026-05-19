@@ -1,16 +1,19 @@
-import { useEffect } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CreditCard, UserCog, UserPlus } from "lucide-react";
+import { ArrowLeft, CreditCard, Info, Sparkles, UserCog, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
+
+type MemberFormMode = "create" | "edit" | "renew";
 
 const memberSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -28,12 +31,30 @@ const memberSchema = z.object({
 type MemberFormValues = z.infer<typeof memberSchema>;
 type MemberFormInput = z.input<typeof memberSchema>;
 
-export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
+const scaleCurrency = (value: number) => Number(value.toFixed(2));
+
+const resolvePlanUnitAmount = (planAmount: number, durationMonths: number, fallbackAmount: number) => {
+  if (durationMonths > 0 && planAmount > 0) {
+    return scaleCurrency(planAmount / durationMonths);
+  }
+  return fallbackAmount;
+};
+
+const resolveDefaultCollectedAmount = (mode: MemberFormMode, planAmount: number, unitAmount: number) =>
+  mode === "create" ? scaleCurrency(planAmount + unitAmount) : scaleCurrency(planAmount);
+
+export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const memberId = id && /^\d+$/.test(id) ? Number(id) : null;
-  const canLoadMember = Boolean(isEdit && memberId);
+  const isCreate = mode === "create";
+  const isEdit = mode === "edit";
+  const isRenew = mode === "renew";
+  const canLoadMember = Boolean((isEdit || isRenew) && memberId);
+  const [autoMultiplyPlan, setAutoMultiplyPlan] = useState(true);
+  const [planUnitAmount, setPlanUnitAmount] = useState<number | null>(null);
 
   const { data: member, isLoading: memberLoading } = useQuery({
     queryKey: ["member", memberId],
@@ -57,7 +78,17 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
     refetchOnWindowFocus: false,
   });
 
-  const { register, watch, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<MemberFormInput, unknown, MemberFormValues>({
+  const { data: organization } = useQuery({
+    queryKey: ["memberFormOrganization", user?.organizationId],
+    queryFn: async () => {
+      const res = await api.get(`/organizations/${user?.organizationId}`);
+      return res.data;
+    },
+    enabled: Boolean(user?.organizationId),
+    staleTime: 60_000,
+  });
+
+  const { register, watch, setValue, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<MemberFormInput, unknown, MemberFormValues>({
     resolver: zodResolver(memberSchema),
     defaultValues: {
       fullName: "",
@@ -73,9 +104,21 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
     },
   });
   const selectedStatus = watch("status");
+  const watchedDurationMonths = Number(watch("durationMonths") ?? 1);
+  const watchedPlanAmount = Number(watch("planAmount") ?? 0);
+  const watchedInitialPaymentAmount = Number(watch("initialPaymentAmount") ?? 0);
+  const organizationMonthlyFee = Number(organization?.monthlyMembershipFee ?? 0);
+  const normalizedDurationMonths = Number.isFinite(watchedDurationMonths) && watchedDurationMonths > 0
+    ? watchedDurationMonths
+    : 1;
+  const effectivePlanUnitAmount = planUnitAmount ?? organizationMonthlyFee;
+  const durationMonthsField = register("durationMonths", { valueAsNumber: true });
+  const planAmountField = register("planAmount", { valueAsNumber: true });
+  const paymentCollectedField = register("initialPaymentAmount", { valueAsNumber: true });
 
   useEffect(() => {
     if (member && isEdit) {
+      setPlanUnitAmount(null);
       reset({
         fullName: member.fullName ?? "",
         phone: member.phone ?? "",
@@ -89,7 +132,57 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
         initialPaymentAmount: 0,
       });
     }
-  }, [member, isEdit, reset]);
+    if (member && isRenew) {
+      setPlanUnitAmount(null);
+      reset({
+        fullName: member.fullName ?? "",
+        phone: member.phone ?? "",
+        email: member.email ?? "",
+        status: member.status ?? "ACTIVE",
+        deactivationReason: member.deactivationReason ?? "",
+        notes: member.notes ?? "",
+        durationMonths: 1,
+        planAmount: 0,
+        startDate: new Date().toISOString().slice(0, 10),
+        initialPaymentAmount: 0,
+      });
+    }
+  }, [member, isEdit, isRenew, reset]);
+
+  useEffect(() => {
+    if (!organization || planUnitAmount !== null) {
+      return;
+    }
+    const seededPlanAmount = scaleCurrency(organizationMonthlyFee * normalizedDurationMonths);
+    setPlanUnitAmount(organizationMonthlyFee);
+    setValue("planAmount", seededPlanAmount, { shouldDirty: false });
+    setValue("initialPaymentAmount", resolveDefaultCollectedAmount(mode, seededPlanAmount, organizationMonthlyFee), { shouldDirty: false });
+  }, [
+    mode,
+    organization,
+    organizationMonthlyFee,
+    planUnitAmount,
+    normalizedDurationMonths,
+    setValue,
+  ]);
+
+  const handleDurationMonthsChange = (event: ChangeEvent<HTMLInputElement>) => {
+    durationMonthsField.onChange(event);
+    const nextDuration = Math.max(1, Number(event.target.value) || 1);
+    const nextUnitAmount = resolvePlanUnitAmount(watchedPlanAmount, normalizedDurationMonths, effectivePlanUnitAmount);
+    const nextPlanAmount = scaleCurrency(nextUnitAmount * nextDuration);
+    setPlanUnitAmount(nextUnitAmount);
+    setValue("planAmount", nextPlanAmount, { shouldDirty: true });
+    setValue("initialPaymentAmount", resolveDefaultCollectedAmount(mode, nextPlanAmount, nextUnitAmount), { shouldDirty: true });
+  };
+
+  const handlePlanAmountChange = (event: ChangeEvent<HTMLInputElement>) => {
+    planAmountField.onChange(event);
+    const nextPlanAmount = Math.max(0, Number(event.target.value) || 0);
+    const nextUnitAmount = resolvePlanUnitAmount(nextPlanAmount, normalizedDurationMonths, nextPlanAmount);
+    setPlanUnitAmount(nextUnitAmount);
+    setValue("initialPaymentAmount", resolveDefaultCollectedAmount(mode, nextPlanAmount, nextUnitAmount), { shouldDirty: true });
+  };
 
   const mutation = useMutation({
     mutationFn: async (data: MemberFormValues) => {
@@ -101,12 +194,13 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
         deactivationReason: data.status === "DEACTIVATED" ? data.deactivationReason : null,
         notes: data.notes,
       };
-      const memberResponse = isEdit
-        ? await api.patch(`/members/${memberId}`, memberPayload)
-        : await api.post("/members", memberPayload);
-      const savedMember = memberResponse.data;
+      const savedMember = isCreate
+        ? (await api.post("/members", memberPayload)).data
+        : isEdit
+          ? (await api.patch(`/members/${memberId}`, memberPayload)).data
+          : member;
 
-      if (data.durationMonths && data.planAmount !== undefined && data.planAmount > 0) {
+      if ((isCreate || isRenew) && savedMember && data.durationMonths && data.planAmount !== undefined && data.planAmount > 0) {
         const membershipResponse = await api.post(`/members/${savedMember.id}/memberships`, {
           durationMonths: data.durationMonths,
           planAmount: data.planAmount,
@@ -118,9 +212,8 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
             membershipId: membership.id,
             amount: data.initialPaymentAmount,
             paymentDate: new Date().toISOString().slice(0, 10),
-            paymentType: isEdit ? "RENEWAL" : "NEW_MEMBERSHIP",
+            paymentType: isRenew ? "RENEWAL" : "NEW_MEMBERSHIP",
             paymentStatus: data.initialPaymentAmount >= data.planAmount ? "PAID" : "PARTIAL",
-            notes: isEdit ? "Membership payment" : "Initial membership payment",
           });
         }
       }
@@ -130,114 +223,314 @@ export default function MemberForm({ isEdit }: { isEdit?: boolean }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardReport"] });
-      toast.success(`Member ${isEdit ? "updated" : "created"} successfully`);
+      toast.success(
+        isCreate
+          ? "Member created successfully"
+          : isEdit
+            ? "Member updated successfully"
+            : "Membership renewed successfully"
+      );
       navigate("/app/members");
     },
-    onError: () => toast.error(`Failed to ${isEdit ? "update" : "create"} member`),
+    onError: () => toast.error(
+      isCreate
+        ? "Failed to create member"
+        : isEdit
+          ? "Failed to update member"
+          : "Failed to renew membership"
+    ),
   });
 
-  if (isEdit && !memberId) {
+  if ((isEdit || isRenew) && !memberId) {
     return <div className="p-8">Invalid member link.</div>;
   }
 
-  if (isEdit && memberLoading) return <div className="p-8">Loading member...</div>;
+  if ((isEdit || isRenew) && memberLoading) return <div className="p-8">Loading member...</div>;
 
   const currentMembership = memberships?.[0];
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center space-x-4 mb-8 bg-white/40 dark:bg-slate-900/40 p-6 rounded-2xl backdrop-blur-xl border border-white/60 dark:border-white/10 shadow-sm">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/app/members")} className="rounded-full mr-2">
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="bg-indigo-100/50 dark:bg-indigo-900/40 p-4 rounded-2xl text-indigo-600 dark:text-indigo-400 shadow-sm">
-          {isEdit ? <UserCog className="w-8 h-8" /> : <UserPlus className="w-8 h-8" />}
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">{isEdit ? "Edit Member" : "Create Member"}</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">Identity is saved separately from membership history and payments.</p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-6">
-        <div className="glass-panel overflow-hidden">
-          <div className="p-6 border-b border-black/5 dark:border-white/5">
-            <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Member Identity</h2>
-            {isEdit && currentMembership && (
-              <p className="text-sm text-slate-500 mt-2">
-                Current membership: {currentMembership.durationMonths} month plan | {currentMembership.status} | ends {new Date(currentMembership.endDate).toLocaleDateString()}
-              </p>
-            )}
-          </div>
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Field label="Full Name" error={errors.fullName?.message}>
-              <Input {...register("fullName")} className="h-11 rounded-xl" />
-            </Field>
-            <Field label="Phone" error={errors.phone?.message}>
-              <Input {...register("phone")} className="h-11 rounded-xl" />
-            </Field>
-            <Field label="Email" error={errors.email?.message}>
-              <Input type="email" {...register("email")} className="h-11 rounded-xl" />
-            </Field>
-            <Field label="Status">
-              <select {...register("status")} className="w-full h-11 rounded-xl border border-black/10 dark:border-white/10 bg-white/50 dark:bg-slate-900/50 px-4 text-sm">
-                <option value="ACTIVE">Active</option>
-                <option value="PAUSED">Paused</option>
-                <option value="DEACTIVATED">Deactivated</option>
-              </select>
-            </Field>
-            {selectedStatus === "DEACTIVATED" && (
-              <div className="md:col-span-2">
-                <Field label="Deactivation Reason">
-                  <Input {...register("deactivationReason")} className="h-11 rounded-xl" />
-                </Field>
+    <div className="mx-auto max-w-6xl space-y-8 p-8 pb-16">
+      <section className="billmygym-shell relative overflow-hidden rounded-[2rem] p-8">
+        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/app/members")}
+              className="mt-1 rounded-full border border-white/70 bg-white/70 shadow-sm hover:bg-white"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex h-16 w-16 items-center justify-center rounded-[1.7rem] bg-white/75 text-emerald-700 shadow-[0_18px_35px_-24px_rgba(21,128,61,0.55)]">
+              {isEdit ? <UserCog className="h-8 w-8" /> : <UserPlus className="h-8 w-8" />}
+            </div>
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.28em] text-emerald-700">
+                {isCreate ? "New Member Onboarding" : isEdit ? "Member Update" : "Membership Renewal"}
               </div>
-            )}
-            <div className="md:col-span-2 space-y-2">
-              <Label className="font-semibold text-slate-700 dark:text-slate-300">Notes</Label>
-              <textarea {...register("notes")} className="w-full min-h-24 rounded-xl border border-black/10 dark:border-white/10 bg-white/50 dark:bg-slate-900/50 p-4 text-sm" />
+              <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
+                {isCreate ? "Create Member" : isEdit ? "Edit Member" : "Renew Membership"}
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-600">
+                {isCreate
+                  ? "Capture identity, membership, and first payment in one polished flow that matches the rest of your organization workspace."
+                  : isEdit
+                    ? "Update only the member identity and account details here without touching the membership lifecycle."
+                    : "Create the next membership period and collect the renewal payment from one focused workspace."}
+              </p>
             </div>
           </div>
+
+          {(isCreate || isRenew) && (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <HeroChip label="Base Monthly Fee" value={`INR ${organizationMonthlyFee.toLocaleString("en-IN")}`} />
+              <HeroChip label="Membership Total" value={`INR ${watchedPlanAmount.toLocaleString("en-IN")}`} />
+              <HeroChip label="Total Payment Amount" value={`INR ${watchedInitialPaymentAmount.toLocaleString("en-IN")}`} />
+            </div>
+          )}
+        </div>
+      </section>
+
+      <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-6">
+        <div className={`grid gap-6 ${isEdit ? "" : "xl:grid-cols-[1.08fr_0.92fr]"}`}>
+          <div className="space-y-6">
+            <div className="overflow-hidden rounded-[1.9rem] border border-white/85 bg-white/90 shadow-[0_20px_50px_-30px_rgba(15,23,42,0.22)]">
+              <div className="border-b border-black/5 bg-white/20 p-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                    {isEdit ? <UserCog className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black tracking-tight text-slate-950">Member Identity</h2>
+                    <p className="mt-1 text-sm font-medium text-slate-500">
+                      {isRenew ? "Renewal keeps identity locked here so the membership flow stays focused." : "Identity stays separate from membership history and payment activity."}
+                    </p>
+                  </div>
+                </div>
+            {(isEdit || isRenew) && currentMembership && (
+                      <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-3 text-sm font-semibold text-emerald-900">
+                        Current membership: {currentMembership.durationMonths} month plan | {currentMembership.status} | ends {new Date(currentMembership.endDate).toLocaleDateString()}
+                      </div>
+            )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2">
+                <Field label="Full Name" error={errors.fullName?.message}>
+                  <Input {...register("fullName")} disabled={isRenew} className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" />
+                </Field>
+                <Field label="Phone" error={errors.phone?.message}>
+                  <Input {...register("phone")} disabled={isRenew} className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" />
+                </Field>
+                <Field label="Email" error={errors.email?.message}>
+                  <Input type="email" {...register("email")} disabled={isRenew} className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" />
+                </Field>
+                <Field label="Status">
+                  <select {...register("status")} disabled={isRenew} className="h-12 w-full rounded-2xl border border-black/5 bg-white/70 px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">
+                    <option value="ACTIVE">Active</option>
+                    <option value="PAUSED">Paused</option>
+                    <option value="DEACTIVATED">Deactivated</option>
+                  </select>
+                </Field>
+                {selectedStatus === "DEACTIVATED" && !isRenew && (
+                  <div className="md:col-span-2">
+                    <Field label="Deactivation Reason">
+                      <Input {...register("deactivationReason")} className="h-12 rounded-2xl border-black/5 bg-white/70" />
+                    </Field>
+                  </div>
+                )}
+                <div className="md:col-span-2 space-y-2">
+                  <Label className="font-semibold text-slate-700">Notes</Label>
+                  <textarea
+                    {...register("notes")}
+                    disabled={isRenew}
+                    className="min-h-28 w-full rounded-[1.35rem] border border-black/5 bg-white/70 p-4 text-sm text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {(isCreate || isRenew) && (
+          <div className="space-y-6">
+            <div className="overflow-hidden rounded-[1.9rem] border border-white/85 bg-white/90 shadow-[0_20px_50px_-30px_rgba(15,23,42,0.22)]">
+              <div className="relative overflow-hidden border-b border-black/5 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_42%),linear-gradient(135deg,rgba(255,255,255,0.82),rgba(236,253,245,0.62))] p-6">
+                <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/12 text-emerald-700 shadow-sm">
+                        <CreditCard className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-black tracking-tight text-slate-950">
+                          {isCreate ? "Initial Membership" : "Membership Renewal"}
+                        </h2>
+                        <p className="mt-1 text-sm font-medium text-slate-600">
+                          {isCreate
+                            ? "Start from your organization monthly fee, then let the current plan amount become the monthly base if you override it."
+                            : "Use the selected monthly unit and duration to build the renewal total without the member-creation extra collection logic."}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap items-center gap-3">
+                      <label className="inline-flex cursor-pointer items-center gap-3 rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+                          checked={autoMultiplyPlan}
+                          onChange={(event) => setAutoMultiplyPlan(event.target.checked)}
+                        />
+                        Auto multiply by duration
+                      </label>
+                      <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-emerald-700">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Monthly base INR {organizationMonthlyFee.toLocaleString("en-IN")}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid min-w-[280px] gap-3 sm:grid-cols-2 lg:w-[360px] lg:grid-cols-1">
+                    <PricingChip label="Membership Total" value={`INR ${watchedPlanAmount.toLocaleString("en-IN")}`} tone="slate" />
+                    <PricingChip
+                      label="Total Payment Amount"
+                      value={`INR ${watchedInitialPaymentAmount.toLocaleString("en-IN")}`}
+                      tone="emerald"
+                      tooltip={isCreate ? "Base fee plus admission fee" : undefined}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2">
+                <Field label="Duration Months" hint="Changing this updates both plan amount and payment amount automatically.">
+                  <Input
+                    type="number"
+                    min="1"
+                    {...durationMonthsField}
+                    onChange={handleDurationMonthsChange}
+                    className="h-12 rounded-2xl border-black/5 bg-white/70 text-center text-lg font-black tracking-tight"
+                  />
+                </Field>
+                <Field
+                  label={autoMultiplyPlan ? "Plan Amount (Auto)" : "Plan Amount"}
+                  hint={autoMultiplyPlan ? "Current monthly unit x duration months." : "Manual override is allowed, and the new amount becomes the monthly unit for future duration changes."}
+                >
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    {...planAmountField}
+                    onChange={handlePlanAmountChange}
+                    disabled={autoMultiplyPlan}
+                    className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                  />
+                </Field>
+                <Field label="Start Date">
+                  <Input type="date" {...register("startDate")} className="h-12 rounded-2xl border-black/5 bg-white/70" />
+                </Field>
+                <Field
+                  label="Payment Collected"
+                  hint={
+                    isCreate
+                      ? autoMultiplyPlan
+                        ? "Default is plan amount plus one extra current monthly unit."
+                        : "Changing duration refreshes the default amount using the current plan-based monthly unit, and higher values are still allowed."
+                      : "Default matches the renewal plan amount."
+                  }
+                >
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    {...paymentCollectedField}
+                    className="h-12 rounded-2xl border-black/5 bg-white/70"
+                  />
+                </Field>
+              </div>
+            </div>
+          </div>
+          )}
         </div>
 
-        <div className="glass-panel overflow-hidden">
-          <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center gap-3">
-            <CreditCard className="w-5 h-5 text-emerald-600" />
-            <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{isEdit ? "New Membership / Renewal" : "Initial Membership"}</h2>
+        <div className="sticky bottom-4 z-20 flex flex-col gap-4 rounded-[1.8rem] border border-white/85 bg-white/92 p-5 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.28)] sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Ready To Save</div>
+            <p className="mt-1 text-sm font-medium text-slate-600">
+              {isCreate
+                ? "This will create the member record and, if pricing is filled, the initial membership and payment entry too."
+                : isEdit
+                  ? "This will update only the member profile details."
+                  : "This will create the renewal membership and its payment entry without changing the member profile."}
+            </p>
           </div>
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Field label="Duration Months">
-              <Input type="number" min="1" {...register("durationMonths")} className="h-11 rounded-xl" />
-            </Field>
-            <Field label="Plan Amount">
-              <Input type="number" min="0" step="0.01" {...register("planAmount")} className="h-11 rounded-xl" />
-            </Field>
-            <Field label="Start Date">
-              <Input type="date" {...register("startDate")} className="h-11 rounded-xl" />
-            </Field>
-            <Field label="Payment Collected">
-              <Input type="number" min="0" step="0.01" {...register("initialPaymentAmount")} className="h-11 rounded-xl" />
-            </Field>
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => navigate(-1)} className="rounded-full border-white/80 bg-white/70 px-6">Cancel</Button>
+            <Button type="submit" disabled={isSubmitting || mutation.isPending} className="rounded-full bg-emerald-600 px-8 font-bold text-white hover:bg-emerald-700">
+            {isSubmitting || mutation.isPending ? "Saving..." : isCreate ? "Create Member" : isEdit ? "Save Member" : "Renew Membership"}
+            </Button>
           </div>
-        </div>
-
-        <div className="flex justify-end gap-3">
-          <Button type="button" variant="outline" onClick={() => navigate(-1)} className="rounded-full px-6">Cancel</Button>
-          <Button type="submit" disabled={isSubmitting || mutation.isPending} className="rounded-full px-8 bg-indigo-600 hover:bg-indigo-700 text-white">
-            {isSubmitting || mutation.isPending ? "Saving..." : "Save"}
-          </Button>
         </div>
       </form>
     </div>
   );
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+function Field({ label, error, hint, children }: { label: string; error?: string; hint?: string; children: ReactNode }) {
   return (
     <div className="space-y-2">
-      <Label className="font-semibold text-slate-700 dark:text-slate-300">{label}</Label>
+      <div className="flex items-center justify-between gap-3">
+        <Label className="font-semibold text-slate-700 dark:text-slate-300">{label}</Label>
+        {hint && <span className="text-[11px] font-semibold text-slate-400">{hint}</span>}
+      </div>
       {children}
       {error && <p className="text-red-500 text-sm font-medium">{error}</p>}
+    </div>
+  );
+}
+
+function PricingChip({
+  label,
+  value,
+  tone,
+  tooltip,
+}: {
+  label: string;
+  value: string;
+  tone: "slate" | "emerald" | "amber";
+  tooltip?: string;
+}) {
+  const toneClasses = {
+    slate: "border-slate-200 bg-white/80 text-slate-900",
+    emerald: "border-emerald-200 bg-emerald-50/80 text-emerald-900",
+    amber: "border-amber-200 bg-amber-50/80 text-amber-900",
+  }[tone];
+
+  return (
+    <div className={`rounded-2xl border px-4 py-3 shadow-sm ${toneClasses}`}>
+      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] opacity-70">
+        <span>{label}</span>
+        {tooltip && (
+          <div className="group relative">
+            <span className="flex h-4 w-4 items-center justify-center rounded-full border border-current/20 bg-white/70 text-current/80 transition-colors duration-200 hover:bg-white">
+              <Info className="h-2.5 w-2.5" />
+            </span>
+            <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-max -translate-x-1/2 rounded-full bg-slate-950 px-3 py-1.5 text-[10px] font-semibold normal-case tracking-normal text-white opacity-0 shadow-lg transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+              {tooltip}
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="mt-1 text-lg font-black">{value}</div>
+    </div>
+  );
+}
+
+function HeroChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/80 bg-white/75 px-4 py-3 shadow-sm">
+      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">{label}</div>
+      <div className="mt-1 text-lg font-black text-slate-950">{value}</div>
     </div>
   );
 }

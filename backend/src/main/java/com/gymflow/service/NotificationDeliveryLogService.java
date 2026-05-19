@@ -39,6 +39,8 @@ public class NotificationDeliveryLogService {
         log.setNotification(notification);
         log.setOrganization(organization);
         log.setType(type);
+        log.setProvider(notification == null || notification.getChannel() == null ? "SYSTEM" : notification.getChannel().name());
+        log.setRecipient(notification == null ? null : notification.getRecipient());
         log.setStatus(NotificationDeliveryStatus.PENDING);
         log.setAttemptCount(0);
         return notificationDeliveryLogRepository.save(log);
@@ -56,6 +58,7 @@ public class NotificationDeliveryLogService {
         NotificationDeliveryLog log = new NotificationDeliveryLog();
         log.setOrganization(organization);
         log.setType(type);
+        log.setProvider("SYSTEM");
         log.setStatus(NotificationDeliveryStatus.SENT);
         log.setAttemptCount(1);
         log.setLastAttempt(Instant.now());

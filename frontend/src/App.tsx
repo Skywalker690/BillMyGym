@@ -60,8 +60,9 @@ export default function App() {
               <Route element={<ProtectedRoute allowedRoles={["ORG_ADMIN"]} />}>
                 <Route path="/app/dashboard" element={<Dashboard />} />
                 <Route path="/app/members" element={<MembersList />} />
-                <Route path="/app/members/new" element={<MemberForm />} />
-                <Route path="/app/members/:id/edit" element={<MemberForm isEdit />} />
+                <Route path="/app/members/new" element={<MemberForm mode="create" />} />
+                <Route path="/app/members/:id/edit" element={<MemberForm mode="edit" />} />
+                <Route path="/app/members/:id/renew" element={<MemberForm mode="renew" />} />
                 <Route path="/app/reminders" element={<Reminders />} />
                 <Route path="/app/notifications" element={<Notifications />} />
                 <Route path="/app/subscription" element={<Subscription />} />

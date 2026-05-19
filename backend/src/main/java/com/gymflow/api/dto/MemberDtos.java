@@ -73,7 +73,8 @@ public class MemberDtos {
         long activeMemberships,
         long expiringSoonMemberships,
         long expiredMemberships,
-        long overdueMemberships
+        long overdueMemberships,
+        SubscriptionDtos.MemberLimitResponse memberLimit
     ) {
     }
 
