@@ -126,7 +126,7 @@ public class EmailService {
     ) {
         sendHtmlEmail(
             organization.getAdminEmail(),
-            "BillMyGym trial ending - " + organization.getName(),
+            "BillMyGym free trial access ending - " + organization.getName(),
             buildTrialEndingEmail(organization, amountDue, dueDate, paymentLink, whatsappUsage, emailUsage, activeMembers, lastBillingSummary),
             true,
             organization
@@ -206,7 +206,7 @@ public class EmailService {
     ) {
         sendHtmlEmail(
             organization.getAdminEmail(),
-            "BillMyGym access paused - " + organization.getName(),
+            "BillMyGym subscription renewal required - " + organization.getName(),
             buildPausedNotificationEmail(
                 organization,
                 amountDue,
@@ -235,7 +235,7 @@ public class EmailService {
     ) {
         sendHtmlEmail(
             organization.getAdminEmail(),
-            "BillMyGym organization deactivated - " + organization.getName(),
+            "BillMyGym account inactive - " + organization.getName(),
             buildDeactivatedNotificationEmail(
                 organization,
                 amountDue,
@@ -298,8 +298,8 @@ public class EmailService {
         LocalDate accessEndsAt
     ) {
         String accessEndLabel = organization.getOrganizationType() == OrganizationType.PILOT
-            ? "Pilot Access Ends"
-            : "Trial Ends";
+            ? "Founding Partner Access"
+            : "Free Trial Access";
         String content = """
             <p style="margin:0 0 16px 0;">Hello <strong>%s</strong>,</p>
             <p style="margin:0 0 16px 0;">Your organization workspace on <strong>BillMyGym</strong> is now ready. You can sign in and start managing memberships, payments, reminders, and reports from one place.</p>
@@ -326,9 +326,9 @@ public class EmailService {
             html(adminName),
             detailRow("Organization", organization.getName()),
             detailRow("District", organization.getDistrict()),
-            detailRow("Access Type", organization.getOrganizationType().name()),
-            detailRow("Lifecycle Status", organization.getStatus().name()),
-            detailRow(accessEndLabel, accessEndsAt == null ? "-" : accessEndsAt.toString()),
+            detailRow("Access Type", organization.getOrganizationType() == OrganizationType.PILOT ? "Founding Partner Access" : "Standard Billing"),
+            detailRow("Lifecycle Status", organizationStatusLabel(organization)),
+            detailRow(accessEndLabel, "Access Ends: " + (accessEndsAt == null ? "-" : accessEndsAt.toString())),
             detailRow("Admin Email", toEmail),
             detailRow("Temporary Password", temporaryPassword),
             detailRow("Sign-in URL", "<a href=\"" + html(appUrl("/login")) + "\" style=\"color:#166534;font-weight:700;text-decoration:none;\">"
@@ -477,9 +477,9 @@ public class EmailService {
         String lastBillingSummary
     ) {
         return buildBillingTemplate(
-            "Trial ending",
+            "Free Trial Access",
             "BillMyGym Billing",
-            "Your trial is ending soon. Complete payment to keep access uninterrupted.",
+            "Your free trial access is ending soon. Complete payment to keep access uninterrupted.",
             organization,
             amountDue,
             dueDate,
@@ -488,7 +488,7 @@ public class EmailService {
             emailUsage,
             activeMembers,
             lastBillingSummary,
-            "Trial ending notice"
+            "Free trial access ending notice"
         );
     }
 
@@ -556,9 +556,9 @@ public class EmailService {
         String lastBillingSummary
     ) {
         return buildBillingTemplate(
-            "Organization paused",
+            "Subscription Renewal Required",
             "BillMyGym Billing",
-            "Your organization access is paused because payment is overdue.",
+            "Your subscription renewal is required because payment is overdue.",
             organization,
             amountDue,
             dueDate,
@@ -567,7 +567,7 @@ public class EmailService {
             emailUsage,
             activeMembers,
             lastBillingSummary,
-            "Paused subscription notice"
+            "Subscription renewal required notice"
         );
     }
 
@@ -582,9 +582,9 @@ public class EmailService {
         String lastBillingSummary
     ) {
         return buildBillingTemplate(
-            "Organization deactivated",
+            "Account Inactive",
             "BillMyGym Billing",
-            "Your organization was deactivated after extended non-payment. Contact support after clearing dues.",
+            "Your account is inactive after extended non-payment. Contact support after clearing dues.",
             organization,
             amountDue,
             dueDate,
@@ -593,7 +593,7 @@ public class EmailService {
             emailUsage,
             activeMembers,
             lastBillingSummary,
-            "Deactivated subscription notice"
+            "Account inactive notice"
         );
     }
 
@@ -781,6 +781,18 @@ public class EmailService {
               <td style="padding:14px 18px;border-top:1px solid #d7e3dc;font-size:14px;color:#334155;">%s</td>
             </tr>
             """.formatted(html(label), value);
+    }
+
+    private String organizationStatusLabel(Organization organization) {
+        if (organization == null || organization.getStatus() == null) {
+            return "-";
+        }
+        return switch (organization.getStatus()) {
+            case TRIAL -> "Free Trial Access";
+            case ACTIVE -> "Active Subscription";
+            case PAUSED -> "Subscription Renewal Required";
+            case DEACTIVATED -> "Account Inactive";
+        };
     }
 
     private String summaryCard(String label, String value, String background, String color) {

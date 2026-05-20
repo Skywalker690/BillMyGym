@@ -4,6 +4,7 @@ import { Bell, CheckCircle2, Clock3, Search, SendHorizonal, XCircle } from "luci
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import api from "@/lib/api";
+import { notificationMessageLabel, notificationTypeLabel } from "@/lib/subscriptionLabels";
 import { cn } from "@/lib/utils";
 
 export default function Notifications() {
@@ -124,12 +125,12 @@ export default function Notifications() {
                       )}
                     </td>
                     <td className="px-6 py-5">
-                      <div className="font-black capitalize text-slate-950">{n.type.replaceAll("_", " ").toLowerCase()}</div>
+                      <div className="font-black capitalize text-slate-950">{notificationTypeLabel(n.type)}</div>
                       <div className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{n.channel}</div>
                     </td>
                     <td className="px-6 py-5 font-semibold text-slate-800">{n.recipient}</td>
                     <td className="px-6 py-5 max-w-sm">
-                      <p className="truncate font-medium text-slate-600" title={n.message}>{n.message}</p>
+                      <p className="truncate font-medium text-slate-600" title={notificationMessageLabel(n.message)}>{notificationMessageLabel(n.message)}</p>
                     </td>
                     <td className="px-6 py-5 text-xs font-semibold text-slate-500">
                       <div>Created: {new Date(n.createdAt).toLocaleString()}</div>

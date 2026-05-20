@@ -18,6 +18,7 @@ import com.gymflow.domain.enums.Role;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberPaymentRepository;
 import com.gymflow.security.AuthenticatedUser;
+import com.gymflow.shared.idempotency.IdempotencyService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -46,6 +47,9 @@ class PaymentLedgerServiceTest {
     @Mock
     private OrganizationSettingService organizationSettingService;
 
+    @Mock
+    private IdempotencyService idempotencyService;
+
     private final MembershipLifecycleService membershipLifecycleService = new MembershipLifecycleService();
 
     private PaymentLedgerService paymentLedgerService;
@@ -57,7 +61,8 @@ class PaymentLedgerServiceTest {
             memberPaymentRepository,
             membershipLifecycleService,
             organizationSettingService,
-            auditLogService
+            auditLogService,
+            idempotencyService
         );
         SecurityContextHolder.getContext().setAuthentication(
             new UsernamePasswordAuthenticationToken(
@@ -76,7 +81,10 @@ class PaymentLedgerServiceTest {
     @Test
     void allowsManualPaymentWithoutGatewayTransactionId() {
         MemberMembership membership = membership(200L, 100L);
-        when(memberMembershipRepository.findByIdAndOrganizationIdAndDeletedFalse(200L, 100L))
+        when(idempotencyService.requireKey("payment-key")).thenReturn("payment-key");
+        when(idempotencyService.findExisting(100L, null, com.gymflow.domain.enums.MembershipOperationType.PAYMENT_RECORD, "payment-key"))
+            .thenReturn(Optional.empty());
+        when(memberMembershipRepository.findByIdAndOrganizationIdAndDeletedFalseForUpdate(200L, 100L))
             .thenReturn(Optional.of(membership));
         when(memberPaymentRepository.findByMembershipIdAndDeletedFalseOrderByPaymentDateAscCreatedAtAsc(200L))
             .thenReturn(List.of());
@@ -98,7 +106,7 @@ class PaymentLedgerServiceTest {
             "manual payment"
         );
 
-        var response = paymentLedgerService.recordPayment(request);
+        var response = paymentLedgerService.recordPayment(request, "payment-key");
 
         assertEquals(PaymentStatus.PARTIAL, response.paymentStatus());
         assertEquals("2026-05", response.billingMonth());

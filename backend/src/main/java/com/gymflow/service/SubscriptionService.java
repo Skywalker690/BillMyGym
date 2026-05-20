@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gymflow.api.dto.SubscriptionDtos.CreateSubscriptionOrderRequest;
 import com.gymflow.api.dto.SubscriptionDtos.CreateSubscriptionOrderResponse;
 import com.gymflow.api.dto.SubscriptionDtos.MemberLimitResponse;
+import com.gymflow.api.dto.SubscriptionDtos.PaymentHistoryPageResponse;
 import com.gymflow.api.dto.SubscriptionDtos.PlanAccessResponse;
 import com.gymflow.api.dto.SubscriptionDtos.SubscriptionPaymentResponse;
 import com.gymflow.api.dto.SubscriptionDtos.SubscriptionStatusResponse;
@@ -16,9 +17,7 @@ import com.gymflow.domain.OrganizationSubscription;
 import com.gymflow.domain.OrganizationSubscriptionPayment;
 import com.gymflow.domain.UsageMetric;
 import com.gymflow.domain.enums.AuditCategory;
-import com.gymflow.domain.enums.IdempotencyResourceType;
 import com.gymflow.domain.enums.OrganizationType;
-import com.gymflow.domain.enums.MembershipOperationType;
 import com.gymflow.domain.enums.Role;
 import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.domain.enums.SubscriptionPaymentStatus;
@@ -29,7 +28,6 @@ import com.gymflow.repository.OrganizationSubscriptionRepository;
 import com.gymflow.repository.UsageMetricRepository;
 import com.gymflow.security.AuthenticatedUser;
 import com.gymflow.security.SecurityUtils;
-import com.gymflow.shared.idempotency.IdempotencyService;
 import com.gymflow.shared.money.MoneyUtils;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -46,6 +44,8 @@ import java.util.Map;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +55,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class SubscriptionService {
 
     private static final String CURRENCY = "INR";
+    private static final int DEFAULT_PAYMENT_HISTORY_SIZE = 5;
+    private static final int MAX_PAYMENT_HISTORY_SIZE = 50;
 
     private final OrganizationRepository organizationRepository;
     private final OrganizationSubscriptionRepository subscriptionRepository;
@@ -66,7 +68,6 @@ public class SubscriptionService {
     private final AuditLogService auditLogService;
     private final OrganizationPaymentWebhookService organizationPaymentWebhookService;
     private final BillingLifecycleService billingLifecycleService;
-    private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
 
     @Value("${razorpay.key-id:}")
@@ -187,6 +188,21 @@ public class SubscriptionService {
         return toStatusResponse(organization);
     }
 
+    public PaymentHistoryPageResponse paymentHistory(int page, int size) {
+        Organization organization = resolveCurrentOrganization();
+        return loadPaymentHistory(organization.getId(), page, size);
+    }
+
+    public PaymentHistoryPageResponse paymentHistoryForOrganization(Long organizationId, int page, int size) {
+        AuthenticatedUser user = SecurityUtils.currentUser();
+        if (user.role() != Role.SUPER_ADMIN && !organizationId.equals(user.organizationId())) {
+            throw new ForbiddenException("Forbidden subscription access");
+        }
+        organizationRepository.findByIdAndDeletedFalse(organizationId)
+            .orElseThrow(() -> new NotFoundException("Organization not found"));
+        return loadPaymentHistory(organizationId, page, size);
+    }
+
     @Transactional(readOnly = true)
     public CreateSubscriptionOrderResponse createOrderResponse(Long paymentId) {
         Organization organization = resolveCurrentOrganization();
@@ -218,19 +234,20 @@ public class SubscriptionService {
             .findTopByOrganizationIdAndDeletedFalseOrderByEndDateDesc(organization.getId())
             .orElse(null);
 
-        List<SubscriptionPaymentResponse> payments = subscriptionPaymentRepository
-            .findByOrganizationIdAndDeletedFalseOrderByCreatedAtDesc(organization.getId())
-            .stream()
-            .map(this::toPaymentResponse)
-            .toList();
+        PaymentHistoryPageResponse paymentHistoryPage = loadPaymentHistory(
+            organization.getId(),
+            0,
+            DEFAULT_PAYMENT_HISTORY_SIZE
+        );
+        SubscriptionPlan resolvedPlan = planAccessService.resolvePlan(organization);
 
         return new SubscriptionStatusResponse(
             organization.getId(),
             organization.getName(),
             organization.getOrganizationType(),
             organization.getStatus(),
-            planAccessService.resolvePlan(organization),
-            planAccessService.resolvePlan(organization).monthlyAmount(),
+            resolvedPlan,
+            resolvedPlan.monthlyAmount(),
             organization.getTrialEndDate(),
             organization.getPilotEndDate(),
             organization.getSubscriptionDueDate(),
@@ -244,7 +261,26 @@ public class SubscriptionService {
             ),
             toMemberLimitResponse(organization, memberLimitService.usage(organization)),
             toPlanAccessResponse(planAccessService.summary(organization)),
-            payments
+            paymentHistoryPage.items(),
+            paymentHistoryPage
+        );
+    }
+
+    private PaymentHistoryPageResponse loadPaymentHistory(Long organizationId, int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAYMENT_HISTORY_SIZE);
+        Page<OrganizationSubscriptionPayment> payments = subscriptionPaymentRepository
+            .findByOrganizationIdAndDeletedFalseOrderByCreatedAtDesc(
+                organizationId,
+                PageRequest.of(safePage, safeSize)
+            );
+        return new PaymentHistoryPageResponse(
+            payments.stream().map(this::toPaymentResponse).toList(),
+            payments.getNumber(),
+            payments.getSize(),
+            payments.getTotalElements(),
+            payments.getTotalPages(),
+            payments.hasNext()
         );
     }
 

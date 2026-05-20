@@ -55,6 +55,19 @@ SELECT
     0
 FROM generate_series(1, 5) AS org_id;
 
+INSERT INTO users (
+    id, organization_id, email, google_id, avatar_url, password_hash, role, status, terms_accepted, policy_version,
+    deleted, created_at, updated_at
+) VALUES
+    (1, NULL, 'sanjoksiby10@gmail.com', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'SUPER_ADMIN', 'ACTIVE', NULL, NULL,
+        FALSE, CURRENT_TIMESTAMP - INTERVAL '20 days', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+    (3, 2, 'owner02@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', NULL, NULL,
+        FALSE, CURRENT_TIMESTAMP - INTERVAL '18 days', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+    (4, 3, 'owner03@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', NULL, NULL,
+        FALSE, CURRENT_TIMESTAMP - INTERVAL '18 days', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+    (2, 5, 'sanjoksiby0@gmail.com', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', NULL, NULL,
+        FALSE, CURRENT_TIMESTAMP - INTERVAL '18 days', CURRENT_TIMESTAMP - INTERVAL '2 days');
+
 INSERT INTO organization_settings (
     id, organization_id, whatsapp_enabled, email_enabled, reminder_days_before_expiry, branding_name,
     deleted, created_at, updated_at
@@ -407,6 +420,7 @@ INSERT INTO api_request_log (
     (5, 5, 'req-reminder-005', 'POST:/api/reminders/run', md5('seed-response-5'), '{"status":"ok","kind":"reminder"}', CURRENT_TIMESTAMP - INTERVAL '6 hours');
 
 SELECT setval('organizations_id_seq', COALESCE((SELECT MAX(id) FROM organizations), 1), TRUE);
+SELECT setval('users_id_seq', COALESCE((SELECT MAX(id) FROM users), 1), TRUE);
 SELECT setval('organization_settings_id_seq', COALESCE((SELECT MAX(id) FROM organization_settings), 1), TRUE);
 SELECT setval('members_id_seq', COALESCE((SELECT MAX(id) FROM members), 1), TRUE);
 SELECT setval('member_memberships_id_seq', COALESCE((SELECT MAX(id) FROM member_memberships), 1), TRUE);

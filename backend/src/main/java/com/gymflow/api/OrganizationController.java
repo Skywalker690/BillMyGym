@@ -3,6 +3,8 @@ package com.gymflow.api;
 import com.gymflow.api.dto.OrganizationDtos.ReplaceOrganizationAdminRequest;
 import com.gymflow.api.dto.OrganizationDtos.UpdateOrganizationRequest;
 import com.gymflow.api.response.ApiResponse;
+import com.gymflow.domain.enums.OrganizationStatus;
+import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.service.OrganizationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -26,6 +29,21 @@ public class OrganizationController {
     @GetMapping
     public ResponseEntity<?> listOrganizations() {
         return ResponseEntity.ok(ApiResponse.success("Organizations fetched successfully", organizationService.listOrganizations()));
+    }
+
+    @GetMapping("/directory")
+    public ResponseEntity<?> organizationDirectory(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size,
+        @RequestParam(required = false) String search,
+        @RequestParam(defaultValue = "false") boolean pilotOnly,
+        @RequestParam(required = false) OrganizationStatus status,
+        @RequestParam(required = false) SubscriptionPlan plan
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+            "Organization directory fetched successfully",
+            organizationService.directory(page, size, search, pilotOnly, status, plan)
+        ));
     }
 
     @GetMapping("/{id}")

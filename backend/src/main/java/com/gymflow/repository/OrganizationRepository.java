@@ -3,10 +3,17 @@ package com.gymflow.repository;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.domain.enums.OrganizationType;
+import com.gymflow.domain.enums.SubscriptionPlan;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface OrganizationRepository extends JpaRepository<Organization, Long> {
 
@@ -18,33 +25,123 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
 
     long countByDeletedFalseAndStatus(OrganizationStatus status);
 
+    long countByDeletedFalseAndStatusIn(Collection<OrganizationStatus> statuses);
+
     long countByDeletedFalseAndOrganizationType(OrganizationType organizationType);
 
-    List<Organization> findAllByDeletedFalseAndStatusIn(List<OrganizationStatus> statuses);
+    long countByDeletedFalseAndSubscriptionPlan(SubscriptionPlan subscriptionPlan);
+
+    long countByDeletedFalseAndCreatedAtBetween(
+            OffsetDateTime start,
+            OffsetDateTime end
+    );
+
+    List<Organization> findAllByDeletedFalseAndStatusIn(
+            List<OrganizationStatus> statuses
+    );
+
+    @Query(
+            value = """
+        select o from Organization o
+        where o.deleted = false
+          and (
+            :search is null
+            or lower(o.name) like :pattern
+            or lower(o.district) like :pattern
+            or lower(o.adminEmail) like :pattern
+            or lower(o.adminFullName) like :pattern
+          )
+          and (
+            (:pilotOnly = true and o.organizationType = com.gymflow.domain.enums.OrganizationType.PILOT)
+            or (:pilotOnly = false and o.organizationType <> com.gymflow.domain.enums.OrganizationType.PILOT)
+          )
+          and (:status is null or o.status = :status)
+          and (:plan is null or o.subscriptionPlan = :plan)
+        order by
+          case
+            when o.status = com.gymflow.domain.enums.OrganizationStatus.PAUSED
+            then 0
+            else 1
+          end,
+          o.createdAt desc
+        """,
+            countQuery = """
+        select count(o) from Organization o
+        where o.deleted = false
+          and (
+            :search is null
+            or lower(o.name) like :pattern
+            or lower(o.district) like :pattern
+            or lower(o.adminEmail) like :pattern
+            or lower(o.adminFullName) like :pattern
+          )
+          and (
+            (:pilotOnly = true and o.organizationType = com.gymflow.domain.enums.OrganizationType.PILOT)
+            or (:pilotOnly = false and o.organizationType <> com.gymflow.domain.enums.OrganizationType.PILOT)
+          )
+          and (:status is null or o.status = :status)
+          and (:plan is null or o.subscriptionPlan = :plan)
+        """
+    )
+    Page<Organization> findDirectoryPage(
+            @Param("search") String search,
+            @Param("pattern") String pattern,
+            @Param("pilotOnly") boolean pilotOnly,
+            @Param("status") OrganizationStatus status,
+            @Param("plan") SubscriptionPlan plan,
+            Pageable pageable
+    );
 
     List<Organization> findAllByDeletedFalseAndOrganizationTypeAndPilotEndDateBefore(
-        OrganizationType organizationType,
-        LocalDate date
+            OrganizationType organizationType,
+            LocalDate date
     );
 
     List<Organization> findAllByDeletedFalseAndOrganizationTypeAndSubscriptionDueDateIn(
-        OrganizationType organizationType,
-        List<LocalDate> dueDates
+            OrganizationType organizationType,
+            List<LocalDate> dueDates
     );
 
     List<Organization> findAllByDeletedFalseAndOrganizationTypeAndStatusAndSubscriptionDueDateBefore(
-        OrganizationType organizationType,
-        OrganizationStatus status,
-        LocalDate date
+            OrganizationType organizationType,
+            OrganizationStatus status,
+            LocalDate date
+    );
+
+    long countByDeletedFalseAndOrganizationTypeAndStatusInAndSubscriptionDueDateBefore(
+            OrganizationType organizationType,
+            Collection<OrganizationStatus> statuses,
+            LocalDate date
+    );
+
+    long countByDeletedFalseAndOrganizationTypeAndStatusInAndSubscriptionDueDateBetween(
+            OrganizationType organizationType,
+            Collection<OrganizationStatus> statuses,
+            LocalDate startDate,
+            LocalDate endDate
+    );
+
+    long countByDeletedFalseAndOrganizationTypeAndPilotEndDateBetween(
+            OrganizationType organizationType,
+            LocalDate startDate,
+            LocalDate endDate
     );
 
     boolean existsByNameAndDeletedFalse(String name);
 
     boolean existsByAdminEmailAndDeletedFalse(String adminEmail);
 
-    boolean existsByAdminEmailAndDeletedFalseAndIdNot(String adminEmail, Long id);
+    boolean existsByAdminEmailAndDeletedFalseAndIdNot(
+            String adminEmail,
+            Long id
+    );
 
-    boolean existsByAdminPhoneNumberAndDeletedFalse(String adminPhoneNumber);
+    boolean existsByAdminPhoneNumberAndDeletedFalse(
+            String adminPhoneNumber
+    );
 
-    boolean existsByAdminPhoneNumberAndDeletedFalseAndIdNot(String adminPhoneNumber, Long id);
+    boolean existsByAdminPhoneNumberAndDeletedFalseAndIdNot(
+            String adminPhoneNumber,
+            Long id
+    );
 }

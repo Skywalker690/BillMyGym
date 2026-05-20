@@ -1,8 +1,34 @@
 import { useQuery } from "@tanstack/react-query";
-import { Activity as ActivityIcon, AlertTriangle, Building2, ChevronRight, Mail, MessageCircle, PauseCircle, Plus, Rocket, ShieldOff, Sparkles } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowUpRight,
+  Building2,
+  CalendarClock,
+  CreditCard,
+  Mail,
+  MessageCircle,
+  PauseCircle,
+  Plus,
+  Rocket,
+  ShieldOff,
+  Sparkles,
+  TrendingUp,
+  WalletCards,
+  type LucideIcon,
+} from "lucide-react";
 import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
+
+type PlatformBreakdown = {
+  key: string;
+  label: string;
+  count: number;
+  amount: number;
+  percentage: number;
+};
 
 type PlatformAnalytics = {
   totalOrganizations: number;
@@ -11,10 +37,35 @@ type PlatformAnalytics = {
   pilotOrganizations: number;
   pausedOrganizations: number;
   deactivatedOrganizations: number;
+  expiredOrganizations: number;
+  activeSubscriptionRecords: number;
   monthlySaasRevenue: number;
+  previousMonthlySaasRevenue: number;
+  revenueGrowthPercent: number;
+  lifetimeSaasRevenue: number;
+  projectedMonthlyRevenue: number;
   paymentFailures: number;
+  pendingPayments: number;
   whatsappUsage: number;
   emailUsage: number;
+  totalCommunicationUsage: number;
+  renewalsDueInSevenDays: number;
+  pilotsEndingInThirtyDays: number;
+  currentMonthNewOrganizations: number;
+  previousMonthNewOrganizations: number;
+  organizationGrowthPercent: number;
+  organizationsByStatus: PlatformBreakdown[];
+  organizationsBySubscriptionPlan: PlatformBreakdown[];
+  paymentsByStatus: PlatformBreakdown[];
+  lifecycleAlerts: PlatformBreakdown[];
+};
+
+type MetricCard = {
+  label: string;
+  value: string | number;
+  detail: string;
+  icon: LucideIcon;
+  tone: string;
 };
 
 const money = new Intl.NumberFormat("en-IN", {
@@ -23,44 +74,47 @@ const money = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
-const metricCards = [
-  {
-    key: "activeOrganizations",
-    label: "Active Organizations",
-    tone: "text-emerald-700 bg-emerald-50 border-emerald-100",
-    icon: ActivityIcon,
-  },
-  {
-    key: "trialOrganizations",
-    label: "Trial Organizations",
-    tone: "text-amber-700 bg-amber-50 border-amber-100",
-    icon: Rocket,
-  },
-  {
-    key: "pilotOrganizations",
-    label: "Pilot Organizations",
-    tone: "text-sky-700 bg-sky-50 border-sky-100",
-    icon: Sparkles,
-  },
-  {
-    key: "pausedOrganizations",
-    label: "Paused Organizations",
-    tone: "text-orange-700 bg-orange-50 border-orange-100",
-    icon: PauseCircle,
-  },
-  {
-    key: "deactivatedOrganizations",
-    label: "Deactivated Organizations",
-    tone: "text-rose-700 bg-rose-50 border-rose-100",
-    icon: ShieldOff,
-  },
-  {
-    key: "paymentFailures",
-    label: "Payment Failures",
-    tone: "text-red-700 bg-red-50 border-red-100",
-    icon: AlertTriangle,
-  },
-] as const;
+const compact = new Intl.NumberFormat("en-IN", {
+  maximumFractionDigits: 0,
+});
+
+const statusTone: Record<string, string> = {
+  ACTIVE: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  TRIAL: "bg-amber-100 text-amber-800 border-amber-200",
+  PAUSED: "bg-orange-100 text-orange-800 border-orange-200",
+  DEACTIVATED: "bg-rose-100 text-rose-800 border-rose-200",
+  STARTER: "bg-slate-100 text-slate-800 border-slate-200",
+  GROWTH: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  PRO: "bg-indigo-100 text-indigo-800 border-indigo-200",
+  PILOT: "bg-sky-100 text-sky-800 border-sky-200",
+};
+
+function percentText(value: number) {
+  if (!Number.isFinite(value)) return "0%";
+  return `${value > 0 ? "+" : ""}${Math.round(value)}%`;
+}
+
+function BreakdownBar({ item, amount = false }: { item: PlatformBreakdown; amount?: boolean }) {
+  return (
+    <div className="rounded-2xl border border-white/75 bg-white/70 p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-black text-slate-950">{item.label}</div>
+          <div className="mt-1 text-xs font-bold text-slate-500">
+            {item.count} orgs{amount && item.amount > 0 ? ` · ${money.format(item.amount)} potential` : ""}
+          </div>
+        </div>
+        <Badge className={statusTone[item.key] ?? "border-slate-200 bg-slate-100 text-slate-700"}>{item.percentage}%</Badge>
+      </div>
+      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-100">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-500"
+          style={{ width: `${Math.min(Math.max(item.percentage, 0), 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function PlatformOverview() {
   const { data: analytics, isLoading } = useQuery<PlatformAnalytics>({
@@ -73,100 +127,254 @@ export default function PlatformOverview() {
   });
 
   if (isLoading) {
-    return <div className="p-8">Loading overview...</div>;
+    return <div className="p-8 text-sm font-semibold text-slate-500">Loading platform intelligence...</div>;
   }
 
+  const data = analytics ?? {
+    totalOrganizations: 0,
+    activeOrganizations: 0,
+    trialOrganizations: 0,
+    pilotOrganizations: 0,
+    pausedOrganizations: 0,
+    deactivatedOrganizations: 0,
+    expiredOrganizations: 0,
+    activeSubscriptionRecords: 0,
+    monthlySaasRevenue: 0,
+    previousMonthlySaasRevenue: 0,
+    revenueGrowthPercent: 0,
+    lifetimeSaasRevenue: 0,
+    projectedMonthlyRevenue: 0,
+    paymentFailures: 0,
+    pendingPayments: 0,
+    whatsappUsage: 0,
+    emailUsage: 0,
+    totalCommunicationUsage: 0,
+    renewalsDueInSevenDays: 0,
+    pilotsEndingInThirtyDays: 0,
+    currentMonthNewOrganizations: 0,
+    previousMonthNewOrganizations: 0,
+    organizationGrowthPercent: 0,
+    organizationsByStatus: [],
+    organizationsBySubscriptionPlan: [],
+    paymentsByStatus: [],
+    lifecycleAlerts: [],
+  };
+
+  const metricCards: MetricCard[] = [
+    {
+      label: "Total gyms",
+      value: data.totalOrganizations,
+      detail: `${data.currentMonthNewOrganizations} added this month`,
+      icon: Building2,
+      tone: "from-slate-950 to-slate-800 text-white",
+    },
+    {
+      label: "Active organizations",
+      value: data.activeOrganizations,
+      detail: `${data.activeSubscriptionRecords} paid subscription records active`,
+      icon: Activity,
+      tone: "from-emerald-600 to-teal-500 text-white",
+    },
+    {
+      label: "Expired / overdue",
+      value: data.expiredOrganizations,
+      detail: `${data.pausedOrganizations} paused · ${data.deactivatedOrganizations} deactivated`,
+      icon: AlertTriangle,
+      tone: "from-orange-500 to-rose-500 text-white",
+    },
+    {
+      label: "Projected MRR",
+      value: money.format(data.projectedMonthlyRevenue),
+      detail: `${percentText(data.revenueGrowthPercent)} vs previous month`,
+      icon: WalletCards,
+      tone: "from-indigo-700 to-sky-500 text-white",
+    },
+  ];
+
   return (
-    <div className="mx-auto max-w-7xl space-y-8 p-8">
-      <div className="billmygym-dark-shell relative overflow-hidden rounded-[2rem] p-10 text-white">
-        <div className="relative z-10 max-w-3xl">
-          <div className="mb-4 inline-flex items-center rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.28em] text-emerald-200">
-            SaaS Command
-          </div>
-          <h1 className="text-4xl font-black tracking-tight">BillMyGym Platform</h1>
-          <p className="mt-4 max-w-xl text-lg font-medium text-emerald-50/80">
-            Monitor subscription health, pilot rollout, SaaS revenue, payment failures, and monthly communication usage from one server-computed dashboard.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-4">
-            <Link to="/app/organizations/new">
-              <Button size="lg" className="h-12 rounded-full border-0 bg-white px-8 font-bold text-slate-950 hover:bg-emerald-50">
-                <Plus className="mr-2 h-5 w-5" /> Provision Organization
-              </Button>
-            </Link>
-            <Link to="/app/organizations">
-              <Button size="lg" variant="outline" className="h-12 rounded-full border-white/20 bg-white/5 px-8 font-bold text-white hover:bg-white/10 hover:text-white">
-                Open Directory
-              </Button>
-            </Link>
-          </div>
-        </div>
-        <Building2 className="absolute -bottom-20 -right-20 h-96 w-96 text-white/5" />
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="glass-panel rounded-[1.75rem] p-7 md:col-span-1">
-          <Building2 className="h-8 w-8 text-emerald-700" />
-          <p className="mt-6 text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Total Organizations</p>
-          <h2 className="mt-2 text-5xl font-black tracking-tight text-slate-950">{analytics?.totalOrganizations ?? 0}</h2>
-        </div>
-
-        <div className="glass-panel rounded-[1.75rem] p-7 md:col-span-2">
-          <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Monthly SaaS Revenue</p>
-          <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-            <h2 className="text-5xl font-black tracking-tight text-emerald-700">{money.format(analytics?.monthlySaasRevenue ?? 0)}</h2>
-            <div className="rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">
-              Payment-ledger derived
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="relative overflow-hidden rounded-[2.25rem] border border-white/75 bg-slate-950 p-6 text-white shadow-[0_30px_90px_rgba(15,23,42,0.28)] sm:p-8 lg:p-10">
+        <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl" />
+        <div className="absolute bottom-0 left-1/2 h-56 w-56 rounded-full bg-amber-300/10 blur-3xl" />
+        <div className="relative z-10 grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
+          <div>
+            <div className="inline-flex items-center rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.28em] text-emerald-200">
+              Super Admin Command Center
+            </div>
+            <h1 className="mt-5 max-w-3xl text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
+              Platform visibility without digging through tables.
+            </h1>
+            <p className="mt-5 max-w-2xl text-base font-semibold leading-7 text-slate-300">
+              Revenue, lifecycle risk, subscription mix, growth momentum, communication load, and payment health are all computed server-side for the whole SaaS fleet.
+            </p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <Link to="/app/organizations/new">
+                <Button size="lg" className="h-12 rounded-full border-0 bg-white px-7 font-black text-slate-950 hover:bg-emerald-50">
+                  <Plus className="mr-2 h-5 w-5" /> Provision Organization
+                </Button>
+              </Link>
+              <Link to="/app/organizations">
+                <Button size="lg" variant="outline" className="h-12 rounded-full border-white/15 bg-white/5 px-7 font-black text-white hover:bg-white/10 hover:text-white">
+                  Open Directory
+                  <ArrowUpRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
             </div>
           </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/80 bg-white/70 p-4">
-              <MessageCircle className="h-5 w-5 text-emerald-700" />
-              <p className="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">WhatsApp Usage</p>
-              <p className="mt-1 text-2xl font-black text-slate-950">{analytics?.whatsappUsage ?? 0}</p>
+
+          <div className="rounded-[2rem] border border-white/10 bg-white/[0.07] p-5 backdrop-blur">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-200">This Month SaaS Revenue</div>
+                <div className="mt-2 text-4xl font-black tracking-tight">{money.format(data.monthlySaasRevenue)}</div>
+              </div>
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-300/15 text-emerald-200">
+                <CreditCard className="h-7 w-7" />
+              </div>
             </div>
-            <div className="rounded-2xl border border-white/80 bg-white/70 p-4">
-              <Mail className="h-5 w-5 text-emerald-700" />
-              <p className="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Email Usage</p>
-              <p className="mt-1 text-2xl font-black text-slate-950">{analytics?.emailUsage ?? 0}</p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-white/10 p-4">
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Previous</div>
+                <div className="mt-2 text-xl font-black">{money.format(data.previousMonthlySaasRevenue)}</div>
+              </div>
+              <div className="rounded-2xl bg-white/10 p-4">
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Lifetime</div>
+                <div className="mt-2 text-xl font-black">{money.format(data.lifetimeSaasRevenue)}</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metricCards.map((card) => {
           const Icon = card.icon;
           return (
-            <div key={card.key} className="glass-panel rounded-[1.5rem] p-6">
-              <div className={`inline-flex rounded-2xl border p-3 ${card.tone}`}>
-                <Icon className="h-6 w-6" />
+            <div key={card.label} className={`relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br p-5 shadow-sm ${card.tone}`}>
+              <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
+              <div className="relative z-10">
+                <Icon className="h-7 w-7 opacity-90" />
+                <div className="mt-5 text-[10px] font-black uppercase tracking-[0.24em] opacity-70">{card.label}</div>
+                <div className="mt-2 text-3xl font-black tracking-tight">{card.value}</div>
+                <div className="mt-2 text-sm font-bold opacity-75">{card.detail}</div>
               </div>
-              <p className="mt-5 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{card.label}</p>
-              <p className="mt-2 text-4xl font-black text-slate-950">{analytics?.[card.key] ?? 0}</p>
             </div>
           );
         })}
       </div>
 
-      <Link to="/app/organizations" className="block">
-        <div className="glass-panel group overflow-hidden rounded-[1.8rem] border-emerald-100/60 transition-all hover:-translate-y-0.5 hover:border-emerald-200">
-          <div className="flex items-center justify-between p-8">
-            <div className="flex items-center gap-5">
-              <div className="rounded-2xl border border-white/80 bg-white/80 p-4 shadow-sm transition-transform group-hover:scale-105">
-                <Building2 className="h-8 w-8 text-emerald-700" />
-              </div>
-              <div>
-                <h3 className="text-xl font-black tracking-tight text-slate-950">Manage Organizations Directory</h3>
-                <p className="mt-1 text-sm font-medium text-slate-500">Review lifecycle state, pilot/trial windows, billing dates, and tenant ownership.</p>
-              </div>
+      <div className="grid gap-5 xl:grid-cols-[1fr_0.9fr]">
+        <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Subscription Distribution</div>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Plan mix and MRR shape</h2>
             </div>
-            <div className="rounded-full border border-white/80 bg-white/80 p-3 text-emerald-700 shadow-sm transition-all group-hover:bg-emerald-600 group-hover:text-white">
-              <ChevronRight className="h-6 w-6" />
-            </div>
+            <Badge className="w-fit border-emerald-200 bg-emerald-100 text-emerald-800">{data.pilotOrganizations} founding partner workspaces</Badge>
+          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {data.organizationsBySubscriptionPlan.map((item) => (
+              <BreakdownBar key={item.key} item={item} amount />
+            ))}
           </div>
         </div>
-      </Link>
+
+        <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-rose-700">Lifecycle Watchlist</div>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Where attention is needed</h2>
+            </div>
+            <Sparkles className="h-7 w-7 text-amber-400" />
+          </div>
+          <div className="mt-5 space-y-3">
+            {data.lifecycleAlerts.map((item) => (
+              <div key={item.key} className="flex items-center justify-between gap-4 rounded-2xl border border-white/75 bg-white/70 p-4 shadow-sm">
+                <div>
+                  <div className="text-sm font-black text-slate-950">{item.label}</div>
+                  <div className="mt-1 text-xs font-bold text-slate-500">{item.percentage}% of visible platform load</div>
+                </div>
+                <div className="text-2xl font-black text-slate-950">{compact.format(item.count)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
+          <TrendingUp className="h-7 w-7 text-emerald-700" />
+          <div className="mt-5 text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Growth</div>
+          <div className="mt-2 text-3xl font-black text-slate-950">{percentText(data.organizationGrowthPercent)}</div>
+          <p className="mt-2 text-sm font-bold text-slate-500">
+            {data.currentMonthNewOrganizations} orgs this month vs {data.previousMonthNewOrganizations} last month.
+          </p>
+        </div>
+        <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
+          <MessageCircle className="h-7 w-7 text-emerald-700" />
+          <div className="mt-5 text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Communication Load</div>
+          <div className="mt-2 text-3xl font-black text-slate-950">{compact.format(data.totalCommunicationUsage)}</div>
+          <p className="mt-2 text-sm font-bold text-slate-500">
+            {compact.format(data.whatsappUsage)} WhatsApp · {compact.format(data.emailUsage)} email this month.
+          </p>
+        </div>
+        <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
+          <PauseCircle className="h-7 w-7 text-orange-600" />
+          <div className="mt-5 text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Billing Risk</div>
+          <div className="mt-2 text-3xl font-black text-slate-950">{data.paymentFailures + data.pendingPayments}</div>
+          <p className="mt-2 text-sm font-bold text-slate-500">
+            {data.paymentFailures} failed payments · {data.pendingPayments} pending payments.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
+        <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Organization States</div>
+              <h2 className="mt-2 text-2xl font-black text-slate-950">Status split</h2>
+            </div>
+            <ShieldOff className="h-7 w-7 text-slate-400" />
+          </div>
+          <div className="mt-5 space-y-3">
+            {data.organizationsByStatus.map((item) => (
+              <BreakdownBar key={item.key} item={item} />
+            ))}
+          </div>
+        </div>
+
+        <Link to="/app/organizations" className="group block">
+          <div className="relative h-full overflow-hidden rounded-[2rem] border border-emerald-100 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.88)),radial-gradient(circle_at_top_right,rgba(52,211,153,0.32),transparent_24rem)] p-6 shadow-sm transition duration-300 group-hover:-translate-y-1 group-hover:shadow-xl sm:p-8">
+            <div className="absolute -right-12 -bottom-16 h-56 w-56 rounded-full bg-emerald-300/25 blur-3xl" />
+            <div className="relative z-10 flex h-full flex-col justify-between gap-8">
+              <div>
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                  <Building2 className="h-7 w-7" />
+                </div>
+                <h2 className="mt-6 max-w-xl text-3xl font-black tracking-tight text-slate-950">Manage every organization from the redesigned command directory.</h2>
+                <p className="mt-3 max-w-xl text-sm font-bold leading-6 text-slate-600">
+                  Filter by lifecycle, plan, owner, district, and risk. The list is optimized for quick scanning instead of heavy card browsing.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Badge className="border-sky-200 bg-sky-100 text-sky-800">
+                  <Rocket className="mr-1 h-3.5 w-3.5" />
+                  {data.pilotsEndingInThirtyDays} founding partner access windows ending soon
+                </Badge>
+                <Badge className="border-amber-200 bg-amber-100 text-amber-800">
+                  <CalendarClock className="mr-1 h-3.5 w-3.5" />
+                  {data.renewalsDueInSevenDays} renewals due
+                </Badge>
+                <Badge className="border-slate-200 bg-white text-slate-800">
+                  <Mail className="mr-1 h-3.5 w-3.5" />
+                  {compact.format(data.emailUsage)} emails
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </Link>
+      </div>
     </div>
   );
 }
-

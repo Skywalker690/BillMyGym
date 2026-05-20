@@ -9,6 +9,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 public class OrganizationDtos {
 
@@ -34,6 +35,34 @@ public class OrganizationDtos {
         LocalDate subscriptionDueDate,
         OffsetDateTime pausedAt,
         OffsetDateTime deactivatedAt
+    ) {
+    }
+
+    public record OrganizationDirectoryResponse(
+        List<OrganizationResponse> items,
+        int page,
+        int size,
+        long totalElements,
+        int totalPages,
+        boolean hasNext,
+        OrganizationDirectorySummary summary
+    ) {
+    }
+
+    public record OrganizationDirectorySummary(
+        long totalOrganizations,
+        long totalActiveOrganizations,
+        long totalRenewalPendingOrganizations,
+        long totalPilotOrganizations,
+        List<OrganizationPlanSummary> subscriptionDistribution
+    ) {
+    }
+
+    public record OrganizationPlanSummary(
+        String key,
+        String label,
+        long count,
+        int percentage
     ) {
     }
 

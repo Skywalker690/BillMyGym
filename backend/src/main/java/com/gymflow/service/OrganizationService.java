@@ -1,6 +1,9 @@
 package com.gymflow.service;
 
 import com.gymflow.api.dto.OrganizationDtos.ReplaceOrganizationAdminRequest;
+import com.gymflow.api.dto.OrganizationDtos.OrganizationDirectoryResponse;
+import com.gymflow.api.dto.OrganizationDtos.OrganizationDirectorySummary;
+import com.gymflow.api.dto.OrganizationDtos.OrganizationPlanSummary;
 import com.gymflow.api.dto.OrganizationDtos.OrganizationResponse;
 import com.gymflow.api.dto.OrganizationDtos.UpdateOrganizationRequest;
 import com.gymflow.api.error.BadRequestException;
@@ -21,8 +24,10 @@ import com.gymflow.security.SecurityUtils;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -102,6 +107,36 @@ public class OrganizationService {
         );
     }
 
+    public OrganizationDirectoryResponse directory(
+        int page,
+        int size,
+        String search,
+        boolean pilotOnly,
+        OrganizationStatus status,
+        com.gymflow.domain.enums.SubscriptionPlan plan
+    ) {
+        SecurityUtils.requireRole(Role.SUPER_ADMIN);
+        int safeSize = Math.min(Math.max(size, 1), 20);
+        int safePage = Math.max(page, 0);
+        String normalizedSearch = search == null || search.isBlank() ? null : search.trim();
+        var result = organizationRepository.findDirectoryPage(
+            normalizedSearch,
+            pilotOnly,
+            status,
+            plan,
+            PageRequest.of(safePage, safeSize)
+        );
+        return new OrganizationDirectoryResponse(
+            result.getContent().stream().map(organizationMapper::toResponse).toList(),
+            result.getNumber(),
+            result.getSize(),
+            result.getTotalElements(),
+            result.getTotalPages(),
+            result.hasNext(),
+            buildDirectorySummary()
+        );
+    }
+
     @Transactional
     public OrganizationResponse replaceOrganizationAdmin(Long id, ReplaceOrganizationAdminRequest request) {
         SecurityUtils.requireRole(Role.SUPER_ADMIN);
@@ -141,6 +176,35 @@ public class OrganizationService {
         if (organizationRepository.existsByAdminPhoneNumberAndDeletedFalseAndIdNot(adminPhoneNumber, organizationId)) {
             throw new BadRequestException("Admin phone number already exists");
         }
+    }
+
+    private OrganizationDirectorySummary buildDirectorySummary() {
+        long totalOrganizations = organizationRepository.findAllByDeletedFalse().size();
+        long totalActiveOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.ACTIVE);
+        long totalRenewalPendingOrganizations = organizationRepository.countByDeletedFalseAndStatusIn(
+            List.of(OrganizationStatus.PAUSED, OrganizationStatus.DEACTIVATED)
+        );
+        long totalPilotOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.PILOT);
+        List<OrganizationPlanSummary> subscriptionDistribution = Arrays.stream(com.gymflow.domain.enums.SubscriptionPlan.values())
+            .map(plan -> {
+                long count = organizationRepository.countByDeletedFalseAndSubscriptionPlan(plan);
+                int percentage = totalOrganizations <= 0 ? 0 : (int) Math.round((count * 100.0) / totalOrganizations);
+                String label = switch (plan) {
+                    case STARTER -> "Startup";
+                    case GROWTH -> "Growth";
+                    case PRO -> "Pro";
+                    case PILOT -> "Founding Partner Access";
+                };
+                return new OrganizationPlanSummary(plan.name(), label, count, percentage);
+            })
+            .toList();
+        return new OrganizationDirectorySummary(
+            totalOrganizations,
+            totalActiveOrganizations,
+            totalRenewalPendingOrganizations,
+            totalPilotOrganizations,
+            subscriptionDistribution
+        );
     }
 
     private void normalizeLifecycleAfterUpdate(

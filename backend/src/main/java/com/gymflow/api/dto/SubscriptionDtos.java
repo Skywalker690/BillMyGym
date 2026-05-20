@@ -55,7 +55,8 @@ public class SubscriptionDtos {
         long activeMembers,
         MemberLimitResponse memberLimit,
         PlanAccessResponse planAccess,
-        List<SubscriptionPaymentResponse> paymentHistory
+        List<SubscriptionPaymentResponse> paymentHistory,
+        PaymentHistoryPageResponse paymentHistoryPage
     ) {
     }
 
@@ -90,6 +91,16 @@ public class SubscriptionDtos {
         String razorpayOrderId,
         String razorpayPaymentId,
         OffsetDateTime createdAt
+    ) {
+    }
+
+    public record PaymentHistoryPageResponse(
+        List<SubscriptionPaymentResponse> items,
+        int page,
+        int size,
+        long totalElements,
+        int totalPages,
+        boolean hasNext
     ) {
     }
 }

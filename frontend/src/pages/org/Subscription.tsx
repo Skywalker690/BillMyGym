@@ -29,6 +29,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
+import {
+  foundingPartnerDescription,
+  organizationStatusDescription,
+  organizationStatusLabel,
+  organizationTypeLabel,
+  subscriptionPlanLabel,
+} from "@/lib/subscriptionLabels";
 
 declare global {
   interface Window {
@@ -49,6 +56,15 @@ type SubscriptionPayment = {
   razorpayOrderId?: string | null;
   razorpayPaymentId?: string | null;
   createdAt?: string | null;
+};
+
+type PaymentHistoryPage = {
+  items: SubscriptionPayment[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
 };
 
 type SubscriptionStatus = {
@@ -75,6 +91,7 @@ type SubscriptionStatus = {
     usagePercent: number;
   };
   paymentHistory: SubscriptionPayment[];
+  paymentHistoryPage?: PaymentHistoryPage;
 };
 
 type CreateOrderResponse = {
@@ -135,7 +152,7 @@ const checkoutPlans: PlanCard[] = [
     accent: "from-emerald-600 to-teal-500",
     glow: "bg-emerald-200",
     badge: "Most Popular",
-    features: ["Revenue dashboard", "Pending revenue", "Monthly analytics", "WhatsApp monthly reports", "Email monthly reports", "Export reports"],
+    features: ["Revenue dashboard", "Pending revenue", "Monthly analytics", "WhatsApp monthly reports", "Email monthly reports"],
     demos: ["Revenue trends", "Monthly report cards", "Export-ready data"],
   },
   {
@@ -144,12 +161,12 @@ const checkoutPlans: PlanCard[] = [
     price: 1499,
     limit: "Unlimited members",
     tagline: "Scale without ceiling",
-    description: "Unlocks the full platform with premium support, custom branding, API access, and future integrations.",
+    description: "Unlocks the full platform with premium support, custom branding, Reports with export option, and Member messaging.",
     icon: Crown,
     accent: "from-indigo-700 to-sky-500",
     glow: "bg-indigo-200",
-    features: ["Everything in Growth", "Unlimited members", "Multi-admin support", "Custom branding", "API access", "Premium support"],
-    demos: ["Unlimited capacity", "Premium workspace", "Integration-ready"],
+    features: ["Everything in Growth", "Unlimited members", "Multi-admin support", "Custom branding", "Reports with export option","Member messaging", "Premium support", "Future integrations"],
+    demos: ["Unlimited capacity", "Premium workspace", "Integration-ready","Reports with export option"],
   },
 ];
 
@@ -225,6 +242,8 @@ export default function Subscription({ immersive = false, showPlans = false }: {
   const [manualPaymentId, setManualPaymentId] = useState("");
   const [manualSignature, setManualSignature] = useState("");
   const [purchaseSuccess, setPurchaseSuccess] = useState<PurchaseSuccessState | null>(null);
+  const [paymentHistory, setPaymentHistory] = useState<SubscriptionPayment[]>([]);
+  const [paymentHistoryPage, setPaymentHistoryPage] = useState<PaymentHistoryPage | null>(null);
 
   const { data: subscription, isLoading } = useQuery<SubscriptionStatus>({
     queryKey: ["subscriptionStatus"],
@@ -238,6 +257,25 @@ export default function Subscription({ immersive = false, showPlans = false }: {
   useEffect(() => {
     setSelectedPlan(preferredCheckoutPlan(subscription));
   }, [subscription?.subscriptionPlan]);
+
+  useEffect(() => {
+    if (!subscription) {
+      setPaymentHistory([]);
+      setPaymentHistoryPage(null);
+      return;
+    }
+    setPaymentHistory(subscription.paymentHistory ?? []);
+    setPaymentHistoryPage(
+      subscription.paymentHistoryPage ?? {
+        items: subscription.paymentHistory ?? [],
+        page: 0,
+        size: 5,
+        totalElements: subscription.paymentHistory?.length ?? 0,
+        totalPages: subscription.paymentHistory?.length ? 1 : 0,
+        hasNext: false,
+      }
+    );
+  }, [subscription]);
 
   useEffect(() => {
     if (!purchaseSuccess) {
@@ -277,6 +315,23 @@ export default function Subscription({ immersive = false, showPlans = false }: {
     onError: (error: any) => toast.error(error?.response?.data?.message || "Payment verification failed."),
   });
 
+  const loadMoreHistoryMutation = useMutation({
+    mutationFn: async (page: number) => {
+      const res = await api.get("/subscription/payments", {
+        params: { page, size: paymentHistoryPage?.size ?? 5 },
+      });
+      return res.data as PaymentHistoryPage;
+    },
+    onSuccess: (page) => {
+      setPaymentHistory((current) => {
+        const existingIds = new Set(current.map((payment) => payment.id));
+        return [...current, ...page.items.filter((payment) => !existingIds.has(payment.id))];
+      });
+      setPaymentHistoryPage(page);
+    },
+    onError: () => toast.error("Could not load older subscription payments."),
+  });
+
   const createOrderMutation = useMutation({
     mutationFn: async (plan: CheckoutPlanKey) => {
       const res = await api.post(
@@ -294,7 +349,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
       setManualOrder(order);
 
       if (!order.paymentsEnabled) {
-        toast.success(`${order.subscriptionPlan} subscription activated in local payment mode.`);
+        toast.success(`${subscriptionPlanLabel(order.subscriptionPlan)} activated in local payment mode.`);
         setPurchaseSuccess({ plan: order.subscriptionPlan, amount: order.amount });
         setManualOrder(null);
         queryClient.invalidateQueries({ queryKey: ["subscriptionStatus"] });
@@ -317,7 +372,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
         amount: order.amountInPaise,
         currency: order.currency,
         name: "BillMyGym",
-        description: `${order.subscriptionPlan} monthly SaaS subscription`,
+        description: `${subscriptionPlanLabel(order.subscriptionPlan)} monthly SaaS subscription`,
         order_id: order.razorpayOrderId,
         handler: (response: any) => {
           verifyMutation.mutate({
@@ -435,7 +490,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
     ? `${subscription.memberLimit.usedMembers} / Unlimited`
     : `${subscription.memberLimit?.usedMembers ?? subscription.activeMembers} / ${subscription.memberLimit?.memberLimit ?? 0}`;
   const lifecycleCards = isPilot
-    ? [{ label: "Pilot Access Ends", value: dateText(subscription.pilotEndsAt), emphasis: "text-sky-700" }]
+    ? [{ label: "Founding Partner Access", value: `Access Ends: ${dateText(subscription.pilotEndsAt)}`, emphasis: "text-sky-700" }]
     : isActive
       ? [
           {
@@ -443,14 +498,14 @@ export default function Subscription({ immersive = false, showPlans = false }: {
             value: `${dateText(subscription.currentPeriodStart)} - ${dateText(subscription.currentPeriodEnd)}`,
             emphasis: "text-emerald-700",
           },
-          { label: "Next Due Date", value: dateText(subscription.subscriptionDueDate), emphasis: "text-emerald-700" },
+          { label: "Next Renewal", value: dateText(subscription.subscriptionDueDate), emphasis: "text-emerald-700" },
         ]
       : hasInactiveSubscription
         ? [
-            { label: "Subscription Inactive", value: dateText(subscription.subscriptionDueDate), emphasis: "text-orange-700" },
+            { label: organizationStatusLabel(subscription.organizationStatus), value: dateText(subscription.subscriptionDueDate), emphasis: "text-orange-700" },
             { label: "Select A Plan", value: "Choose below to restore access", emphasis: "text-orange-700" },
           ]
-        : [{ label: "Trial Ends", value: dateText(subscription.trialEndsAt), emphasis: "text-amber-700" }];
+        : [{ label: "Free Trial Access", value: `Access Ends: ${dateText(subscription.trialEndsAt)}`, emphasis: "text-amber-700" }];
 
   const handlePlanCheckout = (plan: CheckoutPlanKey) => {
     setSelectedPlan(plan);
@@ -465,7 +520,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
       return "Opening checkout...";
     }
     if (isPilot) {
-      return "Pilot includes this";
+      return "Included with founding partner access";
     }
     if (isActive) {
       return subscription.subscriptionPlan === plan.key ? "Active plan" : "Available at renewal";
@@ -502,9 +557,11 @@ export default function Subscription({ immersive = false, showPlans = false }: {
           <div className="relative z-10 grid gap-8 lg:grid-cols-[1.25fr_0.75fr] lg:items-center">
             <div>
               <div className="mb-4 flex flex-wrap items-center gap-2">
-                <Badge className={statusStyles[subscription.organizationStatus]}>{subscription.organizationStatus}</Badge>
-                <Badge className={statusStyles[subscription.organizationType]}>{subscription.organizationType}</Badge>
-                <Badge className={statusStyles[subscription.subscriptionPlan]}>{subscription.subscriptionPlan}</Badge>
+                <Badge className={statusStyles[subscription.organizationStatus]}>{organizationStatusLabel(subscription.organizationStatus)}</Badge>
+                {subscription.organizationType === "PILOT" && (
+                  <Badge className={statusStyles[subscription.organizationType]}>{organizationTypeLabel(subscription.organizationType)}</Badge>
+                )}
+                <Badge className={statusStyles[subscription.subscriptionPlan]}>{subscriptionPlanLabel(subscription.subscriptionPlan)}</Badge>
               </div>
               <h1 className="max-w-3xl text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
                 {showPlans
@@ -518,7 +575,9 @@ export default function Subscription({ immersive = false, showPlans = false }: {
               <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-slate-600">
                 {showPlans
                   ? `${subscription.organizationName} can continue with Starter, unlock reports with Growth, or scale on Pro. Compare the plans below and continue when you're ready.`
-                  : `${subscription.organizationName} can continue with Starter, unlock reports with Growth, or scale on Pro. Use this page to review your billing status, usage, and renewal guidance.`}
+                  : isPilot
+                    ? foundingPartnerDescription()
+                    : `${subscription.organizationName} can continue with Starter, unlock reports with Growth, or scale on Pro. Use this page to review your billing status, usage, and renewal guidance.`}
               </p>
 
               <div className={`mt-6 grid gap-3 ${lifecycleCards.length === 1 ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
@@ -565,10 +624,23 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                   <Sparkles className="h-7 w-7" />
                 </div>
                 <div className="mt-6 text-sm font-black uppercase tracking-[0.24em] text-emerald-700">Subscription Studio</div>
-                <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">Explore plans when you need them.</div>
-                <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
-                  Keep this page focused on billing overview, usage, and renewal guidance. Open the next screen whenever you want to compare Starter, Growth, and Pro beautifully.
-                </p>
+                <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">Your current plan is {subscriptionPlanLabel(subscription.subscriptionPlan)}.</div>
+                <div className="mt-5 rounded-[1.5rem] border border-emerald-200/80 bg-white/80 p-4 shadow-sm">
+                  <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Currently Selected</div>
+                  <div className="mt-2 flex items-end gap-2">
+                    <span className="text-3xl font-black text-slate-950">
+                      {checkoutPlans.find((plan) => plan.key === subscription.subscriptionPlan)?.name ?? subscriptionPlanLabel(subscription.subscriptionPlan)}
+                    </span>
+                    <span className="pb-1 text-sm font-bold text-slate-500">
+                      {checkoutPlans.find((plan) => plan.key === subscription.subscriptionPlan)?.limit ?? "Premium early access"}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+                    {subscription.subscriptionPlan === "PILOT"
+                      ? foundingPartnerDescription()
+                      : `${money.format(subscription.monthlyAmount)} per month is currently applied to this workspace.`}
+                  </p>
+                </div>
                 <Button
                   onClick={() => navigate(planRoute)}
                   className="mt-6 h-12 rounded-full bg-emerald-600 px-6 font-black text-white shadow-[0_16px_35px_rgba(5,150,105,0.24)] hover:bg-emerald-700"
@@ -747,7 +819,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
               <div>
                 <h2 className="text-xl font-black text-slate-950">Pending Checkout Verification</h2>
                 <p className="mt-1 text-sm font-medium text-slate-500">
-                  {manualOrder.subscriptionPlan} order {manualOrder.razorpayOrderId} covers {dateText(manualOrder.subscriptionStart)} to {dateText(manualOrder.subscriptionEnd)}.
+                  {subscriptionPlanLabel(manualOrder.subscriptionPlan)} order {manualOrder.razorpayOrderId} covers {dateText(manualOrder.subscriptionStart)} to {dateText(manualOrder.subscriptionEnd)}.
                 </p>
               </div>
               <Badge className="border-amber-200 bg-amber-100 text-amber-800">{manualOrder.paymentStatus}</Badge>
@@ -803,10 +875,10 @@ export default function Subscription({ immersive = false, showPlans = false }: {
               </div>
 
               <div className="divide-y divide-slate-100">
-                {subscription.paymentHistory.length === 0 ? (
+                {paymentHistory.length === 0 ? (
                   <div className="p-8 text-center text-sm font-semibold text-slate-500">No subscription ledger rows yet.</div>
                 ) : (
-                  subscription.paymentHistory.map((payment) => (
+                  paymentHistory.map((payment) => (
                     <div key={payment.id} className="grid gap-4 p-5 md:grid-cols-[1fr_auto_auto] md:items-center">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -839,6 +911,22 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                   ))
                 )}
               </div>
+              {paymentHistoryPage && paymentHistoryPage.totalElements > paymentHistory.length && (
+                <div className="flex flex-col justify-between gap-3 border-t border-slate-100 bg-slate-50/70 p-4 sm:flex-row sm:items-center">
+                  <div className="text-sm font-bold text-slate-500">
+                    Showing {paymentHistory.length} of {paymentHistoryPage.totalElements} subscription payments
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => loadMoreHistoryMutation.mutate((paymentHistoryPage?.page ?? 0) + 1)}
+                    disabled={!paymentHistoryPage.hasNext || loadMoreHistoryMutation.isPending}
+                    className="rounded-full border-white/80 bg-white px-5 font-black"
+                  >
+                    {loadMoreHistoryMutation.isPending ? "Loading..." : "Load older payments"}
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="grid gap-4 rounded-[1.8rem] border border-emerald-100 bg-emerald-50/80 p-5 text-sm font-semibold text-emerald-950 sm:grid-cols-3">

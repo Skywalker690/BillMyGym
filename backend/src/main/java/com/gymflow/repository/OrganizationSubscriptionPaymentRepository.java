@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -28,6 +30,12 @@ public interface OrganizationSubscriptionPaymentRepository extends JpaRepository
     List<OrganizationSubscriptionPayment> findByOrganizationIdAndDeletedFalseOrderByCreatedAtDesc(Long organizationId);
 
     @EntityGraph(attributePaths = "organization")
+    Page<OrganizationSubscriptionPayment> findByOrganizationIdAndDeletedFalseOrderByCreatedAtDesc(
+        Long organizationId,
+        Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = "organization")
     List<OrganizationSubscriptionPayment> findByDeletedFalseOrderByCreatedAtDesc();
 
     Optional<OrganizationSubscriptionPayment> findTopByOrganizationIdAndPaymentStatusInAndDeletedFalseOrderByCreatedAtDesc(
@@ -43,6 +51,8 @@ public interface OrganizationSubscriptionPaymentRepository extends JpaRepository
 
     long countByPaymentStatusInAndDeletedFalse(Collection<SubscriptionPaymentStatus> statuses);
 
+    long countByPaymentStatusAndDeletedFalse(SubscriptionPaymentStatus status);
+
     @Query("""
         select coalesce(sum(payment.amount), 0)
         from OrganizationSubscriptionPayment payment
@@ -51,4 +61,12 @@ public interface OrganizationSubscriptionPaymentRepository extends JpaRepository
           and payment.paymentDate between :startDate and :endDate
         """)
     BigDecimal sumPaidBetween(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Query("""
+        select coalesce(sum(payment.amount), 0)
+        from OrganizationSubscriptionPayment payment
+        where payment.deleted = false
+          and payment.paymentStatus = com.gymflow.domain.enums.SubscriptionPaymentStatus.PAID
+        """)
+    BigDecimal sumPaidAll();
 }

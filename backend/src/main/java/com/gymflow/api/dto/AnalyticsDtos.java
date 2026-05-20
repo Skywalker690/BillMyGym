@@ -12,10 +12,36 @@ public class AnalyticsDtos {
         long pilotOrganizations,
         long pausedOrganizations,
         long deactivatedOrganizations,
+        long expiredOrganizations,
+        long activeSubscriptionRecords,
         BigDecimal monthlySaasRevenue,
+        BigDecimal previousMonthlySaasRevenue,
+        int revenueGrowthPercent,
+        BigDecimal lifetimeSaasRevenue,
+        BigDecimal projectedMonthlyRevenue,
         long paymentFailures,
+        long pendingPayments,
         long whatsappUsage,
-        long emailUsage
+        long emailUsage,
+        long totalCommunicationUsage,
+        long renewalsDueInSevenDays,
+        long pilotsEndingInThirtyDays,
+        long currentMonthNewOrganizations,
+        long previousMonthNewOrganizations,
+        int organizationGrowthPercent,
+        List<PlatformBreakdownResponse> organizationsByStatus,
+        List<PlatformBreakdownResponse> organizationsBySubscriptionPlan,
+        List<PlatformBreakdownResponse> paymentsByStatus,
+        List<PlatformBreakdownResponse> lifecycleAlerts
+    ) {
+    }
+
+    public record PlatformBreakdownResponse(
+        String key,
+        String label,
+        long count,
+        BigDecimal amount,
+        int percentage
     ) {
     }
 
