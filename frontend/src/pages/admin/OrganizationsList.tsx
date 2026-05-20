@@ -41,7 +41,7 @@ type Organization = {
   pilotEndDate?: string | null;
 };
 
-type DirectoryScope = "REGULAR" | "PILOT" | "DEMO" | "REGULAR_TRIAL";
+type DirectoryScope = "ALL" | "REGULAR" | "PILOT" | "DEMO" | "REGULAR_TRIAL";
 
 type DistributionItem = {
   key: string;
@@ -155,7 +155,7 @@ export default function OrganizationsList() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
-  const [scope, setScope] = useState<DirectoryScope>("REGULAR");
+  const [scope, setScope] = useState<DirectoryScope>("ALL");
   const [planFilter, setPlanFilter] = useState<(typeof planFilters)[number]["key"]>("ALL");
   const [statusFilter, setStatusFilter] = useState<(typeof lifecycleStatuses)[number]>("ALL");
   const deferredSearch = useDeferredValue(searchTerm);
@@ -172,9 +172,12 @@ export default function OrganizationsList() {
           page,
           size: pageSize,
           search: deferredSearch || undefined,
+          includeAllTypes: scope === "ALL",
           pilotOnly: scope === "PILOT",
           organizationType:
-            scope === "REGULAR" || scope === "REGULAR_TRIAL"
+            scope === "ALL"
+              ? undefined
+              : scope === "REGULAR" || scope === "REGULAR_TRIAL"
               ? "REGULAR"
               : scope === "PILOT"
                 ? "PILOT"
@@ -314,9 +317,9 @@ export default function OrganizationsList() {
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={() => setScope("REGULAR")}
+              onClick={() => setScope("ALL")}
               className={`rounded-full px-5 py-2 text-sm font-black transition ${
-                scope === "REGULAR" ? "bg-slate-950 text-white" : "bg-white text-slate-700 shadow-sm"
+                scope === "ALL" ? "bg-slate-950 text-white" : "bg-white text-slate-700 shadow-sm"
               }`}
             >
               All Gyms

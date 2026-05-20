@@ -132,6 +132,7 @@ public class OrganizationService {
         int page,
         int size,
         String search,
+        boolean includeAllTypes,
         boolean pilotOnly,
         OrganizationType organizationType,
         OrganizationStatus status,
@@ -145,6 +146,7 @@ public class OrganizationService {
         var result = organizationRepository.findDirectoryPage(
             normalizedSearch,
             pattern,
+            includeAllTypes,
             pilotOnly,
             organizationType,
             status,

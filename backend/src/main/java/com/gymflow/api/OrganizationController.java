@@ -37,6 +37,7 @@ public class OrganizationController {
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(required = false) String search,
+        @RequestParam(defaultValue = "false") boolean includeAllTypes,
         @RequestParam(defaultValue = "false") boolean pilotOnly,
         @RequestParam(required = false) OrganizationType organizationType,
         @RequestParam(required = false) OrganizationStatus status,
@@ -44,7 +45,7 @@ public class OrganizationController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
             "Organization directory fetched successfully",
-            organizationService.directory(page, size, search, pilotOnly, organizationType, status, plan)
+            organizationService.directory(page, size, search, includeAllTypes, pilotOnly, organizationType, status, plan)
         ));
     }
 

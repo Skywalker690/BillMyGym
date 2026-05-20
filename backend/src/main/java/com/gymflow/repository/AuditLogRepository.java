@@ -21,8 +21,11 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSp
     @Query(
         value = """
             select auditLog from AuditLog auditLog
-            where auditLog.activityScope = com.gymflow.domain.enums.AuditActivityScope.GLOBAL_LOGIN
-              and auditLog.actorRole = 'ORG_ADMIN'
+            where auditLog.organization is not null
+              and (
+                auditLog.activityScope = com.gymflow.domain.enums.AuditActivityScope.GLOBAL_LOGIN
+                or auditLog.category = com.gymflow.domain.enums.AuditCategory.AUTHENTICATION
+              )
               and (:status is null or auditLog.eventStatus = :status)
               and (:organizationId is null or auditLog.organization.id = :organizationId)
               and (:fromTime is null or auditLog.timestamp >= :fromTime)
@@ -38,8 +41,11 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSp
             """,
         countQuery = """
             select count(auditLog) from AuditLog auditLog
-            where auditLog.activityScope = com.gymflow.domain.enums.AuditActivityScope.GLOBAL_LOGIN
-              and auditLog.actorRole = 'ORG_ADMIN'
+            where auditLog.organization is not null
+              and (
+                auditLog.activityScope = com.gymflow.domain.enums.AuditActivityScope.GLOBAL_LOGIN
+                or auditLog.category = com.gymflow.domain.enums.AuditCategory.AUTHENTICATION
+              )
               and (:status is null or auditLog.eventStatus = :status)
               and (:organizationId is null or auditLog.organization.id = :organizationId)
               and (:fromTime is null or auditLog.timestamp >= :fromTime)
@@ -145,8 +151,11 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSp
     @Query(
         """
             select count(auditLog) from AuditLog auditLog
-            where auditLog.activityScope = com.gymflow.domain.enums.AuditActivityScope.GLOBAL_LOGIN
-              and auditLog.actorRole = 'ORG_ADMIN'
+            where auditLog.organization is not null
+              and (
+                auditLog.activityScope = com.gymflow.domain.enums.AuditActivityScope.GLOBAL_LOGIN
+                or auditLog.category = com.gymflow.domain.enums.AuditCategory.AUTHENTICATION
+              )
               and auditLog.eventStatus = :status
               and (:organizationId is null or auditLog.organization.id = :organizationId)
               and (:fromTime is null or auditLog.timestamp >= :fromTime)

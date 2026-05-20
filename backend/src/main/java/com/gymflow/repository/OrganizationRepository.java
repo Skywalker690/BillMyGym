@@ -53,9 +53,10 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
             or lower(o.adminFullName) like :pattern
           )
           and (
-            (:organizationType is not null and o.organizationType = :organizationType)
+            (:includeAllTypes = true)
+            or (:organizationType is not null and o.organizationType = :organizationType)
             or (
-              :organizationType is null and (
+              :includeAllTypes = false and :organizationType is null and (
                 (:pilotOnly = true and o.organizationType = com.gymflow.domain.enums.OrganizationType.PILOT)
                 or (:pilotOnly = false and o.organizationType <> com.gymflow.domain.enums.OrganizationType.PILOT)
               )
@@ -83,9 +84,10 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
             or lower(o.adminFullName) like :pattern
           )
           and (
-            (:organizationType is not null and o.organizationType = :organizationType)
+            (:includeAllTypes = true)
+            or (:organizationType is not null and o.organizationType = :organizationType)
             or (
-              :organizationType is null and (
+              :includeAllTypes = false and :organizationType is null and (
                 (:pilotOnly = true and o.organizationType = com.gymflow.domain.enums.OrganizationType.PILOT)
                 or (:pilotOnly = false and o.organizationType <> com.gymflow.domain.enums.OrganizationType.PILOT)
               )
@@ -98,6 +100,7 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
     Page<Organization> findDirectoryPage(
             @Param("search") String search,
             @Param("pattern") String pattern,
+            @Param("includeAllTypes") boolean includeAllTypes,
             @Param("pilotOnly") boolean pilotOnly,
             @Param("organizationType") OrganizationType organizationType,
             @Param("status") OrganizationStatus status,
