@@ -1,6 +1,8 @@
 package com.gymflow.domain;
 
 import com.gymflow.domain.enums.AuditCategory;
+import com.gymflow.domain.enums.AuditActivityScope;
+import com.gymflow.domain.enums.AuditEventStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,7 +15,8 @@ import java.time.Instant;
 @Table(name = "audit_logs", indexes = {
         @Index(name = "idx_audit_ts", columnList = "timestamp DESC"),
         @Index(name = "idx_audit_zone", columnList = "zone"),
-        @Index(name = "idx_audit_category", columnList = "category")
+        @Index(name = "idx_audit_category", columnList = "category"),
+        @Index(name = "idx_audit_org_scope_ts", columnList = "organization_id, activity_scope, timestamp DESC")
 })
 @Data
 @Builder
@@ -36,12 +39,39 @@ public class AuditLog {
     @Column(name = "actor_email", nullable = false, length = 255)
     private String actorEmail;
 
+    @Column(name = "actor_role", length = 40)
+    private String actorRole;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_id")
+    private Organization organization;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AuditCategory category;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "activity_scope", length = 40)
+    private AuditActivityScope activityScope;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "event_status", length = 20)
+    private AuditEventStatus eventStatus;
+
+    @Column(name = "target_name", length = 255)
+    private String targetName;
+
     @Column(length = 20)
     private String zone;
+
+    @Column(name = "ip_address", length = 64)
+    private String ipAddress;
+
+    @Column(length = 120)
+    private String device;
+
+    @Column(length = 120)
+    private String browser;
 
     @Column(nullable = false, updatable = false)
     private Instant timestamp;
@@ -50,6 +80,12 @@ public class AuditLog {
     public void onCreate() {
         if (timestamp == null) {
             timestamp = Instant.now();
+        }
+        if (activityScope == null) {
+            activityScope = AuditActivityScope.ADMIN_ACTIVITY;
+        }
+        if (eventStatus == null) {
+            eventStatus = AuditEventStatus.INFO;
         }
     }
 }

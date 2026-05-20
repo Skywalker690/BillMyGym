@@ -4,6 +4,7 @@ import com.gymflow.api.dto.OrganizationDtos.ReplaceOrganizationAdminRequest;
 import com.gymflow.api.dto.OrganizationDtos.UpdateOrganizationRequest;
 import com.gymflow.api.response.ApiResponse;
 import com.gymflow.domain.enums.OrganizationStatus;
+import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.service.OrganizationService;
 import jakarta.validation.Valid;
@@ -37,12 +38,13 @@ public class OrganizationController {
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(required = false) String search,
         @RequestParam(defaultValue = "false") boolean pilotOnly,
+        @RequestParam(required = false) OrganizationType organizationType,
         @RequestParam(required = false) OrganizationStatus status,
         @RequestParam(required = false) SubscriptionPlan plan
     ) {
         return ResponseEntity.ok(ApiResponse.success(
             "Organization directory fetched successfully",
-            organizationService.directory(page, size, search, pilotOnly, status, plan)
+            organizationService.directory(page, size, search, pilotOnly, organizationType, status, plan)
         ));
     }
 

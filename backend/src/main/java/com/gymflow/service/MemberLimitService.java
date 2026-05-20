@@ -3,6 +3,7 @@ package com.gymflow.service;
 import com.gymflow.api.error.BadRequestException;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.enums.MemberStatus;
+import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +39,7 @@ public class MemberLimitService {
     public MemberLimitSummary usage(Organization organization) {
         SubscriptionPlan plan = planAccessService.resolvePlan(organization);
         long usedMembers = memberRepository.countByOrganizationIdAndDeletedFalse(organization.getId());
-        Integer limit = plan.memberLimit();
+        Integer limit = organization.getOrganizationType() == OrganizationType.DEMO ? 3 : plan.memberLimit();
         boolean unlimited = limit == null;
         long remaining = unlimited ? Long.MAX_VALUE : Math.max(limit - usedMembers, 0);
         int usagePercent = unlimited || limit == 0

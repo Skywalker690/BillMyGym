@@ -49,12 +49,12 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     where member.organization.id = :organizationId
       and member.deleted = false
       and (
-          :search is null
-          or lower(member.fullName) like lower(concat('%', cast(:search as string), '%'))
-          or lower(member.phone) like lower(concat('%', cast(:search as string), '%'))
+          :pattern is null
+          or lower(member.fullName) like :pattern
+          or lower(member.phone) like :pattern
           or (
               member.email is not null
-              and lower(member.email) like lower(concat('%', cast(:search as string), '%'))
+              and lower(member.email) like :pattern
           )
       )
       and (:memberStatus is null or member.status = :memberStatus)
@@ -105,7 +105,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     """)
     Page<Member> searchDirectory(
         @Param("organizationId") Long organizationId,
-        @Param("search") String search,
+        @Param("pattern") String pattern,
         @Param("memberStatus") MemberStatus memberStatus,
         @Param("membershipStatus") String membershipStatus,
         @Param("today") java.time.LocalDate today,

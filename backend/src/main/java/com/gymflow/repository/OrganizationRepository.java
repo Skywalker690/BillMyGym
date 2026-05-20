@@ -47,13 +47,19 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
           and (
             :search is null
             or lower(o.name) like :pattern
+            or lower(o.place) like :pattern
             or lower(o.district) like :pattern
             or lower(o.adminEmail) like :pattern
             or lower(o.adminFullName) like :pattern
           )
           and (
-            (:pilotOnly = true and o.organizationType = com.gymflow.domain.enums.OrganizationType.PILOT)
-            or (:pilotOnly = false and o.organizationType <> com.gymflow.domain.enums.OrganizationType.PILOT)
+            (:organizationType is not null and o.organizationType = :organizationType)
+            or (
+              :organizationType is null and (
+                (:pilotOnly = true and o.organizationType = com.gymflow.domain.enums.OrganizationType.PILOT)
+                or (:pilotOnly = false and o.organizationType <> com.gymflow.domain.enums.OrganizationType.PILOT)
+              )
+            )
           )
           and (:status is null or o.status = :status)
           and (:plan is null or o.subscriptionPlan = :plan)
@@ -71,13 +77,19 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
           and (
             :search is null
             or lower(o.name) like :pattern
+            or lower(o.place) like :pattern
             or lower(o.district) like :pattern
             or lower(o.adminEmail) like :pattern
             or lower(o.adminFullName) like :pattern
           )
           and (
-            (:pilotOnly = true and o.organizationType = com.gymflow.domain.enums.OrganizationType.PILOT)
-            or (:pilotOnly = false and o.organizationType <> com.gymflow.domain.enums.OrganizationType.PILOT)
+            (:organizationType is not null and o.organizationType = :organizationType)
+            or (
+              :organizationType is null and (
+                (:pilotOnly = true and o.organizationType = com.gymflow.domain.enums.OrganizationType.PILOT)
+                or (:pilotOnly = false and o.organizationType <> com.gymflow.domain.enums.OrganizationType.PILOT)
+              )
+            )
           )
           and (:status is null or o.status = :status)
           and (:plan is null or o.subscriptionPlan = :plan)
@@ -87,6 +99,7 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
             @Param("search") String search,
             @Param("pattern") String pattern,
             @Param("pilotOnly") boolean pilotOnly,
+            @Param("organizationType") OrganizationType organizationType,
             @Param("status") OrganizationStatus status,
             @Param("plan") SubscriptionPlan plan,
             Pageable pageable
@@ -102,8 +115,19 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
             List<LocalDate> dueDates
     );
 
+    List<Organization> findAllByDeletedFalseAndOrganizationTypeInAndSubscriptionDueDateIn(
+            Collection<OrganizationType> organizationTypes,
+            List<LocalDate> dueDates
+    );
+
     List<Organization> findAllByDeletedFalseAndOrganizationTypeAndStatusAndSubscriptionDueDateBefore(
             OrganizationType organizationType,
+            OrganizationStatus status,
+            LocalDate date
+    );
+
+    List<Organization> findAllByDeletedFalseAndOrganizationTypeInAndStatusAndSubscriptionDueDateBefore(
+            Collection<OrganizationType> organizationTypes,
             OrganizationStatus status,
             LocalDate date
     );

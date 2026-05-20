@@ -28,6 +28,8 @@ public class Organization extends BaseEntity {
     @Column(nullable = false)
     private String district;
 
+    private String place;
+
     private String logoUrl;
     private String mapLocationLink;
     private String address;

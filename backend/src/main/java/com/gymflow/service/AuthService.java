@@ -16,6 +16,7 @@ import com.gymflow.api.response.ApiResponse;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationSetting;
 import com.gymflow.domain.User;
+import com.gymflow.domain.enums.AuditEventStatus;
 import com.gymflow.domain.enums.AuditCategory;
 import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.Role;
@@ -25,6 +26,7 @@ import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.repository.OrganizationSettingRepository;
 import com.gymflow.security.JwtService;
 import com.gymflow.security.SecurityUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -79,6 +81,8 @@ public class AuthService {
         Organization organization = organizationMapper.toNewOrganization(request);
         if (organization.getOrganizationType() == OrganizationType.PILOT) {
             billingLifecycleService.startPilotAccess(organization, today);
+        } else if (organization.getOrganizationType() == OrganizationType.DEMO) {
+            billingLifecycleService.startDemoAccess(organization, today);
         } else {
             billingLifecycleService.startRegularTrial(organization, today);
         }
@@ -102,7 +106,8 @@ public class AuthService {
             request.adminEmail(),
             request.adminFullName(),
             request.password(),
-            savedOrganization.getOrganizationType() == OrganizationType.PILOT
+            (savedOrganization.getOrganizationType() == OrganizationType.PILOT
+                || savedOrganization.getOrganizationType() == OrganizationType.DEMO)
                 ? savedOrganization.getPilotEndDate()
                 : savedOrganization.getTrialEndDate()
         );
@@ -121,23 +126,39 @@ public class AuthService {
     }
 
     @Transactional
-    public LoginResponse login(LoginRequest request) {
-        User user = resolveActiveUser(request.email());
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            auditLogService.logActor(
-                "LOGIN_FAILED",
-                "Password validation failed for email " + request.email(),
-                AuditCategory.AUTHENTICATION,
-                "AUTH",
-                request.email()
-            );
+    public LoginResponse login(LoginRequest request, HttpServletRequest httpRequest) {
+        AuditLogService.RequestAuditContext requestContext = requestAuditContext(httpRequest);
+        User user = userRepository.findByEmailAndDeletedFalse(request.email()).orElse(null);
+        if (user == null || user.getStatus() != UserStatus.ACTIVE) {
+            if (user != null && user.getRole() == Role.ORG_ADMIN) {
+                auditLogService.logLoginActivity(
+                    "LOGIN_SUSPICIOUS",
+                    "Suspicious login attempt on inactive account " + request.email(),
+                    AuditEventStatus.SUSPICIOUS,
+                    user,
+                    requestContext
+                );
+            }
             throw new BadRequestException("Invalid credentials");
         }
-        return buildLoginResponse(user, "PASSWORD_LOGIN");
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            if (user.getRole() == Role.ORG_ADMIN) {
+                auditLogService.logLoginActivity(
+                    "LOGIN_FAILED",
+                    "Password validation failed for email " + request.email(),
+                    AuditEventStatus.FAILED,
+                    user,
+                    requestContext
+                );
+            }
+            throw new BadRequestException("Invalid credentials");
+        }
+        return buildLoginResponse(user, "PASSWORD_LOGIN", requestContext);
     }
 
     @Transactional
-    public LoginResponse loginWithGoogle(GoogleLoginRequest request) {
+    public LoginResponse loginWithGoogle(GoogleLoginRequest request, HttpServletRequest httpRequest) {
+        AuditLogService.RequestAuditContext requestContext = requestAuditContext(httpRequest);
         try {
             if (googleClientId == null || googleClientId.trim().isEmpty()) {
                 throw new BadRequestException("Google authentication is not configured");
@@ -159,7 +180,7 @@ public class AuthService {
             String email = payload.getEmail();
             String pictureUrl = (String) payload.get("picture");
 
-            User user = resolveActiveUser(email);
+            User user = resolveActiveUser(email, requestContext);
 
             boolean needsUpdate = false;
             if (user.getGoogleId() == null || !user.getGoogleId().equals(googleId)) {
@@ -174,7 +195,7 @@ public class AuthService {
                 userRepository.save(user);
             }
 
-            return buildLoginResponse(user, "GOOGLE_LOGIN");
+            return buildLoginResponse(user, "GOOGLE_LOGIN", requestContext);
 
         } catch (GeneralSecurityException | IOException e) {
             log.debug("Full exception details:", e);
@@ -182,25 +203,48 @@ public class AuthService {
         }
     }
 
-    private User resolveActiveUser(String email) {
+    private User resolveActiveUser(String email, AuditLogService.RequestAuditContext requestContext) {
         User user = userRepository.findByEmailAndDeletedFalse(email)
             .orElseThrow(() -> new BadRequestException("Invalid credentials"));
         if (user.getStatus() != UserStatus.ACTIVE) {
+            if (user.getRole() == Role.ORG_ADMIN) {
+                auditLogService.logLoginActivity(
+                    "LOGIN_SUSPICIOUS",
+                    "Suspicious login attempt on inactive account " + email,
+                    AuditEventStatus.SUSPICIOUS,
+                    user,
+                    requestContext
+                );
+            }
             throw new BadRequestException("User account is inactive");
         }
         return user;
     }
 
-    private LoginResponse buildLoginResponse(User user, String auditEvent) {
+    private LoginResponse buildLoginResponse(
+        User user,
+        String auditEvent,
+        AuditLogService.RequestAuditContext requestContext
+    ) {
         String token = jwtService.issueToken(user);
         Long organizationId = user.getOrganization() == null ? null : user.getOrganization().getId();
-        auditLogService.logActor(
-            auditEvent,
-            "User " + user.getEmail() + " authenticated successfully",
-            AuditCategory.AUTHENTICATION,
-            "AUTH",
-            user.getEmail()
-        );
+        if (user.getRole() == Role.ORG_ADMIN) {
+            auditLogService.logLoginActivity(
+                auditEvent,
+                "User " + user.getEmail() + " authenticated successfully",
+                AuditEventStatus.SUCCESS,
+                user,
+                requestContext
+            );
+        } else {
+            auditLogService.logActor(
+                auditEvent,
+                "User " + user.getEmail() + " authenticated successfully",
+                AuditCategory.AUTHENTICATION,
+                "AUTH",
+                user.getEmail()
+            );
+        }
         return new LoginResponse(token, user.getRole().name(), organizationId, toUserDto(user));
     }
 
@@ -351,6 +395,58 @@ public class AuthService {
             .termsAccepted(user.getTermsAccepted())
             .policyVersion(user.getPolicyVersion())
             .build();
+    }
+
+    private AuditLogService.RequestAuditContext requestAuditContext(HttpServletRequest request) {
+        if (request == null) {
+            return new AuditLogService.RequestAuditContext(null, null, null);
+        }
+        String userAgent = request.getHeader("User-Agent");
+        return new AuditLogService.RequestAuditContext(
+            extractIpAddress(request),
+            detectDevice(userAgent),
+            detectBrowser(userAgent)
+        );
+    }
+
+    private String extractIpAddress(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            String[] values = forwarded.split(",");
+            return values.length == 0 ? request.getRemoteAddr() : values[0].trim();
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
+        return request.getRemoteAddr();
+    }
+
+    private String detectDevice(String userAgent) {
+        if (userAgent == null || userAgent.isBlank()) {
+            return "Unknown";
+        }
+        String normalized = userAgent.toLowerCase();
+        if (normalized.contains("ipad") || normalized.contains("tablet")) {
+            return "Tablet";
+        }
+        if (normalized.contains("mobile") || normalized.contains("android") || normalized.contains("iphone")) {
+            return "Mobile";
+        }
+        return "Desktop";
+    }
+
+    private String detectBrowser(String userAgent) {
+        if (userAgent == null || userAgent.isBlank()) {
+            return "Unknown";
+        }
+        String normalized = userAgent.toLowerCase();
+        if (normalized.contains("edg")) return "Edge";
+        if (normalized.contains("opr") || normalized.contains("opera")) return "Opera";
+        if (normalized.contains("chrome")) return "Chrome";
+        if (normalized.contains("firefox")) return "Firefox";
+        if (normalized.contains("safari")) return "Safari";
+        return "Unknown";
     }
 }
 

@@ -3,6 +3,8 @@ package com.gymflow.service;
 import com.gymflow.domain.NotificationLog;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationSetting;
+import com.gymflow.domain.enums.AuditActivityScope;
+import com.gymflow.domain.enums.AuditEventStatus;
 import com.gymflow.domain.enums.NotificationChannel;
 import com.gymflow.domain.enums.NotificationDeliveryStatus;
 import com.gymflow.domain.enums.NotificationStatus;
@@ -26,6 +28,7 @@ public class NotificationDispatcherService {
     private final UsageMetricService usageMetricService;
     private final WhatsAppDeliveryService whatsAppDeliveryService;
     private final WhatsAppTemplateService whatsAppTemplateService;
+    private final AuditLogService auditLogService;
 
     @Transactional
     public DispatchResult dispatchDigest(
@@ -94,10 +97,37 @@ public class NotificationDispatcherService {
         if (result.sent()) {
             persistedLog.setStatus(NotificationStatus.SENT);
             persistedLog.setSentAt(OffsetDateTime.now());
+            auditLogService.logOrganizationActivity(
+                "NOTIFICATION_SENT",
+                "WhatsApp reminder sent to " + recipient,
+                AuditActivityScope.NOTIFICATION_ACTIVITY,
+                AuditEventStatus.SUCCESS,
+                "NOTIFICATION",
+                organization.getId(),
+                recipient
+            );
         } else if (result.status() == NotificationDeliveryStatus.RETRYING) {
             persistedLog.setStatus(NotificationStatus.RETRYING);
+            auditLogService.logOrganizationActivity(
+                "NOTIFICATION_RETRYING",
+                "WhatsApp reminder retry scheduled for " + recipient,
+                AuditActivityScope.NOTIFICATION_ACTIVITY,
+                AuditEventStatus.INFO,
+                "NOTIFICATION",
+                organization.getId(),
+                recipient
+            );
         } else {
             persistedLog.setStatus(NotificationStatus.FAILED);
+            auditLogService.logOrganizationActivity(
+                "NOTIFICATION_FAILED",
+                "WhatsApp reminder failed for " + recipient,
+                AuditActivityScope.NOTIFICATION_ACTIVITY,
+                AuditEventStatus.FAILED,
+                "NOTIFICATION",
+                organization.getId(),
+                recipient
+            );
         }
         return notificationLogRepository.save(persistedLog);
     }
@@ -128,6 +158,15 @@ public class NotificationDispatcherService {
                 persistedLog.setFailureReason(null);
                 persistedLog.setSentAt(OffsetDateTime.now());
                 notificationDeliveryLogService.markAttempt(deliveryLog, attempt, NotificationDeliveryStatus.SENT);
+                auditLogService.logOrganizationActivity(
+                    "NOTIFICATION_SENT",
+                    channel.name() + " reminder sent to " + recipient,
+                    AuditActivityScope.NOTIFICATION_ACTIVITY,
+                    AuditEventStatus.SUCCESS,
+                    "NOTIFICATION",
+                    organization.getId(),
+                    recipient
+                );
                 return notificationLogRepository.save(persistedLog);
             }
 
@@ -136,6 +175,15 @@ public class NotificationDispatcherService {
 
         persistedLog.setStatus(NotificationStatus.FAILED);
         notificationDeliveryLogService.markAttempt(deliveryLog, MAX_ATTEMPTS, NotificationDeliveryStatus.FAILED);
+        auditLogService.logOrganizationActivity(
+            "NOTIFICATION_FAILED",
+            channel.name() + " reminder failed for " + recipient,
+            AuditActivityScope.NOTIFICATION_ACTIVITY,
+            AuditEventStatus.FAILED,
+            "NOTIFICATION",
+            organization.getId(),
+            recipient
+        );
         return notificationLogRepository.save(persistedLog);
     }
 

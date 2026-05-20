@@ -28,17 +28,20 @@ import { organizationStatusLabel, organizationTypeLabel } from "@/lib/subscripti
 type Organization = {
   id: number;
   name: string;
+  place?: string | null;
   district?: string | null;
   adminFullName?: string | null;
   adminEmail?: string | null;
   adminPhoneNumber?: string | null;
   status: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
-  organizationType?: "REGULAR" | "PILOT";
+  organizationType?: "REGULAR" | "PILOT" | "DEMO";
   subscriptionPlan?: "STARTER" | "GROWTH" | "PRO" | "PILOT";
   subscriptionDueDate?: string | null;
   trialEndDate?: string | null;
   pilotEndDate?: string | null;
 };
+
+type DirectoryScope = "REGULAR" | "PILOT" | "DEMO" | "REGULAR_TRIAL";
 
 type DistributionItem = {
   key: string;
@@ -70,7 +73,7 @@ const pageSize = 20;
 
 const planFilters = [
   { key: "ALL", label: "All" },
-  { key: "STARTER", label: "Startup" },
+  { key: "STARTER", label: "Starter" },
   { key: "GROWTH", label: "Growth" },
   { key: "PRO", label: "Pro" },
 ] as const;
@@ -81,9 +84,18 @@ const badgeClasses: Record<string, string> = {
   PAUSED: "border-rose-200 bg-rose-100 text-rose-800",
   DEACTIVATED: "border-slate-300 bg-slate-200 text-slate-800",
   PILOT: "border-sky-200 bg-sky-100 text-sky-800",
+  DEMO: "border-cyan-200 bg-cyan-100 text-cyan-800",
   STARTER: "border-slate-200 bg-slate-100 text-slate-800",
   GROWTH: "border-emerald-200 bg-emerald-100 text-emerald-800",
   PRO: "border-indigo-200 bg-indigo-100 text-indigo-800",
+};
+
+const planMeta: Record<string, string> = {
+  STARTER: "Rs. 299/month",
+  GROWTH: "Rs. 699/month",
+  PRO: "Rs. 1499/month",
+  PILOT: "Rs. 299/month",
+  DEMO: "No subscription fee",
 };
 
 function formatDate(value?: string | null) {
@@ -94,15 +106,15 @@ function formatDate(value?: string | null) {
 function organizationPlanLabel(plan?: Organization["subscriptionPlan"]) {
   switch (plan) {
     case "STARTER":
-      return "Startup";
+      return "Starter";
     case "GROWTH":
       return "Growth";
     case "PRO":
       return "Pro";
     case "PILOT":
-      return "Founding Partner Access";
+      return "Pilot";
     default:
-      return "Startup";
+      return "Starter";
   }
 }
 
@@ -113,7 +125,7 @@ function isRenewalAttention(org: Organization) {
 
   const parse = (value?: string | null) => (value ? new Date(value) : null);
   const dueDate =
-    org.organizationType === "PILOT"
+    org.organizationType === "PILOT" || org.organizationType === "DEMO"
       ? parse(org.pilotEndDate)
       : org.status === "TRIAL"
         ? parse(org.trialEndDate ?? org.subscriptionDueDate)
@@ -125,7 +137,10 @@ function isRenewalAttention(org: Organization) {
 
 function lifecycleMeta(org: Organization) {
   if (org.organizationType === "PILOT") {
-    return { label: "Founding Partner Access", value: `Access Ends: ${formatDate(org.pilotEndDate)}` };
+    return { label: "Pilot", value: `Renewal Date: ${formatDate(org.subscriptionDueDate)}` };
+  }
+  if (org.organizationType === "DEMO") {
+    return { label: "Demo Access", value: `Access Ends: ${formatDate(org.pilotEndDate)}` };
   }
   if (org.status === "TRIAL") {
     return { label: "Free Trial Access", value: `Access Ends: ${formatDate(org.trialEndDate ?? org.subscriptionDueDate)}` };
@@ -140,7 +155,7 @@ export default function OrganizationsList() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
-  const [scope, setScope] = useState<"ALL" | "PILOT">("ALL");
+  const [scope, setScope] = useState<DirectoryScope>("REGULAR");
   const [planFilter, setPlanFilter] = useState<(typeof planFilters)[number]["key"]>("ALL");
   const [statusFilter, setStatusFilter] = useState<(typeof lifecycleStatuses)[number]>("ALL");
   const deferredSearch = useDeferredValue(searchTerm);
@@ -158,12 +173,19 @@ export default function OrganizationsList() {
           size: pageSize,
           search: deferredSearch || undefined,
           pilotOnly: scope === "PILOT",
-          plan: scope === "ALL" && planFilter !== "ALL" ? planFilter : undefined,
-          status: statusFilter !== "ALL" ? statusFilter : undefined,
+          organizationType:
+            scope === "REGULAR" || scope === "REGULAR_TRIAL"
+              ? "REGULAR"
+              : scope === "PILOT"
+                ? "PILOT"
+                : "DEMO",
+          plan: scope === "REGULAR" && planFilter !== "ALL" ? planFilter : undefined,
+          status: scope === "REGULAR_TRIAL" ? "TRIAL" : statusFilter !== "ALL" ? statusFilter : undefined,
         },
       });
       return res.data;
     },
+    placeholderData: (previousData) => previousData,
     staleTime: 60_000,
   });
 
@@ -188,10 +210,6 @@ export default function OrganizationsList() {
     const end = Math.min(totalPages, start + 5);
     return Array.from({ length: Math.max(end - start, 0) }, (_, index) => start + index);
   }, [directory?.page, directory?.totalPages]);
-
-  if (directoryQuery.isLoading) {
-    return <div className="p-8 text-sm font-semibold text-slate-500">Loading organizations...</div>;
-  }
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
@@ -265,7 +283,9 @@ export default function OrganizationsList() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="text-sm font-black text-slate-950">{item.label}</div>
-                    <div className="mt-1 text-xs font-bold text-slate-500">{item.count} organizations</div>
+                    <div className="mt-1 text-xs font-bold text-slate-500">
+                      {item.count} organizations · {planMeta[item.key] ?? "Custom plan"}
+                    </div>
                   </div>
                   <Badge className={badgeClasses[item.key] ?? badgeClasses.STARTER}>{item.percentage}%</Badge>
                 </div>
@@ -294,9 +314,9 @@ export default function OrganizationsList() {
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={() => setScope("ALL")}
+              onClick={() => setScope("REGULAR")}
               className={`rounded-full px-5 py-2 text-sm font-black transition ${
-                scope === "ALL" ? "bg-slate-950 text-white" : "bg-white text-slate-700 shadow-sm"
+                scope === "REGULAR" ? "bg-slate-950 text-white" : "bg-white text-slate-700 shadow-sm"
               }`}
             >
               All Gyms
@@ -310,9 +330,27 @@ export default function OrganizationsList() {
             >
               Pilot Gyms
             </button>
+            <button
+              type="button"
+              onClick={() => setScope("DEMO")}
+              className={`rounded-full px-5 py-2 text-sm font-black transition ${
+                scope === "DEMO" ? "bg-slate-950 text-white" : "bg-white text-slate-700 shadow-sm"
+              }`}
+            >
+              Demo Gyms
+            </button>
+            <button
+              type="button"
+              onClick={() => setScope("REGULAR_TRIAL")}
+              className={`rounded-full px-5 py-2 text-sm font-black transition ${
+                scope === "REGULAR_TRIAL" ? "bg-slate-950 text-white" : "bg-white text-slate-700 shadow-sm"
+              }`}
+            >
+              Free Trial Gyms
+            </button>
           </div>
 
-          {scope === "ALL" && (
+          {scope === "REGULAR" && (
             <div className="mt-5 flex flex-wrap gap-2">
               {planFilters.map((filter) => (
                 <button
@@ -333,28 +371,35 @@ export default function OrganizationsList() {
             <div className="relative">
               <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
-                placeholder="Search by gym, owner, district, or email..."
+                placeholder="Search by gym, place, district, owner, or email..."
                 className="h-12 rounded-2xl border-white/80 bg-white/75 pl-11 font-semibold shadow-sm focus-visible:ring-emerald-500/50"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
               />
             </div>
-            <select
-              className="h-12 w-full rounded-2xl border border-white/80 bg-white/75 px-4 py-2 text-sm font-black text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500/40"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as (typeof lifecycleStatuses)[number])}
-            >
-              {lifecycleStatuses.map((status) => (
-                <option key={status} value={status}>
-                  {status === "ALL" ? "All subscription states" : organizationStatusLabel(status)}
-                </option>
-              ))}
-            </select>
+            {scope !== "REGULAR_TRIAL" && (
+              <select
+                className="h-12 w-full rounded-2xl border border-white/80 bg-white/75 px-4 py-2 text-sm font-black text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500/40"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as (typeof lifecycleStatuses)[number])}
+              >
+                {lifecycleStatuses.map((status) => (
+                  <option key={status} value={status}>
+                    {status === "ALL" ? "All subscription states" : organizationStatusLabel(status)}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
       </section>
 
       <section className="overflow-hidden rounded-[2rem] border border-white/80 bg-white/80 shadow-sm backdrop-blur">
+        {directoryQuery.isFetching && (
+          <div className="border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+            Refreshing organizations...
+          </div>
+        )}
         <div className="hidden grid-cols-[1.15fr_0.8fr_0.8fr_0.95fr_auto] gap-4 border-b border-slate-100 px-5 py-4 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 lg:grid">
           <div>Organization</div>
           <div>Admin</div>
@@ -374,7 +419,7 @@ export default function OrganizationsList() {
             {organizations.map((org) => {
               const lifecycle = lifecycleMeta(org);
               const attention = isRenewalAttention(org);
-              const plan = org.subscriptionPlan ?? (org.organizationType === "PILOT" ? "PILOT" : "STARTER");
+              const plan = org.subscriptionPlan ?? ((org.organizationType === "PILOT" || org.organizationType === "DEMO") ? "PILOT" : "STARTER");
 
               return (
                 <div key={org.id} className="grid gap-4 p-5 transition hover:bg-white/90 lg:grid-cols-[1.15fr_0.8fr_0.8fr_0.95fr_auto] lg:items-center">
@@ -390,7 +435,9 @@ export default function OrganizationsList() {
                         </Link>
                         <div className="mt-1 flex min-w-0 items-center gap-1.5 text-sm font-bold text-slate-500">
                           <MapPin className="h-3.5 w-3.5 shrink-0" />
-                          <span className="truncate">{org.district || "No district"}</span>
+                          <span className="truncate">
+                            {org.place ? `${org.place}, ` : ""}{org.district || "No district"}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -405,7 +452,9 @@ export default function OrganizationsList() {
                   <div className="flex flex-wrap gap-2">
                     <Badge className={badgeClasses[plan]}>{organizationPlanLabel(plan)}</Badge>
                     <Badge className={badgeClasses[org.status]}>{organizationStatusLabel(org.status)}</Badge>
-                    {org.organizationType === "PILOT" && <Badge className={badgeClasses.PILOT}>{organizationTypeLabel(org.organizationType)}</Badge>}
+                    {(org.organizationType === "PILOT" || org.organizationType === "DEMO") && (
+                      <Badge className={badgeClasses[org.organizationType]}>{organizationTypeLabel(org.organizationType)}</Badge>
+                    )}
                   </div>
 
                   <div className={`rounded-2xl border p-3 ${attention ? "border-rose-200 bg-rose-50/80" : "border-emerald-100 bg-emerald-50/70"}`}>

@@ -35,6 +35,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Base64;
@@ -85,8 +86,8 @@ public class SubscriptionService {
     @Transactional
     public CreateSubscriptionOrderResponse createOrder(CreateSubscriptionOrderRequest request) {
         Organization organization = resolveCurrentOrganization();
-        if (organization.getOrganizationType() == OrganizationType.PILOT) {
-            throw new BadRequestException("Pilot organizations have billing bypass enabled until the pilot period ends");
+        if (organization.getOrganizationType() == OrganizationType.DEMO) {
+            throw new BadRequestException("Demo organizations have billing bypass enabled.");
         }
         if (billingLifecycleService.hasCurrentPaidAccess(organization, LocalDate.now())) {
             throw new BadRequestException("Subscription is already active through " + organization.getSubscriptionDueDate().minusDays(1));
@@ -240,6 +241,12 @@ public class SubscriptionService {
             DEFAULT_PAYMENT_HISTORY_SIZE
         );
         SubscriptionPlan resolvedPlan = planAccessService.resolvePlan(organization);
+        BigDecimal monthlyAmount = organization.getOrganizationType() == OrganizationType.DEMO
+            ? BigDecimal.ZERO
+            : resolvedPlan.monthlyAmount();
+        BigDecimal lifetimeSubscriptionRevenue = organization.getOrganizationType() == OrganizationType.DEMO
+            ? BigDecimal.ZERO
+            : subscriptionPaymentRepository.sumPaidForOrganization(organization.getId());
 
         return new SubscriptionStatusResponse(
             organization.getId(),
@@ -247,7 +254,9 @@ public class SubscriptionService {
             organization.getOrganizationType(),
             organization.getStatus(),
             resolvedPlan,
-            resolvedPlan.monthlyAmount(),
+            monthlyAmount,
+            lifetimeSubscriptionRevenue,
+            organization.getCreatedAt() == null ? null : organization.getCreatedAt().toInstant(),
             organization.getTrialEndDate(),
             organization.getPilotEndDate(),
             organization.getSubscriptionDueDate(),
@@ -328,7 +337,7 @@ public class SubscriptionService {
         SubscriptionPlan selectedPlan = request == null || request.subscriptionPlan() == null
             ? planAccessService.resolvePlan(organization)
             : request.subscriptionPlan();
-        if (selectedPlan == SubscriptionPlan.PILOT) {
+        if (selectedPlan == SubscriptionPlan.PILOT && organization.getOrganizationType() != OrganizationType.PILOT) {
             throw new BadRequestException("Pilot is an invitation-only evaluation plan and cannot be purchased from checkout");
         }
         return selectedPlan;
@@ -353,7 +362,7 @@ public class SubscriptionService {
 
     private String createRazorpayOrder(long amountInPaise, String receipt, SubscriptionPlan selectedPlan) {
         if (razorpayKeyId == null || razorpayKeyId.isBlank() || razorpayKeySecret == null || razorpayKeySecret.isBlank()) {
-            return "order_local_" + receipt;
+            throw new BadRequestException("Razorpay credentials are not configured");
         }
         try {
             Long organizationId = SecurityUtils.currentUser().organizationId();
@@ -387,7 +396,7 @@ public class SubscriptionService {
 
     static boolean verifySignature(String payload, String signature, String secret) {
         if (secret == null || secret.isBlank()) {
-            return true;
+            return false;
         }
         if (signature == null || signature.isBlank()) {
             return false;
@@ -395,8 +404,11 @@ public class SubscriptionService {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            String expected = HexFormat.of().formatHex(mac.doFinal(payload.getBytes(StandardCharsets.UTF_8)));
-            return expected.equals(signature);
+            byte[] expected = HexFormat.of()
+                .formatHex(mac.doFinal(payload.getBytes(StandardCharsets.UTF_8)))
+                .getBytes(StandardCharsets.UTF_8);
+            byte[] actual = signature.getBytes(StandardCharsets.UTF_8);
+            return MessageDigest.isEqual(expected, actual);
         } catch (Exception ex) {
             return false;
         }

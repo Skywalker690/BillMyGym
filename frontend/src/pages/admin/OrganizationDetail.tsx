@@ -8,6 +8,7 @@ import {
   Building2,
   CalendarDays,
   CreditCard,
+  Info,
   IndianRupee,
   Mail,
   MapPin,
@@ -28,6 +29,7 @@ type Organization = {
   id: number;
   name: string;
   district?: string | null;
+  place?: string | null;
   logoUrl?: string | null;
   mapLocationLink?: string | null;
   address?: string | null;
@@ -36,7 +38,7 @@ type Organization = {
   adminEmail?: string | null;
   description?: string | null;
   monthlyMembershipFee?: number | null;
-  organizationType?: "REGULAR" | "PILOT";
+  organizationType?: "REGULAR" | "PILOT" | "DEMO";
   subscriptionPlan?: "STARTER" | "GROWTH" | "PRO" | "PILOT";
   status: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
   trialStartDate?: string | null;
@@ -67,6 +69,8 @@ type PaymentHistoryPage = {
 
 type SubscriptionStatus = {
   monthlyAmount?: number;
+  lifetimeSubscriptionRevenue?: number;
+  joinedAt?: string | null;
   currentPeriodStart?: string | null;
   currentPeriodEnd?: string | null;
   subscriptionDueDate?: string | null;
@@ -78,13 +82,14 @@ type SubscriptionStatus = {
 
 type FormValues = {
   name: string;
+  place: string;
   district: string;
   address: string;
   description: string;
   adminName: string;
   adminPhone: string;
   adminEmail: string;
-  organizationType: "REGULAR" | "PILOT";
+  organizationType: "REGULAR" | "PILOT" | "DEMO";
   status: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
 };
 
@@ -103,15 +108,17 @@ function formatDate(value?: string | null) {
 function planLabel(plan?: Organization["subscriptionPlan"]) {
   switch (plan) {
     case "STARTER":
-      return "Startup";
+      return "Starter";
     case "GROWTH":
       return "Growth";
     case "PRO":
       return "Pro";
     case "PILOT":
-      return "Founding Partner Access";
+      return "Pilot";
+    case "DEMO":
+      return "Demo";
     default:
-      return "Startup";
+      return "Starter";
   }
 }
 
@@ -166,6 +173,7 @@ export default function OrganizationDetail() {
     if (!organization) return;
     reset({
       name: organization.name,
+      place: organization.place ?? "",
       district: organization.district ?? "",
       address: organization.address ?? "",
       description: organization.description ?? "",
@@ -180,6 +188,7 @@ export default function OrganizationDetail() {
   const updateMutation = useMutation({
     mutationFn: (data: FormValues) => api.patch(`/organizations/${id}`, {
       name: data.name,
+      place: data.place || null,
       district: data.district,
       logoUrl: organization?.logoUrl,
       mapLocationLink: organization?.mapLocationLink,
@@ -234,7 +243,7 @@ export default function OrganizationDetail() {
     if (!organization) return false;
     if (organization.status === "PAUSED" || organization.status === "DEACTIVATED") return true;
     const targetDate =
-      organization.organizationType === "PILOT"
+      organization.organizationType === "PILOT" || organization.organizationType === "DEMO"
         ? organization.pilotEndDate
         : organization.status === "TRIAL"
           ? organization.trialEndDate ?? organization.subscriptionDueDate
@@ -268,7 +277,7 @@ export default function OrganizationDetail() {
             <div className="flex flex-wrap items-center gap-2">
               <Badge className="border-white/20 bg-white/10 text-white">{organizationStatusLabel(organization.status)}</Badge>
               <Badge className="border-emerald-300/20 bg-emerald-300/10 text-emerald-100">{planLabel(organization.subscriptionPlan)}</Badge>
-              {organization.organizationType === "PILOT" && (
+              {(organization.organizationType === "PILOT" || organization.organizationType === "DEMO") && (
                 <Badge className="border-sky-300/20 bg-sky-300/10 text-sky-100">{organizationTypeLabel(organization.organizationType)}</Badge>
               )}
             </div>
@@ -290,21 +299,30 @@ export default function OrganizationDetail() {
             <Trash2 className="mr-2 h-4 w-4" />
             {deleteMutation.isPending ? "Deleting..." : "Delete Organization"}
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate(`/app/organizations/${organization.id}/audit-logs`)}
+            className="rounded-full border-white/40 bg-white/10 px-6 font-black text-white hover:bg-white/20 hover:text-white"
+          >
+            View Audit Logs
+          </Button>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
           icon={CalendarDays}
-          label={organization.organizationType === "PILOT" ? "Access Window" : "Renewal Date"}
+          label={organization.organizationType === "PILOT" || organization.organizationType === "DEMO" ? "Access Window" : "Renewal Date"}
           value={formatDate(
-            organization.organizationType === "PILOT"
+            organization.organizationType === "PILOT" || organization.organizationType === "DEMO"
               ? organization.pilotEndDate
               : organization.status === "TRIAL"
                 ? organization.trialEndDate ?? organization.subscriptionDueDate
                 : organization.subscriptionDueDate
           )}
           tone={needsRenewalAttention ? "rose" : "emerald"}
+          infoContent={`Current Billing Period: ${formatDate(subscriptionStatus?.currentPeriodStart)} - ${formatDate(subscriptionStatus?.currentPeriodEnd)}`}
         />
         <SummaryCard
           icon={CreditCard}
@@ -319,10 +337,11 @@ export default function OrganizationDetail() {
           tone="slate"
         />
         <SummaryCard
-          icon={Sparkles}
-          label="Current Billing Period"
-          value={`${formatDate(subscriptionStatus?.currentPeriodStart)} - ${formatDate(subscriptionStatus?.currentPeriodEnd)}`}
-          tone="sky"
+          icon={CreditCard}
+          label="Total Revenue"
+          value={money.format(subscriptionStatus?.lifetimeSubscriptionRevenue ?? 0)}
+          tone="emerald"
+          infoContent={`Joined GymMax: ${formatDate(subscriptionStatus?.joinedAt)}`}
         />
       </section>
 
@@ -336,6 +355,9 @@ export default function OrganizationDetail() {
             <div className="grid gap-5 p-6 md:grid-cols-2">
               <Field label="Business Name">
                 <Input {...register("name")} className="h-11 rounded-xl bg-white/70" />
+              </Field>
+              <Field label="Place">
+                <Input {...register("place")} className="h-11 rounded-xl bg-white/70" />
               </Field>
               <Field label="District">
                 <Input {...register("district")} className="h-11 rounded-xl bg-white/70" />
@@ -374,14 +396,15 @@ export default function OrganizationDetail() {
               <Field label="Pilot Gym Access">
                 <select {...register("organizationType")} className="h-11 w-full rounded-xl border border-black/5 bg-white/75 px-4 text-sm font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/40">
                   <option value="REGULAR">Standard Billing</option>
-                  <option value="PILOT">Founding Partner Access</option>
+                  <option value="PILOT">Pilot</option>
+                  <option value="DEMO">Demo</option>
                 </select>
               </Field>
             </div>
             <div className="grid gap-4 border-t border-black/5 p-6 md:grid-cols-3">
               <DateTile label="Trial Window" value={`${formatDate(organization.trialStartDate)} - ${formatDate(organization.trialEndDate)}`} attention={organization.status === "TRIAL" && needsRenewalAttention} />
-              <DateTile label="Pilot Window" value={`${formatDate(organization.pilotStartDate)} - ${formatDate(organization.pilotEndDate)}`} attention={organization.organizationType === "PILOT" && needsRenewalAttention} />
-              <DateTile label="Renewal Date" value={formatDate(organization.subscriptionDueDate)} attention={organization.organizationType !== "PILOT" && needsRenewalAttention} />
+              <DateTile label="Pilot Window" value={`${formatDate(organization.pilotStartDate)} - ${formatDate(organization.pilotEndDate)}`} attention={(organization.organizationType === "PILOT" || organization.organizationType === "DEMO") && needsRenewalAttention} />
+              <DateTile label="Renewal Date" value={formatDate(organization.subscriptionDueDate)} attention={organization.organizationType === "REGULAR" && needsRenewalAttention} />
             </div>
           </section>
 
@@ -420,6 +443,8 @@ export default function OrganizationDetail() {
             <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Quick View</div>
             <div className="mt-5 space-y-4">
               <InfoRow icon={Building2} label="Organization ID" value={String(organization.id)} />
+              <InfoRow icon={CalendarDays} label="Joined GymMax" value={formatDate(subscriptionStatus?.joinedAt)} />
+              <InfoRow icon={MapPin} label="Place" value={organization.place || "Not set"} />
               <InfoRow icon={MapPin} label="District" value={organization.district || "Not set"} />
               <InfoRow icon={Mail} label="Admin Email" value={organization.adminEmail || "Not set"} />
               <InfoRow icon={Phone} label="Admin Phone" value={organization.adminPhoneNumber || "Not set"} />
@@ -436,6 +461,7 @@ export default function OrganizationDetail() {
             </div>
             <div className="grid gap-4 p-6 md:grid-cols-2">
               <MiniMetric label="Plan" value={planLabel(organization.subscriptionPlan)} />
+              <MiniMetric label="Lifetime Revenue" value={money.format(subscriptionStatus?.lifetimeSubscriptionRevenue ?? 0)} />
               <MiniMetric label="WhatsApp Usage" value={String(subscriptionStatus?.whatsappUsage ?? 0)} />
               <MiniMetric label="Email Usage" value={String(subscriptionStatus?.emailUsage ?? 0)} />
               <MiniMetric label="Renewal Date" value={formatDate(subscriptionStatus?.subscriptionDueDate ?? organization.subscriptionDueDate)} />
@@ -497,11 +523,13 @@ function SummaryCard({
   label,
   value,
   tone,
+  infoContent,
 }: {
   icon: typeof CalendarDays;
   label: string;
   value: string;
   tone: "slate" | "emerald" | "rose" | "sky";
+  infoContent?: string;
 }) {
   const styles = {
     slate: "border-slate-200 bg-white text-slate-900",
@@ -511,9 +539,21 @@ function SummaryCard({
   }[tone];
 
   return (
-    <div className={`rounded-[1.75rem] border p-5 shadow-sm ${styles}`}>
+    <div className={`group relative rounded-[1.75rem] border p-5 shadow-sm ${styles}`}>
       <Icon className="h-6 w-6" />
-      <div className="mt-4 text-[10px] font-black uppercase tracking-[0.22em] opacity-70">{label}</div>
+      <div className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] opacity-70">
+        <span>{label}</span>
+        {infoContent && (
+          <div className="relative">
+            <div className="flex h-5 w-5 items-center justify-center rounded-full border border-current/20 bg-white/60">
+              <Info className="h-3.5 w-3.5" />
+            </div>
+            <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-64 -translate-x-1/2 rounded-2xl border border-slate-200 bg-slate-950 px-3 py-2 text-center text-[11px] font-semibold normal-case tracking-normal text-white opacity-0 shadow-xl transition duration-150 group-hover:opacity-100">
+              {infoContent}
+            </div>
+          </div>
+        )}
+      </div>
       <div className="mt-2 text-2xl font-black tracking-tight">{value}</div>
     </div>
   );

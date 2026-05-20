@@ -10,6 +10,7 @@ import com.gymflow.api.dto.UpdatePasswordOtpRequest;
 import com.gymflow.api.dto.UpdatePasswordWithOtpRequest;
 import com.gymflow.api.dto.VerifyOtpRequest;
 import com.gymflow.api.response.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import com.gymflow.security.SecurityUtils;
 import com.gymflow.service.AuthService;
 import jakarta.validation.Valid;
@@ -36,13 +37,13 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Login successful", authService.login(request)));
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(ApiResponse.success("Login successful", authService.login(request, httpRequest)));
     }
 
     @PostMapping("/google-login")
-    public ResponseEntity<?> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Google login successful", authService.loginWithGoogle(request)));
+    public ResponseEntity<?> googleLogin(@Valid @RequestBody GoogleLoginRequest request, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(ApiResponse.success("Google login successful", authService.loginWithGoogle(request, httpRequest)));
     }
 
     @PostMapping("/forgot-password")

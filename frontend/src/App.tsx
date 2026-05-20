@@ -32,6 +32,8 @@ import PlatformOverview from "./pages/admin/PlatformOverview";
 import OrganizationsList from "./pages/admin/OrganizationsList";
 import OrganizationForm from "./pages/admin/OrganizationForm";
 import OrganizationDetail from "./pages/admin/OrganizationDetail";
+import GlobalAuditLogs from "./pages/admin/GlobalAuditLogs";
+import OrganizationAuditLogs from "./pages/admin/OrganizationAuditLogs";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +61,8 @@ export default function App() {
                 <Route path="/app/organizations" element={<OrganizationsList />} />
                 <Route path="/app/organizations/new" element={<OrganizationForm />} />
                 <Route path="/app/organizations/:id" element={<OrganizationDetail />} />
+                <Route path="/app/organizations/:id/audit-logs" element={<OrganizationAuditLogs />} />
+                <Route path="/app/audit-logs" element={<GlobalAuditLogs />} />
               </Route>
 
               {/* ORG_ADMIN Routes */}

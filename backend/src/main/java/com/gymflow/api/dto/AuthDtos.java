@@ -22,6 +22,7 @@ public class AuthDtos {
 
     public record RegisterOrganizationAdminRequest(
         @NotBlank String organizationName,
+        @NotBlank String place,
         @NotBlank String district,
         String logoUrl,
         String mapLocationLink,

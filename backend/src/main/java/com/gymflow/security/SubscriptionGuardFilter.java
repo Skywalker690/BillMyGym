@@ -49,7 +49,7 @@ public class SubscriptionGuardFilter extends OncePerRequestFilter {
             errorWriter.write(response, HttpStatus.FORBIDDEN.value(), "Organization context is invalid", "ORGANIZATION_CONTEXT_INVALID");
             return;
         }
-        if (organization.getOrganizationType() == OrganizationType.PILOT) {
+        if (organization.getOrganizationType() == OrganizationType.DEMO) {
             filterChain.doFilter(request, response);
             return;
         }

@@ -17,6 +17,7 @@ public class OrganizationDtos {
         Long id,
         String name,
         String district,
+        String place,
         String logoUrl,
         String mapLocationLink,
         String address,
@@ -69,6 +70,7 @@ public class OrganizationDtos {
     public record UpdateOrganizationRequest(
         @NotBlank String name,
         @NotBlank String district,
+        String place,
         String logoUrl,
         String mapLocationLink,
         String address,

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gymflow.api.dto.SubscriptionDtos.VerifySubscriptionPaymentRequest;
 import com.gymflow.api.error.BadRequestException;
+import com.gymflow.api.error.ForbiddenException;
 import com.gymflow.api.error.NotFoundException;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationSubscription;
@@ -18,6 +19,8 @@ import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.repository.OrganizationSubscriptionPaymentRepository;
 import com.gymflow.repository.OrganizationSubscriptionRepository;
 import com.gymflow.repository.ProcessedWebhookEventRepository;
+import com.gymflow.security.SecurityUtils;
+import com.gymflow.shared.money.MoneyUtils;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -58,6 +61,10 @@ public class OrganizationPaymentWebhookService {
         }
         OrganizationSubscriptionPayment payment = paymentRepository.findByRazorpayOrderIdAndDeletedFalse(request.razorpayOrderId())
             .orElseThrow(() -> new NotFoundException("Subscription order not found"));
+        Long currentOrganizationId = SecurityUtils.currentUser().organizationId();
+        if (currentOrganizationId == null || !currentOrganizationId.equals(payment.getOrganization().getId())) {
+            throw new ForbiddenException("Forbidden payment verification");
+        }
         ensureUniqueGatewayTransaction(request.razorpayPaymentId(), payment);
         payment.setRazorpayPaymentId(request.razorpayPaymentId());
         payment.setGatewayTransactionId(request.razorpayPaymentId());
@@ -72,8 +79,10 @@ public class OrganizationPaymentWebhookService {
 
     @Transactional
     public void handleWebhook(String payload, String signature) {
-        if (razorpayWebhookSecret != null && !razorpayWebhookSecret.isBlank()
-            && !SubscriptionService.verifySignature(payload, signature, razorpayWebhookSecret)) {
+        if (razorpayWebhookSecret == null || razorpayWebhookSecret.isBlank()) {
+            throw new BadRequestException("Razorpay webhook secret is not configured");
+        }
+        if (!SubscriptionService.verifySignature(payload, signature, razorpayWebhookSecret)) {
             throw new BadRequestException("Invalid Razorpay webhook signature");
         }
         try {
@@ -99,6 +108,7 @@ public class OrganizationPaymentWebhookService {
             }
 
             if (isSuccessEvent(event)) {
+                validateGatewayAmount(payment, paymentNode, orderNode);
                 payment.setWebhookEventId(eventId);
                 if (paymentId != null && !paymentId.isBlank()) {
                     ensureUniqueGatewayTransaction(paymentId, payment);
@@ -114,6 +124,7 @@ public class OrganizationPaymentWebhookService {
             }
 
             if (isFailureEvent(event)) {
+                validateGatewayAmount(payment, paymentNode, orderNode);
                 payment.setWebhookEventId(eventId);
                 if (paymentId != null && !paymentId.isBlank()) {
                     ensureUniqueGatewayTransaction(paymentId, payment);
@@ -251,6 +262,30 @@ public class OrganizationPaymentWebhookService {
             });
     }
 
+    private void validateGatewayAmount(OrganizationSubscriptionPayment payment, JsonNode paymentNode, JsonNode orderNode) {
+        JsonNode amountSource = hasValue(paymentNode, "amount") ? paymentNode : orderNode;
+        if (hasValue(amountSource, "amount")) {
+            long expectedAmount = MoneyUtils.toMinorUnits(payment.getAmount());
+            long gatewayAmount = amountSource.path("amount").asLong(-1L);
+            if (gatewayAmount != expectedAmount) {
+                throw new BadRequestException("Razorpay webhook amount does not match subscription order");
+            }
+        }
+        String currency = text(amountSource, "currency");
+        if (currency != null && !"INR".equalsIgnoreCase(currency)) {
+            throw new BadRequestException("Unsupported Razorpay webhook currency");
+        }
+    }
+
+    private boolean hasValue(JsonNode node, String fieldName) {
+        return node != null
+            && !node.isMissingNode()
+            && !node.isNull()
+            && node.has(fieldName)
+            && !node.path(fieldName).isMissingNode()
+            && !node.path(fieldName).isNull();
+    }
+
     private boolean isSuccessEvent(String event) {
         return "payment.captured".equals(event) || "order.paid".equals(event) || "subscription.charged".equals(event);
     }
@@ -308,8 +343,7 @@ public class OrganizationPaymentWebhookService {
             return null;
         }
         try {
-            SubscriptionPlan plan = SubscriptionPlan.valueOf(raw.trim().toUpperCase());
-            return plan == SubscriptionPlan.PILOT ? null : plan;
+            return SubscriptionPlan.valueOf(raw.trim().toUpperCase());
         } catch (IllegalArgumentException ex) {
             return null;
         }

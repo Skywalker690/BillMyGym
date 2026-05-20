@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -151,7 +152,7 @@ public class AnalyticsService {
     }
 
     private List<PlatformBreakdownResponse> organizationsByPlan(long totalOrganizations) {
-        return Arrays.stream(SubscriptionPlan.values())
+        List<PlatformBreakdownResponse> items = new ArrayList<>(Arrays.stream(SubscriptionPlan.values())
             .map(plan -> {
                 long count = organizationRepository.countByDeletedFalseAndSubscriptionPlan(plan);
                 return breakdown(
@@ -162,7 +163,15 @@ public class AnalyticsService {
                     totalOrganizations
                 );
             })
-            .toList();
+            .toList());
+        items.add(breakdown(
+            "DEMO",
+            "Demo",
+            organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.DEMO),
+            BigDecimal.ZERO,
+            totalOrganizations
+        ));
+        return items;
     }
 
     private List<PlatformBreakdownResponse> paymentsByStatus() {

@@ -15,6 +15,8 @@ import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.enums.AuditCategory;
+import com.gymflow.domain.enums.AuditActivityScope;
+import com.gymflow.domain.enums.AuditEventStatus;
 import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.MembershipStatus;
 import com.gymflow.domain.enums.PaymentStatus;
@@ -66,13 +68,13 @@ public class MemberService {
         int reminderDays = organizationSettingService.getOrCreateSettings(orgId).getReminderDaysBeforeExpiry();
         LocalDate today = LocalDate.now();
         memberMembershipService.refreshMembershipStatuses(orgId);
-        String normalizedSearch = hasText(search) ? search.trim() : null;
+        String searchPattern = hasText(search) ? "%" + search.trim().toLowerCase() + "%" : null;
         String normalizedMembershipStatus = hasText(membershipStatus) && !"ALL".equalsIgnoreCase(membershipStatus)
             ? membershipStatus.trim().toUpperCase()
             : null;
         Page<Member> memberPage = memberRepository.searchDirectory(
             orgId,
-            normalizedSearch,
+            searchPattern,
             memberStatus,
             normalizedMembershipStatus,
             today,
@@ -126,6 +128,15 @@ public class MemberService {
             AuditCategory.MEMBER,
             "MEMBER"
         );
+        auditLogService.logOrganizationActivity(
+            "ADMIN_CREATED_MEMBER",
+            "Admin created member " + member.getFullName(),
+            AuditActivityScope.ADMIN_ACTIVITY,
+            AuditEventStatus.INFO,
+            "MEMBER",
+            orgId,
+            member.getFullName()
+        );
         return memberMapper.toResponse(member);
     }
 
@@ -141,6 +152,7 @@ public class MemberService {
             member.getStatus(),
             request.status() == null ? MemberStatus.ACTIVE : request.status()
         );
+        MemberStatus previousStatus = member.getStatus();
         memberMapper.apply(member, request);
         applyMemberStatusSideEffects(member);
 
@@ -150,6 +162,31 @@ public class MemberService {
             AuditCategory.MEMBER,
             "MEMBER"
         );
+        auditLogService.logOrganizationActivity(
+            "ADMIN_UPDATED_MEMBER",
+            "Admin updated member " + member.getFullName(),
+            AuditActivityScope.ADMIN_ACTIVITY,
+            AuditEventStatus.INFO,
+            "MEMBER",
+            orgId,
+            member.getFullName()
+        );
+        if (previousStatus != member.getStatus()) {
+            String statusEvent = member.getStatus() == MemberStatus.DEACTIVATED
+                ? "MEMBER_DEACTIVATED"
+                : previousStatus == MemberStatus.DEACTIVATED && member.getStatus() == MemberStatus.ACTIVE
+                    ? "MEMBER_REACTIVATED"
+                    : "MEMBER_STATUS_CHANGED";
+            auditLogService.logOrganizationActivity(
+                statusEvent,
+                "Member status changed for " + member.getFullName() + " from " + previousStatus + " to " + member.getStatus(),
+                AuditActivityScope.MEMBER_STATUS_ACTIVITY,
+                AuditEventStatus.INFO,
+                "MEMBER",
+                orgId,
+                member.getFullName()
+            );
+        }
         return memberMapper.toResponse(member);
     }
 
@@ -167,6 +204,15 @@ public class MemberService {
             "Soft deleted member " + member.getFullName() + " (id=" + member.getId() + ")",
             AuditCategory.MEMBER,
             "MEMBER"
+        );
+        auditLogService.logOrganizationActivity(
+            "ADMIN_DELETED_MEMBER",
+            "Admin deleted member " + member.getFullName(),
+            AuditActivityScope.ADMIN_ACTIVITY,
+            AuditEventStatus.INFO,
+            "MEMBER",
+            orgId,
+            member.getFullName()
         );
     }
 

@@ -1,5 +1,6 @@
 import {
   Activity,
+  ClipboardList,
   Bell,
   Building2,
   Clock3,
@@ -32,6 +33,12 @@ export const getSidebarNavItems = (role: AppRole | null | undefined): NavItemCon
         label: "Organizations",
         href: "/app/organizations",
         icon: Building2,
+        section: "Platform",
+      },
+      {
+        label: "Audit Logs",
+        href: "/app/audit-logs",
+        icon: ClipboardList,
         section: "Platform",
       },
     ];
@@ -78,6 +85,12 @@ export const getProfileNavItems = (role: AppRole | null | undefined): NavItemCon
         label: "Organizations",
         href: "/app/organizations",
         icon: Building2,
+        section: "Account",
+      },
+      {
+        label: "Audit Logs",
+        href: "/app/audit-logs",
+        icon: ClipboardList,
         section: "Account",
       },
     ];
@@ -140,6 +153,12 @@ export const getPageContext = (pathname: string, role: AppRole | null | undefine
       eyebrow: "Platform Directory",
       title: "Organizations",
       description: "Manage tenants, ownership, and platform rollout from one place.",
+    },
+    {
+      match: "/app/audit-logs",
+      eyebrow: "Audit Command",
+      title: "Audit Logs",
+      description: "Review login activity in categorized tables with strict filters and export support.",
     },
     {
       match: "/app/dashboard",

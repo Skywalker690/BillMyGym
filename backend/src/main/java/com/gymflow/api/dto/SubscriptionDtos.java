@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.List;
 
 public class SubscriptionDtos {
@@ -45,6 +46,8 @@ public class SubscriptionDtos {
         OrganizationStatus organizationStatus,
         SubscriptionPlan subscriptionPlan,
         BigDecimal monthlyAmount,
+        BigDecimal lifetimeSubscriptionRevenue,
+        Instant joinedAt,
         LocalDate trialEndsAt,
         LocalDate pilotEndsAt,
         LocalDate subscriptionDueDate,

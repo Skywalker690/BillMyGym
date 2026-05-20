@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
@@ -6,6 +7,8 @@ import {
   Building2,
   CalendarClock,
   CreditCard,
+  Eye,
+  EyeOff,
   Mail,
   MessageCircle,
   PauseCircle,
@@ -78,6 +81,14 @@ const compact = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
+const planMeta: Record<string, string> = {
+  STARTER: "Rs. 299/month",
+  GROWTH: "Rs. 699/month",
+  PRO: "Rs. 1499/month",
+  PILOT: "Rs. 299/month",
+  DEMO: "No subscription fee",
+};
+
 const statusTone: Record<string, string> = {
   ACTIVE: "bg-emerald-100 text-emerald-800 border-emerald-200",
   TRIAL: "bg-amber-100 text-amber-800 border-amber-200",
@@ -87,6 +98,7 @@ const statusTone: Record<string, string> = {
   GROWTH: "bg-emerald-100 text-emerald-800 border-emerald-200",
   PRO: "bg-indigo-100 text-indigo-800 border-indigo-200",
   PILOT: "bg-sky-100 text-sky-800 border-sky-200",
+  DEMO: "bg-cyan-100 text-cyan-800 border-cyan-200",
 };
 
 function percentText(value: number) {
@@ -101,7 +113,7 @@ function BreakdownBar({ item, amount = false }: { item: PlatformBreakdown; amoun
         <div className="min-w-0">
           <div className="truncate text-sm font-black text-slate-950">{item.label}</div>
           <div className="mt-1 text-xs font-bold text-slate-500">
-            {item.count} orgs{amount && item.amount > 0 ? ` · ${money.format(item.amount)} potential` : ""}
+            {item.count} orgs{amount ? ` · ${planMeta[item.key] ?? "Custom plan"}` : ""}
           </div>
         </div>
         <Badge className={statusTone[item.key] ?? "border-slate-200 bg-slate-100 text-slate-700"}>{item.percentage}%</Badge>
@@ -117,6 +129,7 @@ function BreakdownBar({ item, amount = false }: { item: PlatformBreakdown; amoun
 }
 
 export default function PlatformOverview() {
+  const [showLifetimeRevenue, setShowLifetimeRevenue] = useState(false);
   const { data: analytics, isLoading } = useQuery<PlatformAnalytics>({
     queryKey: ["platformAnalytics"],
     queryFn: async () => {
@@ -238,8 +251,18 @@ export default function PlatformOverview() {
                 <div className="mt-2 text-xl font-black">{money.format(data.previousMonthlySaasRevenue)}</div>
               </div>
               <div className="rounded-2xl bg-white/10 p-4">
-                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Lifetime</div>
-                <div className="mt-2 text-xl font-black">{money.format(data.lifetimeSaasRevenue)}</div>
+                <div className="flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                  <span>Lifetime</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowLifetimeRevenue((current) => !current)}
+                    className="rounded-full p-1 text-slate-300 transition hover:bg-white/10 hover:text-white"
+                    aria-label={showLifetimeRevenue ? "Hide lifetime revenue" : "Show lifetime revenue"}
+                  >
+                    {showLifetimeRevenue ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <div className="mt-2 text-xl font-black">{showLifetimeRevenue ? money.format(data.lifetimeSaasRevenue) : "XXXXXXXX"}</div>
               </div>
             </div>
           </div>

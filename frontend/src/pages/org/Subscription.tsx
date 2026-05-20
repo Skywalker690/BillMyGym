@@ -70,7 +70,7 @@ type PaymentHistoryPage = {
 type SubscriptionStatus = {
   organizationId: number;
   organizationName: string;
-  organizationType: "REGULAR" | "PILOT";
+  organizationType: "REGULAR" | "PILOT" | "DEMO";
   organizationStatus: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
   subscriptionPlan: SubscriptionPlanKey;
   monthlyAmount: number;
@@ -205,6 +205,7 @@ const statusStyles: Record<string, string> = {
   PAUSED: "border-orange-200 bg-orange-100 text-orange-800",
   DEACTIVATED: "border-rose-200 bg-rose-100 text-rose-800",
   PILOT: "border-sky-200 bg-sky-100 text-sky-800",
+  DEMO: "border-cyan-200 bg-cyan-100 text-cyan-800",
   REGULAR: "border-slate-200 bg-slate-100 text-slate-800",
   STARTER: "border-slate-200 bg-slate-100 text-slate-800",
   GROWTH: "border-emerald-200 bg-emerald-100 text-emerald-800",
@@ -478,7 +479,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
     );
   }
 
-  const isPilot = subscription.organizationType === "PILOT";
+  const isPilot = subscription.organizationType === "PILOT" || subscription.organizationType === "DEMO";
   const isActive = subscription.organizationStatus === "ACTIVE" && !isPilot;
   const isTrial = subscription.organizationStatus === "TRIAL";
   const isPaused = subscription.organizationStatus === "PAUSED";
@@ -558,7 +559,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
             <div>
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <Badge className={statusStyles[subscription.organizationStatus]}>{organizationStatusLabel(subscription.organizationStatus)}</Badge>
-                {subscription.organizationType === "PILOT" && (
+                {(subscription.organizationType === "PILOT" || subscription.organizationType === "DEMO") && (
                   <Badge className={statusStyles[subscription.organizationType]}>{organizationTypeLabel(subscription.organizationType)}</Badge>
                 )}
                 <Badge className={statusStyles[subscription.subscriptionPlan]}>{subscriptionPlanLabel(subscription.subscriptionPlan)}</Badge>

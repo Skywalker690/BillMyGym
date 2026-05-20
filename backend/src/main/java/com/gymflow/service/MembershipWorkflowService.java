@@ -7,6 +7,8 @@ import com.gymflow.api.error.BadRequestException;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.enums.AuditCategory;
+import com.gymflow.domain.enums.AuditActivityScope;
+import com.gymflow.domain.enums.AuditEventStatus;
 import com.gymflow.domain.enums.IdempotencyResourceType;
 import com.gymflow.domain.enums.MemberCreditLedgerReason;
 import com.gymflow.domain.enums.MemberCreditLedgerTransactionType;
@@ -49,6 +51,7 @@ public class MembershipWorkflowService {
         }
 
         MemberMembership activeMembership = memberMembershipService.findActiveMembership(memberId, organizationId);
+        boolean renewalFlow = activeMembership != null;
         if (activeMembership != null && isPackageSwitch(activeMembership, request)) {
             throw new BadRequestException("Use the package switch flow when changing an active membership package");
         }
@@ -78,10 +81,19 @@ public class MembershipWorkflowService {
             membership.getId()
         );
         auditLogService.log(
-            "MEMBERSHIP_CREATED",
-            "Created membership id=" + membership.getId() + " for member id=" + memberId,
+            renewalFlow ? "MEMBERSHIP_RENEWED" : "MEMBERSHIP_CREATED",
+            (renewalFlow ? "Renewed" : "Created") + " membership id=" + membership.getId() + " for member id=" + memberId,
             AuditCategory.MEMBER,
             "MEMBERSHIP"
+        );
+        auditLogService.logOrganizationActivity(
+            renewalFlow ? "MEMBERSHIP_RENEWED" : "MEMBERSHIP_CREATED",
+            (renewalFlow ? "Membership renewed for " : "Membership created for ") + member.getFullName(),
+            AuditActivityScope.MEMBER_ACTIVITY,
+            AuditEventStatus.INFO,
+            "MEMBERSHIP",
+            organizationId,
+            member.getFullName()
         );
         return memberMembershipService.membershipResponse(membership.getId(), organizationId);
     }

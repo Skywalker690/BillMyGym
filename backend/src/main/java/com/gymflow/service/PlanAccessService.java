@@ -81,7 +81,8 @@ public class PlanAccessService {
         if (organization == null) {
             return SubscriptionPlan.STARTER;
         }
-        if (organization.getOrganizationType() == OrganizationType.PILOT) {
+        if (organization.getOrganizationType() == OrganizationType.PILOT
+            || organization.getOrganizationType() == OrganizationType.DEMO) {
             return SubscriptionPlan.PILOT;
         }
         return organization.getSubscriptionPlan() == null ? SubscriptionPlan.STARTER : organization.getSubscriptionPlan();

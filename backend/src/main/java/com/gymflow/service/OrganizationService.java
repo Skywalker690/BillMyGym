@@ -13,6 +13,8 @@ import com.gymflow.api.mapper.OrganizationMapper;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.User;
 import com.gymflow.domain.enums.AuditCategory;
+import com.gymflow.domain.enums.AuditActivityScope;
+import com.gymflow.domain.enums.AuditEventStatus;
 import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.Role;
@@ -24,6 +26,7 @@ import com.gymflow.security.SecurityUtils;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -87,6 +90,15 @@ public class OrganizationService {
             AuditCategory.ORGANIZATION,
             "ORGANIZATION"
         );
+        auditLogService.logOrganizationActivity(
+            "ORGANIZATION_UPDATED",
+            "Updated organization " + organization.getName() + " (id=" + organization.getId() + ")",
+            AuditActivityScope.ADMIN_ACTIVITY,
+            AuditEventStatus.INFO,
+            "ORGANIZATION",
+            organization.getId(),
+            organization.getName()
+        );
         return organizationMapper.toResponse(organization);
     }
 
@@ -105,6 +117,15 @@ public class OrganizationService {
             AuditCategory.ORGANIZATION,
             "ORGANIZATION"
         );
+        auditLogService.logOrganizationActivity(
+            "ORGANIZATION_SOFT_DELETED",
+            "Soft deleted organization " + organization.getName() + " (id=" + organization.getId() + ")",
+            AuditActivityScope.ADMIN_ACTIVITY,
+            AuditEventStatus.INFO,
+            "ORGANIZATION",
+            organization.getId(),
+            organization.getName()
+        );
     }
 
     public OrganizationDirectoryResponse directory(
@@ -112,6 +133,7 @@ public class OrganizationService {
         int size,
         String search,
         boolean pilotOnly,
+        OrganizationType organizationType,
         OrganizationStatus status,
         com.gymflow.domain.enums.SubscriptionPlan plan
     ) {
@@ -119,9 +141,12 @@ public class OrganizationService {
         int safeSize = Math.min(Math.max(size, 1), 20);
         int safePage = Math.max(page, 0);
         String normalizedSearch = search == null || search.isBlank() ? null : search.trim();
+        String pattern = normalizedSearch == null ? null : "%" + normalizedSearch.toLowerCase() + "%";
         var result = organizationRepository.findDirectoryPage(
             normalizedSearch,
+            pattern,
             pilotOnly,
+            organizationType,
             status,
             plan,
             PageRequest.of(safePage, safeSize)
@@ -166,6 +191,15 @@ public class OrganizationService {
             AuditCategory.ORGANIZATION,
             "ORGANIZATION"
         );
+        auditLogService.logOrganizationActivity(
+            "ORGANIZATION_ADMIN_REPLACED",
+            "Replaced organization admin for " + organization.getName() + " (id=" + organization.getId() + ")",
+            AuditActivityScope.ADMIN_ACTIVITY,
+            AuditEventStatus.INFO,
+            "ORGANIZATION",
+            organization.getId(),
+            organization.getName()
+        );
         return organizationMapper.toResponse(organization);
     }
 
@@ -185,24 +219,31 @@ public class OrganizationService {
             List.of(OrganizationStatus.PAUSED, OrganizationStatus.DEACTIVATED)
         );
         long totalPilotOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.PILOT);
-        List<OrganizationPlanSummary> subscriptionDistribution = Arrays.stream(com.gymflow.domain.enums.SubscriptionPlan.values())
+        long totalDemoOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.DEMO);
+        List<OrganizationPlanSummary> subscriptionDistribution = new ArrayList<>(Arrays.stream(com.gymflow.domain.enums.SubscriptionPlan.values())
             .map(plan -> {
                 long count = organizationRepository.countByDeletedFalseAndSubscriptionPlan(plan);
                 int percentage = totalOrganizations <= 0 ? 0 : (int) Math.round((count * 100.0) / totalOrganizations);
                 String label = switch (plan) {
-                    case STARTER -> "Startup";
+                    case STARTER -> "Starter";
                     case GROWTH -> "Growth";
                     case PRO -> "Pro";
-                    case PILOT -> "Founding Partner Access";
+                    case PILOT -> "Pilot";
                 };
                 return new OrganizationPlanSummary(plan.name(), label, count, percentage);
             })
-            .toList();
+            .toList());
+        subscriptionDistribution.add(new OrganizationPlanSummary(
+            "DEMO",
+            "Demo",
+            totalDemoOrganizations,
+            totalOrganizations <= 0 ? 0 : (int) Math.round((totalDemoOrganizations * 100.0) / totalOrganizations)
+        ));
         return new OrganizationDirectorySummary(
             totalOrganizations,
             totalActiveOrganizations,
             totalRenewalPendingOrganizations,
-            totalPilotOrganizations,
+            totalPilotOrganizations + totalDemoOrganizations,
             subscriptionDistribution
         );
     }
@@ -222,7 +263,16 @@ public class OrganizationService {
             return;
         }
 
-        if (previousType == OrganizationType.PILOT) {
+        if (organization.getOrganizationType() == OrganizationType.DEMO) {
+            if (previousType != OrganizationType.DEMO
+                || organization.getPilotStartDate() == null
+                || organization.getPilotEndDate() == null) {
+                billingLifecycleService.startDemoAccess(organization, today);
+            }
+            return;
+        }
+
+        if (previousType == OrganizationType.PILOT || previousType == OrganizationType.DEMO) {
             billingLifecycleService.startRegularTrial(organization, today);
             return;
         }

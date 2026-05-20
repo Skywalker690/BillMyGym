@@ -1,5 +1,5 @@
 export type OrganizationStatus = "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
-export type OrganizationType = "REGULAR" | "PILOT";
+export type OrganizationType = "REGULAR" | "PILOT" | "DEMO";
 export type SubscriptionPlan = "STARTER" | "GROWTH" | "PRO" | "PILOT";
 
 export function organizationStatusLabel(status: OrganizationStatus): string {
@@ -16,12 +16,14 @@ export function organizationStatusLabel(status: OrganizationStatus): string {
 }
 
 export function organizationTypeLabel(type?: OrganizationType): string {
-  return type === "PILOT" ? "Founding Partner Access" : "Standard Billing";
+  if (type === "PILOT") return "Pilot";
+  if (type === "DEMO") return "Demo";
+  return "Standard Billing";
 }
 
 export function subscriptionPlanLabel(plan?: SubscriptionPlan): string {
   if (!plan) return "Starter";
-  if (plan === "PILOT") return "Founding Partner Access";
+  if (plan === "PILOT") return "Pilot";
   return plan.charAt(0) + plan.slice(1).toLowerCase();
 }
 
@@ -39,7 +41,7 @@ export function organizationStatusDescription(status: OrganizationStatus): strin
 }
 
 export function foundingPartnerDescription(): string {
-  return "You are one of our early partner gyms with premium access.";
+  return "Pilot access has full features at Rs. 299/month. Demo keeps full features with a 3-member limit and no subscription fee.";
 }
 
 export function notificationTypeLabel(type: string): string {
@@ -55,7 +57,7 @@ export function notificationTypeLabel(type: string): string {
     case "SUBSCRIPTION_PAYMENT_SUCCESS":
       return "Active Subscription";
     case "ORGANIZATION_WELCOME":
-      return "Founding Partner Access";
+      return "Welcome Message";
     default:
       return type.replaceAll("_", " ").toLowerCase();
   }

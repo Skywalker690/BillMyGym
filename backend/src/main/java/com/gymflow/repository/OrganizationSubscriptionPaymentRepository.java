@@ -69,4 +69,13 @@ public interface OrganizationSubscriptionPaymentRepository extends JpaRepository
           and payment.paymentStatus = com.gymflow.domain.enums.SubscriptionPaymentStatus.PAID
         """)
     BigDecimal sumPaidAll();
+
+    @Query("""
+        select coalesce(sum(payment.amount), 0)
+        from OrganizationSubscriptionPayment payment
+        where payment.deleted = false
+          and payment.organization.id = :organizationId
+          and payment.paymentStatus = com.gymflow.domain.enums.SubscriptionPaymentStatus.PAID
+        """)
+    BigDecimal sumPaidForOrganization(@Param("organizationId") Long organizationId);
 }

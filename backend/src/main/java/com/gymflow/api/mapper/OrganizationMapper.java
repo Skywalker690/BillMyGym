@@ -14,6 +14,7 @@ public class OrganizationMapper {
             organization.getId(),
             organization.getName(),
             organization.getDistrict(),
+            organization.getPlace(),
             organization.getLogoUrl(),
             organization.getMapLocationLink(),
             organization.getAddress(),
@@ -38,6 +39,9 @@ public class OrganizationMapper {
     public void applyUpdate(Organization organization, UpdateOrganizationRequest request) {
         organization.setName(request.name());
         organization.setDistrict(request.district());
+        if (request.place() != null) {
+            organization.setPlace(request.place());
+        }
         organization.setLogoUrl(request.logoUrl());
         organization.setMapLocationLink(request.mapLocationLink());
         organization.setAddress(request.address());
@@ -62,6 +66,7 @@ public class OrganizationMapper {
     public Organization toNewOrganization(RegisterOrganizationAdminRequest request) {
         Organization organization = new Organization();
         organization.setName(request.organizationName());
+        organization.setPlace(request.place());
         organization.setDistrict(request.district());
         organization.setLogoUrl(request.logoUrl());
         organization.setMapLocationLink(request.mapLocationLink());

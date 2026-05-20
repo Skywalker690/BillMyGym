@@ -22,6 +22,7 @@ public class SubscriptionBillingService {
 
     private static final String PAYMENT_LINK = "/app/subscription";
     private static final List<Integer> REMINDER_OFFSETS = List.of(7, 3, 1);
+    private static final List<OrganizationType> BILLABLE_TYPES = List.of(OrganizationType.REGULAR, OrganizationType.PILOT);
 
     private final OrganizationRepository organizationRepository;
     private final OrganizationSubscriptionPaymentRepository subscriptionPaymentRepository;
@@ -44,8 +45,8 @@ public class SubscriptionBillingService {
     private void sendUpcomingDueReminders(LocalDate today) {
         for (int offset : REMINDER_OFFSETS) {
             LocalDate dueDate = today.plusDays(offset);
-            for (Organization organization : organizationRepository.findAllByDeletedFalseAndOrganizationTypeAndSubscriptionDueDateIn(
-                OrganizationType.REGULAR,
+            for (Organization organization : organizationRepository.findAllByDeletedFalseAndOrganizationTypeInAndSubscriptionDueDateIn(
+                BILLABLE_TYPES,
                 List.of(dueDate)
             )) {
                 if (organization.getStatus() == OrganizationStatus.DEACTIVATED || organization.getStatus() == OrganizationStatus.PAUSED) {
@@ -93,15 +94,15 @@ public class SubscriptionBillingService {
     }
 
     private void pauseOverdueOrganizations(LocalDate today) {
-        for (Organization organization : organizationRepository.findAllByDeletedFalseAndOrganizationTypeAndStatusAndSubscriptionDueDateBefore(
-            OrganizationType.REGULAR,
+        for (Organization organization : organizationRepository.findAllByDeletedFalseAndOrganizationTypeInAndStatusAndSubscriptionDueDateBefore(
+            BILLABLE_TYPES,
             OrganizationStatus.ACTIVE,
             today
         )) {
             pauseOrganization(organization, today);
         }
-        for (Organization organization : organizationRepository.findAllByDeletedFalseAndOrganizationTypeAndStatusAndSubscriptionDueDateBefore(
-            OrganizationType.REGULAR,
+        for (Organization organization : organizationRepository.findAllByDeletedFalseAndOrganizationTypeInAndStatusAndSubscriptionDueDateBefore(
+            BILLABLE_TYPES,
             OrganizationStatus.TRIAL,
             today
         )) {
