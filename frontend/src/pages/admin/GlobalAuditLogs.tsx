@@ -40,9 +40,11 @@ function formatDateTime(value?: string) {
 
 export default function GlobalAuditLogs() {
   const [page, setPage] = useState(0);
+  const [hasRequested, setHasRequested] = useState(false);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   const auditQuery = useQuery<LoginAuditResponse>({
-    queryKey: ["globalLoginAudit", page],
+    queryKey: ["globalLoginAudit", page, refreshToken],
     queryFn: async () => {
       const res = await api.get("/audit-logs/login", {
         params: {
@@ -52,6 +54,7 @@ export default function GlobalAuditLogs() {
       });
       return res.data;
     },
+    enabled: hasRequested,
     staleTime: Number.POSITIVE_INFINITY,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -61,6 +64,17 @@ export default function GlobalAuditLogs() {
   const meta = auditQuery.data?.page;
   const queryErrorMessage =
     auditQuery.error instanceof Error ? auditQuery.error.message : "Unable to load the login audit right now.";
+
+  function requestAuditRefresh(nextPage = 0) {
+    setPage(nextPage);
+    if (!hasRequested) {
+      setHasRequested(true);
+      return;
+    }
+    if (nextPage === page) {
+      setRefreshToken((current) => current + 1);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6 lg:p-8">
@@ -78,12 +92,12 @@ export default function GlobalAuditLogs() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => auditQuery.refetch()}
+            onClick={() => requestAuditRefresh(0)}
             disabled={auditQuery.isFetching}
             className="rounded-full border-white/80 bg-white px-5 font-black"
           >
             <RefreshCcw className={`mr-2 h-4 w-4 ${auditQuery.isFetching ? "animate-spin" : ""}`} />
-            Refresh
+            {hasRequested ? "Refresh" : "Load Audit Logs"}
           </Button>
         </div>
       </section>
@@ -117,7 +131,7 @@ export default function GlobalAuditLogs() {
               {rows.length === 0 && (
                 <tr>
                   <td className="px-4 py-8 text-center text-sm font-semibold text-slate-500" colSpan={5}>
-                    No login audit rows found.
+                    {hasRequested ? "No login audit rows found." : "Click load audit logs to fetch records."}
                   </td>
                 </tr>
               )}
@@ -143,13 +157,23 @@ export default function GlobalAuditLogs() {
             Showing {rows.length} of {meta?.totalElements ?? 0}
           </div>
           <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" onClick={() => setPage((current) => Math.max(current - 1, 0))} disabled={(meta?.page ?? 0) <= 0}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => requestAuditRefresh(Math.max((meta?.page ?? 0) - 1, 0))}
+              disabled={!hasRequested || (meta?.page ?? 0) <= 0}
+            >
               Previous
             </Button>
             <div className="font-semibold text-slate-600">
               Page {(meta?.page ?? 0) + 1} / {Math.max(meta?.totalPages ?? 1, 1)}
             </div>
-            <Button type="button" variant="outline" onClick={() => setPage((current) => current + 1)} disabled={!meta?.hasNext}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => requestAuditRefresh((meta?.page ?? 0) + 1)}
+              disabled={!hasRequested || !meta?.hasNext}
+            >
               Next
             </Button>
           </div>

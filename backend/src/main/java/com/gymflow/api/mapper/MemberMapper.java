@@ -16,13 +16,11 @@ public class MemberMapper {
             member.getOrganization().getId(),
             member.getFullName(),
             member.getPhone(),
-            member.getEmail(),
             member.getStatus(),
             member.getDeactivatedAt(),
             member.getDeactivationReason(),
             member.isDeleted(),
-            member.getDeletedAt(),
-            member.getNotes()
+            member.getDeletedAt()
         );
     }
 
@@ -36,9 +34,7 @@ public class MemberMapper {
     public void apply(Member member, MemberRequest request) {
         member.setFullName(request.fullName());
         member.setPhone(request.phone());
-        member.setEmail(request.email());
         member.setStatus(request.status() == null ? MemberStatus.ACTIVE : request.status());
         member.setDeactivationReason(request.deactivationReason());
-        member.setNotes(request.notes());
     }
 }

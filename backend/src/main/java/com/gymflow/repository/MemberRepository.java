@@ -4,6 +4,7 @@ import com.gymflow.domain.Member;
 import com.gymflow.domain.enums.MemberStatus;
 import jakarta.persistence.LockModeType;
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -36,6 +37,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     long countByOrganizationIdAndDeletedFalseAndStatus(Long organizationId, MemberStatus status);
 
+    long countByOrganizationIdAndDeletedFalseAndStatusIn(Long organizationId, Collection<MemberStatus> statuses);
+
     long countByOrganizationIdAndDeletedFalseAndCreatedAtBetween(
         Long organizationId,
         OffsetDateTime start,
@@ -52,10 +55,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
           :pattern is null
           or lower(member.fullName) like :pattern
           or lower(member.phone) like :pattern
-          or (
-              member.email is not null
-              and lower(member.email) like :pattern
-          )
       )
       and (:memberStatus is null or member.status = :memberStatus)
       and (
@@ -107,6 +106,73 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
         @Param("organizationId") Long organizationId,
         @Param("pattern") String pattern,
         @Param("memberStatus") MemberStatus memberStatus,
+        @Param("membershipStatus") String membershipStatus,
+        @Param("today") java.time.LocalDate today,
+        @Param("expiringThrough") java.time.LocalDate expiringThrough,
+        Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = "organization")
+    @Query("""
+    select member
+    from Member member
+    where member.organization.id = :organizationId
+      and member.deleted = false
+      and (
+          :pattern is null
+          or lower(member.fullName) like :pattern
+          or lower(member.phone) like :pattern
+      )
+      and member.status in :memberStatuses
+      and (
+          :membershipStatus is null
+          or (
+              :membershipStatus = 'ACTIVE'
+              and exists (
+                  select membership.id
+                  from MemberMembership membership
+                  where membership.member = member
+                    and membership.deleted = false
+                    and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
+              )
+          )
+          or (
+              :membershipStatus = 'EXPIRING_SOON'
+              and exists (
+                  select membership.id
+                  from MemberMembership membership
+                  where membership.member = member
+                    and membership.deleted = false
+                    and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
+                    and membership.endDate between :today and :expiringThrough
+              )
+          )
+          or (
+              :membershipStatus = 'EXPIRED'
+              and exists (
+                  select membership.id
+                  from MemberMembership membership
+                  where membership.member = member
+                    and membership.deleted = false
+                    and membership.status = com.gymflow.domain.enums.MembershipStatus.EXPIRED
+              )
+          )
+          or (
+              :membershipStatus = 'OVERDUE'
+              and exists (
+                  select membership.id
+                  from MemberMembership membership
+                  where membership.member = member
+                    and membership.deleted = false
+                    and membership.status = com.gymflow.domain.enums.MembershipStatus.OVERDUE
+              )
+          )
+      )
+    """)
+    Page<Member> searchDirectoryByStatuses(
+        @Param("organizationId") Long organizationId,
+        @Param("pattern") String pattern,
+        @Param("memberStatuses") Collection<MemberStatus> memberStatuses,
         @Param("membershipStatus") String membershipStatus,
         @Param("today") java.time.LocalDate today,
         @Param("expiringThrough") java.time.LocalDate expiringThrough,

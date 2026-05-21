@@ -30,8 +30,6 @@ public class Member extends BaseEntity {
     @Column(nullable = false)
     private String phone;
 
-    private String email;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private MemberStatus status = MemberStatus.ACTIVE;
@@ -42,9 +40,6 @@ public class Member extends BaseEntity {
 
     @Column(length = 1000)
     private String deactivationReason;
-
-    @Column(length = 1000)
-    private String notes;
 
     @Version
     @Column(nullable = false)

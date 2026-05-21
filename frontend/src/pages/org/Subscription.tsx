@@ -30,7 +30,6 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import {
-  foundingPartnerDescription,
   organizationStatusDescription,
   organizationStatusLabel,
   organizationTypeLabel,
@@ -427,7 +426,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
     }
 
     return (
-      <div className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.24),_transparent_28rem),radial-gradient(circle_at_bottom_right,_rgba(251,191,36,0.18),_transparent_26rem),linear-gradient(180deg,_#ecfdf5_0%,_#f8fafc_100%)] px-4 py-6 sm:px-6 lg:px-8">
+      <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.24),_transparent_28rem),radial-gradient(circle_at_bottom_right,_rgba(251,191,36,0.18),_transparent_26rem),linear-gradient(180deg,_#ecfdf5_0%,_#f8fafc_100%)] px-4 py-6 sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
           <div className="rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-sm font-black tracking-[0.18em] text-emerald-700 shadow-sm">
             BILLMYGYM
@@ -487,6 +486,9 @@ export default function Subscription({ immersive = false, showPlans = false }: {
   const hasInactiveSubscription = isPaused || isDeactivated;
   const canCheckout = !isPilot && !isActive;
   const selectedPlanDetails = checkoutPlans.find((plan) => plan.key === selectedPlan) ?? checkoutPlans[1];
+  const currentPlanStudioName = subscription.subscriptionPlan === "PILOT"
+    ? "Founding Partner Access"
+    : subscriptionPlanLabel(subscription.subscriptionPlan);
   const memberLimitLabel = subscription.memberLimit?.unlimited
     ? `${subscription.memberLimit.usedMembers} / Unlimited`
     : `${subscription.memberLimit?.usedMembers ?? subscription.activeMembers} / ${subscription.memberLimit?.memberLimit ?? 0}`;
@@ -536,9 +538,9 @@ export default function Subscription({ immersive = false, showPlans = false }: {
     <div
       className={`${
         immersive
-          ? "min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.16),_transparent_32rem),linear-gradient(180deg,_#f8fafc_0%,_#ecfdf5_48%,_#f8fafc_100%)]"
+          ? "bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.16),_transparent_32rem),linear-gradient(180deg,_#f8fafc_0%,_#ecfdf5_48%,_#f8fafc_100%)]"
           : "bg-transparent"
-      } overflow-x-hidden p-4 sm:p-6 lg:p-8`}
+      } overflow-x-hidden pb-8 pt-4 sm:px-6 sm:pb-10 sm:pt-6 lg:px-8 lg:pb-12 lg:pt-8`}
     >
       <div className="mx-auto w-full max-w-7xl space-y-8">
         {immersive && (
@@ -577,7 +579,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                 {showPlans
                   ? `${subscription.organizationName} can continue with Starter, unlock reports with Growth, or scale on Pro. Compare the plans below and continue when you're ready.`
                   : isPilot
-                    ? foundingPartnerDescription()
+                    ? `${subscription.organizationName} is currently running under founding partner access. Use this page to review access status, usage, and subscription guidance.`
                     : `${subscription.organizationName} can continue with Starter, unlock reports with Growth, or scale on Pro. Use this page to review your billing status, usage, and renewal guidance.`}
               </p>
 
@@ -625,20 +627,24 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                   <Sparkles className="h-7 w-7" />
                 </div>
                 <div className="mt-6 text-sm font-black uppercase tracking-[0.24em] text-emerald-700">Subscription Studio</div>
-                <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">Your current plan is {subscriptionPlanLabel(subscription.subscriptionPlan)}.</div>
+                <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">Your current plan is {currentPlanStudioName}.</div>
                 <div className="mt-5 rounded-[1.5rem] border border-emerald-200/80 bg-white/80 p-4 shadow-sm">
                   <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Currently Selected</div>
                   <div className="mt-2 flex items-end gap-2">
                     <span className="text-3xl font-black text-slate-950">
-                      {checkoutPlans.find((plan) => plan.key === subscription.subscriptionPlan)?.name ?? subscriptionPlanLabel(subscription.subscriptionPlan)}
+                      {subscription.subscriptionPlan === "PILOT"
+                        ? currentPlanStudioName
+                        : checkoutPlans.find((plan) => plan.key === subscription.subscriptionPlan)?.name ?? currentPlanStudioName}
                     </span>
                     <span className="pb-1 text-sm font-bold text-slate-500">
-                      {checkoutPlans.find((plan) => plan.key === subscription.subscriptionPlan)?.limit ?? "Premium early access"}
+                      {subscription.subscriptionPlan === "PILOT"
+                        ? "Priority early access"
+                        : checkoutPlans.find((plan) => plan.key === subscription.subscriptionPlan)?.limit ?? "Premium early access"}
                     </span>
                   </div>
                   <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
                     {subscription.subscriptionPlan === "PILOT"
-                      ? foundingPartnerDescription()
+                      ? "This workspace is currently running under founding partner access."
                       : `${money.format(subscription.monthlyAmount)} per month is currently applied to this workspace.`}
                   </p>
                 </div>

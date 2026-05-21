@@ -33,7 +33,7 @@ const schema = z.object({
   name: z.string().min(1, "Organization name is required"),
   place: z.string().min(1, "Place is required"),
   district: z.string().min(1, "District is required"),
-  monthlyMembershipFee: z.coerce.number().min(0, "Recurring membership fee must be zero or more"),
+  monthlyMembershipFee: z.coerce.number().min(0, "Monthly membership fee must be zero or more"),
   admissionFee: z.coerce.number().min(0, "Admission fee must be zero or more"),
   organizationType: z.enum(["REGULAR", "PILOT", "DEMO"]),
   subscriptionPlan: z.enum(["STARTER", "GROWTH", "PRO"]),
@@ -242,7 +242,7 @@ export default function OrganizationForm() {
                   />
                 </Field>
 
-                <Field label="Recurring Membership Fee (INR)" error={errors.monthlyMembershipFee?.message}>
+                <Field label="Monthly Membership Fee (INR)" error={errors.monthlyMembershipFee?.message}>
                   <Input
                     type="number"
                     min="0"
@@ -366,7 +366,7 @@ export default function OrganizationForm() {
                   { label: "Type", value: organizationType === "REGULAR" ? "Regular" : organizationType === "PILOT" ? "Pilot" : "Demo" },
                   { label: "Place", value: watchedPlace },
                   { label: "District", value: watchedDistrict },
-                  { label: "Recurring Fee", value: `INR ${Number(watchedMonthlyMembershipFee ?? 0).toLocaleString("en-IN")}` },
+                  { label: "Monthly Fee", value: `INR ${Number(watchedMonthlyMembershipFee ?? 0).toLocaleString("en-IN")}` },
                   { label: "Admission Fee", value: `INR ${Number(watchedAdmissionFee ?? 0).toLocaleString("en-IN")}` },
                 ]}
               />

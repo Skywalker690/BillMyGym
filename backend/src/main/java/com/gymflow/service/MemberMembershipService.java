@@ -1,5 +1,6 @@
 package com.gymflow.service;
 
+import com.gymflow.api.dto.MembershipDtos.PaymentCoverageSummary;
 import com.gymflow.api.dto.MembershipDtos.CreateMembershipRequest;
 import com.gymflow.api.dto.MembershipDtos.MembershipHistoryResponse;
 import com.gymflow.api.dto.MembershipDtos.MembershipResponse;
@@ -10,6 +11,7 @@ import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.MembershipStatus;
+import java.math.BigDecimal;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberPaymentRepository;
 import com.gymflow.repository.MemberRepository;
@@ -17,6 +19,7 @@ import com.gymflow.security.SecurityUtils;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -28,6 +31,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class MemberMembershipService {
+
+    private static final String AUTO_DEACTIVATION_REASON =
+        "Automatically deactivated after fully paid membership expired without renewal";
 
     private final MemberRepository memberRepository;
     private final MemberMembershipRepository memberMembershipRepository;
@@ -70,9 +76,11 @@ public class MemberMembershipService {
     @Transactional
     public void refreshMembershipStatuses(Long organizationId) {
         int reminderDays = organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry();
-        for (MemberMembership membership : memberMembershipRepository.findByOrganizationIdAndDeletedFalse(organizationId)) {
+        List<MemberMembership> memberships = memberMembershipRepository.findByOrganizationIdAndDeletedFalse(organizationId);
+        for (MemberMembership membership : memberships) {
             membershipLifecycleService.refreshMembership(membership, reminderDays);
         }
+        reconcileMemberStatuses(memberships, reminderDays);
     }
 
     @Transactional
@@ -182,6 +190,62 @@ public class MemberMembershipService {
                         .toList()
                 )
             ));
+    }
+
+    private void reconcileMemberStatuses(List<MemberMembership> memberships, int reminderDays) {
+        if (memberships.isEmpty()) {
+            return;
+        }
+
+        Map<Long, List<MemberMembership>> membershipsByMemberId = memberships.stream()
+            .filter(membership -> !membership.getMember().isDeleted())
+            .collect(Collectors.groupingBy(membership -> membership.getMember().getId()));
+        Map<Long, List<MemberPayment>> paymentsByMembershipId = loadPaymentsByMembershipId(memberships);
+
+        for (List<MemberMembership> memberMemberships : membershipsByMemberId.values()) {
+            Member member = memberMemberships.getFirst().getMember();
+            MemberMembership latestMembership = latestMembership(memberMemberships);
+            if (latestMembership == null) {
+                continue;
+            }
+
+            PaymentCoverageSummary coverage = membershipLifecycleService.buildCoverageSummary(
+                latestMembership,
+                paymentsByMembershipId.getOrDefault(latestMembership.getId(), List.of()),
+                reminderDays
+            );
+            boolean fullyPaid = coverage.pendingAmount().compareTo(BigDecimal.ZERO) == 0;
+            boolean membershipExpiredWithoutRenewal =
+                latestMembership.getStatus() == MembershipStatus.EXPIRED
+                    || latestMembership.getStatus() == MembershipStatus.OVERDUE;
+
+            if (member.getStatus() == MemberStatus.ACTIVE && fullyPaid && membershipExpiredWithoutRenewal) {
+                member.setStatus(MemberStatus.DEACTIVATED);
+                if (member.getDeactivatedAt() == null) {
+                    member.setDeactivatedAt(OffsetDateTime.now());
+                }
+                member.setDeactivationReason(AUTO_DEACTIVATION_REASON);
+                continue;
+            }
+
+            if (member.getStatus() == MemberStatus.DEACTIVATED
+                && AUTO_DEACTIVATION_REASON.equals(member.getDeactivationReason())
+                && latestMembership.getStatus() == MembershipStatus.ACTIVE) {
+                member.setStatus(MemberStatus.ACTIVE);
+                member.setDeactivatedAt(null);
+                member.setDeactivationReason(null);
+            }
+        }
+    }
+
+    private MemberMembership latestMembership(List<MemberMembership> memberships) {
+        return memberships.stream()
+            .max(
+                Comparator.comparing(MemberMembership::getEndDate)
+                    .thenComparing(MemberMembership::getStartDate)
+                    .thenComparing(MemberMembership::getCreatedAt)
+            )
+            .orElse(null);
     }
 
     @Transactional

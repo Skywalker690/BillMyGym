@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { BellRing, Building, Mail, MessageSquare, Settings as SettingsIcon } from "lucide-react";
+import { BellRing, Mail, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +22,6 @@ export default function Settings() {
 
   const { register, handleSubmit, reset, watch, formState: { isSubmitting } } = useForm({
     defaultValues: {
-      brandingName: "",
       reminderDaysBeforeExpiry: 3,
       whatsappEnabled: false,
       emailEnabled: false,
@@ -34,7 +33,6 @@ export default function Settings() {
   useEffect(() => {
     if (settings) {
       reset({
-        brandingName: settings.brandingName || "",
         reminderDaysBeforeExpiry: settings.reminderDaysBeforeExpiry || 3,
         whatsappEnabled: settings.whatsappEnabled || false,
         emailEnabled: settings.emailEnabled || false,
@@ -59,38 +57,8 @@ export default function Settings() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-8">
-      <section className="billmygym-shell rounded-[2rem] p-8">
-        <div className="flex items-start gap-5">
-          <div className="rounded-[1.6rem] bg-emerald-100 p-4 text-emerald-700">
-            <SettingsIcon className="h-8 w-8" />
-          </div>
-          <div>
-            <div className="text-[10px] font-black uppercase tracking-[0.26em] text-emerald-700">Workspace Controls</div>
-            <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">Organization Settings</h1>
-            <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-600">
-              Tune reminder timing, delivery preferences, and sender branding so the member communication layer feels intentional and consistent.
-            </p>
-          </div>
-        </div>
-      </section>
-
       <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
         <form id="settings-form" onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-6">
-          <div className="glass-panel overflow-hidden rounded-[1.9rem]">
-            <div className="border-b border-white/70 p-6">
-              <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-slate-950">
-                <Building className="h-5 w-5 text-emerald-700" />
-                Branding Configuration
-              </h2>
-            </div>
-            <div className="p-6">
-              <div className="space-y-2">
-                <Label htmlFor="brandingName" className="font-semibold text-slate-700">Sender Name</Label>
-                <Input id="brandingName" {...register("brandingName")} placeholder="e.g. Iron Athletics Gym" className="h-11 rounded-xl bg-white/60" />
-              </div>
-            </div>
-          </div>
-
           <div className="glass-panel overflow-hidden rounded-[1.9rem]">
             <div className="border-b border-white/70 p-6">
               <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-slate-950">
@@ -150,7 +118,7 @@ export default function Settings() {
                 <div className="mb-4 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
                   WhatsApp
                 </div>
-                <div className="text-sm font-black text-slate-900">{watchConfig.brandingName || "BillMyGym"} System</div>
+                <div className="text-sm font-black text-slate-900">BillMyGym System</div>
                 <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600">
                   Members needing renewal:
 
@@ -168,7 +136,7 @@ export default function Settings() {
                 </div>
                 <div className="border-b border-slate-100 pb-3">
                   <div className="text-sm font-black text-slate-900">Membership Renewal Summary</div>
-                  <div className="mt-1 text-xs font-semibold text-slate-500">From: {watchConfig.brandingName || "BillMyGym"} System</div>
+                  <div className="mt-1 text-xs font-semibold text-slate-500">From: BillMyGym System</div>
                 </div>
                 <p className="mt-4 whitespace-pre-line text-sm leading-6 text-slate-600">
                   Members needing attention:

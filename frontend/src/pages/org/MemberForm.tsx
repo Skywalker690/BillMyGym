@@ -1,11 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CreditCard, Info, Sparkles, UserCog, UserPlus } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CreditCard, Info, Sparkles, UserCog, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,10 +18,8 @@ type MemberFormMode = "create" | "edit" | "renew";
 const memberSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   phone: z.string().min(1, "Phone is required"),
-  email: z.string().email("Invalid email").optional().or(z.literal("")),
   status: z.enum(["ACTIVE", "PAUSED", "DEACTIVATED"]),
   deactivationReason: z.string().optional(),
-  notes: z.string().optional(),
   durationMonths: z.coerce.number().min(1).optional(),
   planAmount: z.coerce.number().min(0).optional(),
   startDate: z.string().optional(),
@@ -33,8 +31,8 @@ type MemberFormInput = z.input<typeof memberSchema>;
 
 const scaleCurrency = (value: number) => Number(value.toFixed(2));
 const resolveMembershipTotal = (monthlyFee: number, durationMonths: number) => scaleCurrency(monthlyFee * durationMonths);
-const resolveCollectedAmount = (mode: MemberFormMode, membershipTotal: number, admissionFee: number) =>
-  mode === "create" ? scaleCurrency(membershipTotal + admissionFee) : scaleCurrency(membershipTotal);
+const resolveCollectedAmount = (mode: MemberFormMode, membershipTotal: number, admissionFee: number, existingMember: boolean) =>
+  mode === "create" && !existingMember ? scaleCurrency(membershipTotal + admissionFee) : scaleCurrency(membershipTotal);
 
 export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode }) {
   const { id } = useParams();
@@ -46,6 +44,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
   const isEdit = mode === "edit";
   const isRenew = mode === "renew";
   const canLoadMember = Boolean((isEdit || isRenew) && memberId);
+  const [existingMember, setExistingMember] = useState(true);
 
   const { data: member, isLoading: memberLoading } = useQuery({
     queryKey: ["member", memberId],
@@ -84,10 +83,8 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
     defaultValues: {
       fullName: "",
       phone: "",
-      email: "",
       status: "ACTIVE",
       deactivationReason: "",
-      notes: "",
       durationMonths: 1,
       planAmount: 0,
       startDate: new Date().toISOString().slice(0, 10),
@@ -104,7 +101,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
     ? watchedDurationMonths
     : 1;
   const calculatedPlanAmount = resolveMembershipTotal(organizationMonthlyFee, normalizedDurationMonths);
-  const calculatedCollectedAmount = resolveCollectedAmount(mode, calculatedPlanAmount, organizationAdmissionFee);
+  const calculatedCollectedAmount = resolveCollectedAmount(mode, calculatedPlanAmount, organizationAdmissionFee, existingMember);
   const durationMonthsField = register("durationMonths", { valueAsNumber: true });
   const planAmountField = register("planAmount", { valueAsNumber: true });
   const paymentCollectedField = register("initialPaymentAmount", { valueAsNumber: true });
@@ -114,10 +111,8 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
       reset({
         fullName: member.fullName ?? "",
         phone: member.phone ?? "",
-        email: member.email ?? "",
         status: member.status ?? "ACTIVE",
         deactivationReason: member.deactivationReason ?? "",
-        notes: member.notes ?? "",
         durationMonths: 1,
         planAmount: 0,
         startDate: new Date().toISOString().slice(0, 10),
@@ -128,10 +123,8 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
       reset({
         fullName: member.fullName ?? "",
         phone: member.phone ?? "",
-        email: member.email ?? "",
         status: member.status ?? "ACTIVE",
         deactivationReason: member.deactivationReason ?? "",
-        notes: member.notes ?? "",
         durationMonths: 1,
         planAmount: 0,
         startDate: new Date().toISOString().slice(0, 10),
@@ -149,6 +142,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
   }, [
     calculatedCollectedAmount,
     calculatedPlanAmount,
+    existingMember,
     isEdit,
     mode,
     organization,
@@ -160,10 +154,8 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
       const memberPayload = {
         fullName: data.fullName,
         phone: data.phone,
-        email: data.email || null,
-        status: data.status,
-        deactivationReason: data.status === "DEACTIVATED" ? data.deactivationReason : null,
-        notes: data.notes,
+        status: isEdit ? data.status : "ACTIVE",
+        deactivationReason: isEdit && data.status === "DEACTIVATED" ? data.deactivationReason : null,
       };
       const savedMember = isCreate
         ? (await api.post("/members", memberPayload)).data
@@ -251,21 +243,19 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
               <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
                 {isCreate ? "Create Member" : isEdit ? "Edit Member" : "Renew Membership"}
               </h1>
-              <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-600">
-                {isCreate
-                  ? "Capture identity, membership, and first payment in one polished flow that matches the rest of your organization workspace."
-                  : isEdit
-                    ? "Update only the member identity and account details here without touching the membership lifecycle."
-                    : "Create the next membership period and collect the renewal payment from one focused workspace."}
-              </p>
             </div>
           </div>
 
           {(isCreate || isRenew) && (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <HeroChip label="Recurring Fee" value={`INR ${organizationMonthlyFee.toLocaleString("en-IN")}`} />
-              <HeroChip label="Admission Fee" value={`INR ${organizationAdmissionFee.toLocaleString("en-IN")}`} />
-              <HeroChip label="Membership Total" value={`INR ${watchedPlanAmount.toLocaleString("en-IN")}`} />
+            <div className={`grid gap-3 sm:grid-cols-2 ${isCreate && existingMember ? "xl:grid-cols-3" : "xl:grid-cols-4"}`}>
+              <HeroChip label="Monthly Fee" value={`INR ${organizationMonthlyFee.toLocaleString("en-IN")}`} />
+              {(!isCreate || !existingMember) && (
+                <HeroChip
+                  label="Admission Fee"
+                  value={`INR ${organizationAdmissionFee.toLocaleString("en-IN")}`}
+                />
+              )}
+              <HeroChip label="Total Amount" value={`INR ${watchedPlanAmount.toLocaleString("en-IN")}`} />
               <HeroChip label="Payment Collected" value={`INR ${watchedInitialPaymentAmount.toLocaleString("en-IN")}`} />
             </div>
           )}
@@ -277,22 +267,21 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
           <div className="space-y-6">
             <div className="overflow-hidden rounded-[1.9rem] border border-white/85 bg-white/90 shadow-[0_20px_50px_-30px_rgba(15,23,42,0.22)]">
               <div className="border-b border-black/5 bg-white/20 p-6">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-sm">
                     {isEdit ? <UserCog className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-xl font-black tracking-tight text-slate-950">Member Identity</h2>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-xl font-black tracking-tight text-slate-950">Member Identity</h2>
-                    <p className="mt-1 text-sm font-medium text-slate-500">
-                      {isRenew ? "Renewal keeps identity locked here so the membership flow stays focused." : "Identity stays separate from membership history and payment activity."}
-                    </p>
-                  </div>
+                  {(isEdit || isRenew) && currentMembership && (
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-3 text-sm font-semibold text-emerald-900 sm:max-w-[360px]">
+                      Current membership: {currentMembership.durationMonths} month plan | {currentMembership.status} | ends {new Date(currentMembership.endDate).toLocaleDateString()}
+                    </div>
+                  )}
                 </div>
-            {(isEdit || isRenew) && currentMembership && (
-                      <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-3 text-sm font-semibold text-emerald-900">
-                        Current membership: {currentMembership.durationMonths} month plan | {currentMembership.status} | ends {new Date(currentMembership.endDate).toLocaleDateString()}
-                      </div>
-            )}
               </div>
 
               <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2">
@@ -302,31 +291,22 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                 <Field label="Phone" error={errors.phone?.message}>
                   <Input {...register("phone")} disabled={isRenew} className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" />
                 </Field>
-                <Field label="Email" error={errors.email?.message}>
-                  <Input type="email" {...register("email")} disabled={isRenew} className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" />
-                </Field>
-                <Field label="Status">
-                  <select {...register("status")} disabled={isRenew} className="h-12 w-full rounded-2xl border border-black/5 bg-white/70 px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">
-                    <option value="ACTIVE">Active</option>
-                    <option value="PAUSED">Paused</option>
-                    <option value="DEACTIVATED">Deactivated</option>
-                  </select>
-                </Field>
-                {selectedStatus === "DEACTIVATED" && !isRenew && (
+                {(isEdit || isRenew) && (
+                  <Field label="Status">
+                    <select {...register("status")} disabled={isRenew} className="h-12 w-full rounded-2xl border border-black/5 bg-white/70 px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">
+                      <option value="ACTIVE">Active</option>
+                      <option value="PAUSED">Paused</option>
+                      <option value="DEACTIVATED">Deactivated</option>
+                    </select>
+                  </Field>
+                )}
+                {selectedStatus === "DEACTIVATED" && isEdit && (
                   <div className="md:col-span-2">
                     <Field label="Deactivation Reason">
                       <Input {...register("deactivationReason")} className="h-12 rounded-2xl border-black/5 bg-white/70" />
                     </Field>
                   </div>
                 )}
-                <div className="md:col-span-2 space-y-2">
-                  <Label className="font-semibold text-slate-700">Notes</Label>
-                  <textarea
-                    {...register("notes")}
-                    disabled={isRenew}
-                    className="min-h-28 w-full rounded-[1.35rem] border border-black/5 bg-white/70 p-4 text-sm text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
-                  />
-                </div>
               </div>
             </div>
           </div>
@@ -338,30 +318,58 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                 <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/12 text-emerald-700 shadow-sm">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/12 text-emerald-700 shadow-sm">
                         <CreditCard className="h-5 w-5" />
                       </div>
                       <div>
                         <h2 className="text-xl font-black tracking-tight text-slate-950">
                           {isCreate ? "Initial Membership" : "Membership Renewal"}
                         </h2>
-                        <p className="mt-1 text-sm font-medium text-slate-600">
-                          {isCreate
-                            ? "Membership total is calculated as recurring fee x duration, then admission fee is added to the collected amount for brand-new members."
-                            : "Renewal total is calculated from the recurring fee and selected duration without adding the one-time admission fee."}
-                        </p>
                       </div>
                     </div>
+
+                    {isCreate && (
+                      <div className="mt-5 rounded-[1.5rem] border border-emerald-200 bg-white/80 p-4 shadow-sm">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">Admission Fee Control</div>
+                            <div className="mt-1 text-lg font-black text-slate-950">Existing gym member</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setExistingMember((current) => !current)}
+                            className={`inline-flex min-w-[220px] items-center justify-between rounded-full border px-4 py-3 text-sm font-black shadow-sm transition-colors ${
+                              existingMember
+                                ? "border-emerald-200 bg-emerald-100 text-emerald-800"
+                                : "border-amber-200 bg-amber-50 text-amber-800"
+                            }`}
+                          >
+                            <span>{existingMember ? "Existing Member" : "Brand New Member"}</span>
+                            <span
+                              className={`flex h-8 w-14 items-center rounded-full p-1 transition-colors ${
+                                existingMember ? "bg-emerald-200/90 justify-end" : "bg-amber-200/90 justify-start"
+                              }`}
+                            >
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-slate-900 shadow-sm">
+                                {existingMember ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : null}
+                              </span>
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="mt-5 flex flex-wrap items-center gap-3">
                       <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-emerald-700">
                         <Sparkles className="h-3.5 w-3.5" />
-                        Recurring fee INR {organizationMonthlyFee.toLocaleString("en-IN")}
+                        Monthly fee INR {organizationMonthlyFee.toLocaleString("en-IN")}
                       </div>
-                      <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-amber-700">
-                        <Sparkles className="h-3.5 w-3.5" />
-                        Admission fee INR {organizationAdmissionFee.toLocaleString("en-IN")}
-                      </div>
+                      {(!isCreate || !existingMember) && (
+                        <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-amber-700">
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Admission fee INR {organizationAdmissionFee.toLocaleString("en-IN")}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -371,7 +379,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                       label="Payment Collected"
                       value={`INR ${watchedInitialPaymentAmount.toLocaleString("en-IN")}`}
                       tone="emerald"
-                      tooltip={isCreate ? "Membership total plus one-time admission fee" : "Renewal collects only the membership total"}
+                      tooltip={isCreate ? (existingMember ? "Admission fee for existing gym member" : "Membership total plus one-time admission fee") : "Renewal collects only the membership total"}
                     />
                   </div>
                 </div>
@@ -388,7 +396,6 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                 </Field>
                 <Field
                   label="Membership Total"
-                  hint="Recurring fee x selected duration months."
                 >
                   <Input
                     type="number"
@@ -404,11 +411,6 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                 </Field>
                 <Field
                   label="Payment Collected"
-                  hint={
-                    isCreate
-                      ? "Membership total plus one-time admission fee."
-                      : "Renewal collects only the membership total."
-                  }
                 >
                   <Input
                     type="number"

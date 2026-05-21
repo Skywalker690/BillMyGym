@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Clock3, Info, Pencil, Plus, RefreshCw, Search, ShieldAlert, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, Clock3, Info, Pencil, Plus, RefreshCw, Search, ShieldAlert, Sparkles, Trash2, XCircle, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import api from "@/lib/api";
@@ -17,27 +19,37 @@ const formatDate = (value?: string) =>
     : "-";
 
 export default function MembersList() {
+  const { user } = useAuth();
   const [searchInput, setSearchInput] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
   const [memberTab, setMemberTab] = useState<"ALL" | "ACTIVE" | "DEACTIVATED">("ACTIVE");
   const [page, setPage] = useState(0);
+  const [quickRenewMember, setQuickRenewMember] = useState<any | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["members", page, appliedSearch, statusFilter, memberTab],
+    queryKey: ["members", page, appliedSearch, memberTab],
     queryFn: async () => {
       const res = await api.get("/members", {
         params: {
           page,
           size: PAGE_SIZE,
           search: appliedSearch || undefined,
-          membershipStatus: statusFilter === "ALL" ? undefined : statusFilter,
           memberStatus: memberTab === "ALL" ? undefined : memberTab,
         },
       });
       return res.data;
     },
+  });
+
+  const { data: organization } = useQuery({
+    queryKey: ["membersDirectoryOrganization", user?.organizationId],
+    queryFn: async () => {
+      const res = await api.get(`/organizations/${user?.organizationId}`);
+      return res.data;
+    },
+    enabled: Boolean(user?.organizationId),
+    staleTime: 60_000,
   });
 
   const deleteMutation = useMutation({
@@ -50,7 +62,75 @@ export default function MembersList() {
     onError: () => toast.error("Failed to deactivate member"),
   });
 
-  const members = data?.members ?? [];
+  const quickRenewMutation = useMutation({
+    mutationFn: async (member: any) => {
+      const monthlyMembershipFee = Number(organization?.monthlyMembershipFee ?? 0);
+      if (monthlyMembershipFee <= 0) {
+        throw new Error("Monthly membership fee is not configured for this organization");
+      }
+
+      const membership = member.currentMembership;
+      const startDate = resolveQuickRenewStartDate(membership?.endDate);
+      const membershipResponse = await api.post(
+        `/members/${member.id}/memberships`,
+        {
+          durationMonths: 1,
+          planAmount: monthlyMembershipFee,
+          planName: "Monthly Membership",
+          startDate,
+        },
+        {
+          headers: {
+            "X-Idempotency-Key": crypto.randomUUID(),
+          },
+        }
+      );
+
+      await api.post(
+        "/payments",
+        {
+          membershipId: membershipResponse.data.id,
+          amount: monthlyMembershipFee,
+          paymentDate: new Date().toISOString().slice(0, 10),
+          paymentType: membership ? "RENEWAL" : "NEW_MEMBERSHIP",
+          paymentStatus: "PAID",
+        },
+        {
+          headers: {
+            "X-Idempotency-Key": crypto.randomUUID(),
+          },
+        }
+      );
+    },
+    onSuccess: (_, member) => {
+      queryClient.invalidateQueries({ queryKey: ["members"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardReport"] });
+      setQuickRenewMember(null);
+      toast.success(`${member.fullName} renewed for 1 month`);
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "Failed to renew member");
+    },
+  });
+
+  const members = useMemo(() => {
+    const items = [...(data?.members ?? [])];
+    items.sort((left: any, right: any) => {
+      const rankDifference = renewalPriority(left) - renewalPriority(right);
+      if (rankDifference !== 0) {
+        return rankDifference;
+      }
+
+      const leftDate = resolveMembershipSortDate(left.currentMembership);
+      const rightDate = resolveMembershipSortDate(right.currentMembership);
+      if (leftDate !== rightDate) {
+        return leftDate - rightDate;
+      }
+
+      return String(left.fullName ?? "").localeCompare(String(right.fullName ?? ""));
+    });
+    return items;
+  }, [data?.members]);
   const summary = data?.summary ?? {};
   const memberLimit = summary.memberLimit;
   const memberTabs = [
@@ -71,7 +151,7 @@ export default function MembersList() {
             <div className="text-[10px] font-black uppercase tracking-[0.26em] text-emerald-700">Member Operations</div>
             <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">Members Directory</h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-600">
-              Search across the full organization member base, switch between active and deactivated members, and move directly into renewal action.
+              Members needing renewal attention are surfaced first so the daily follow-up queue stays in front of your team.
             </p>
           </div>
           <Link to="/app/members/new">
@@ -124,7 +204,7 @@ export default function MembersList() {
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
-                  placeholder="Search by name, phone, or email..."
+                  placeholder="Search by name or phone..."
                   className="h-11 rounded-xl border-black/5 bg-white/60 pl-11"
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
@@ -147,23 +227,6 @@ export default function MembersList() {
                 <Search className="mr-2 h-4 w-4" />
                 Search
               </Button>
-            </div>
-
-            <div className="w-full md:w-auto md:min-w-[220px]">
-              <select
-                className="h-11 w-full rounded-xl border border-black/5 bg-white/60 px-4 text-sm font-semibold text-slate-700"
-                value={statusFilter}
-                onChange={(event) => {
-                  setPage(0);
-                  setStatusFilter(event.target.value);
-                }}
-              >
-                <option value="ALL">All Memberships</option>
-                <option value="ACTIVE">Active</option>
-                <option value="EXPIRING_SOON">Expiring Soon</option>
-                <option value="EXPIRED">Expired</option>
-                <option value="OVERDUE">Overdue</option>
-              </select>
             </div>
           </div>
         </div>
@@ -237,28 +300,59 @@ export default function MembersList() {
                       </td>
                       <td className="min-w-[240px] px-6 py-5">
                         <div className="flex flex-wrap justify-end gap-2">
-                          <Link to={`/app/members/${member.id}/renew`}>
+                          {canRenewMember(member) && (
                             <Button
+                              type="button"
                               variant="outline"
                               className="h-10 rounded-full border-emerald-200 bg-emerald-50 px-4 text-sm font-bold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100 hover:text-emerald-800"
+                              onClick={() => setQuickRenewMember(member)}
+                              disabled={quickRenewMutation.isPending}
                             >
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              Renew
+                              <Zap className="mr-2 h-4 w-4" />
+                              Quick Renew
                             </Button>
-                          </Link>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="h-10 rounded-full border-rose-200 bg-rose-50 px-4 text-sm font-bold text-rose-700 shadow-sm transition-colors hover:bg-rose-100 hover:text-rose-800"
-                            onClick={() => {
-                              if (confirm("Deactivate this member?")) {
-                                deleteMutation.mutate(member.id);
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="h-10 rounded-full border-black/10 bg-white/80 px-4 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-white hover:text-slate-950"
+                                >
+                                  Actions
+                                  <ChevronDown className="ml-2 h-4 w-4" />
+                                </Button>
                               }
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Deactivate
-                          </Button>
+                            />
+                            <DropdownMenuContent align="end" className="w-48 rounded-2xl border border-white/80 bg-white/95 p-2 shadow-[0_18px_40px_-24px_rgba(15,23,42,0.32)] backdrop-blur-xl">
+                              {canRenewMember(member) && (
+                                <DropdownMenuItem
+                                  className="rounded-xl px-3 py-2 font-semibold"
+                                  onClick={() => {
+                                    window.location.href = `/app/members/${member.id}/renew`;
+                                  }}
+                                >
+                                  <RefreshCw className="h-4 w-4" />
+                                  Renew
+                                </DropdownMenuItem>
+                              )}
+                              {member.status !== "DEACTIVATED" && (
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  className="rounded-xl px-3 py-2 font-semibold"
+                                  onClick={() => {
+                                    if (confirm("Deactivate this member?")) {
+                                      deleteMutation.mutate(member.id);
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Deactivate
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </td>
                     </tr>
@@ -291,6 +385,166 @@ export default function MembersList() {
           deactivatedMembers={summary.deactivatedMembers ?? 0}
         />
       </section>
+
+      {quickRenewMember && (
+        <QuickRenewModal
+          member={quickRenewMember}
+          monthlyMembershipFee={Number(organization?.monthlyMembershipFee ?? 0)}
+          isSubmitting={quickRenewMutation.isPending}
+          onCancel={() => {
+            if (!quickRenewMutation.isPending) {
+              setQuickRenewMember(null);
+            }
+          }}
+          onConfirm={() => quickRenewMutation.mutate(quickRenewMember)}
+        />
+      )}
+    </div>
+  );
+}
+
+function renewalPriority(member: any) {
+  if (member.status === "DEACTIVATED") {
+    return 5;
+  }
+
+  const membership = member.currentMembership;
+  if (!membership) {
+    return 0;
+  }
+  if (membership.status === "OVERDUE") {
+    return 0;
+  }
+  if (membership.status === "EXPIRED") {
+    return 1;
+  }
+  if (membership.expiringSoon) {
+    return 2;
+  }
+  if (membership.status === "ACTIVE") {
+    return 3;
+  }
+  return 4;
+}
+
+function resolveMembershipSortDate(membership?: any) {
+  if (!membership?.endDate) {
+    return Number.MIN_SAFE_INTEGER;
+  }
+  const timestamp = new Date(membership.endDate).getTime();
+  return Number.isNaN(timestamp) ? Number.MIN_SAFE_INTEGER : timestamp;
+}
+
+function canRenewMember(member: any) {
+  return member.status !== "DEACTIVATED" && member.currentMembership?.status !== "ACTIVE";
+}
+
+function resolveQuickRenewStartDate(currentEndDate?: string) {
+  const today = new Date();
+  const baseDate = currentEndDate ? new Date(`${currentEndDate}T00:00:00`) : today;
+  if (currentEndDate && baseDate >= today) {
+    baseDate.setDate(baseDate.getDate() + 1);
+    return baseDate.toISOString().slice(0, 10);
+  }
+  return today.toISOString().slice(0, 10);
+}
+
+function QuickRenewModal({
+  member,
+  monthlyMembershipFee,
+  isSubmitting,
+  onCancel,
+  onConfirm,
+}: {
+  member: any;
+  monthlyMembershipFee: number;
+  isSubmitting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const membership = member.currentMembership;
+  const nextStartDate = resolveQuickRenewStartDate(membership?.endDate);
+  const nextEndDate = new Date(`${nextStartDate}T00:00:00`);
+  nextEndDate.setMonth(nextEndDate.getMonth() + 1);
+  nextEndDate.setDate(nextEndDate.getDate() - 1);
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-950/45 backdrop-blur-md"
+        aria-label="Close quick renew dialog"
+        onClick={onCancel}
+      />
+      <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.97),rgba(236,253,245,0.94))] shadow-[0_30px_90px_-30px_rgba(15,23,42,0.45)]">
+        <div className="absolute -right-14 -top-16 h-44 w-44 rounded-full bg-emerald-300/35 blur-3xl" />
+        <div className="absolute bottom-0 left-10 h-36 w-36 rounded-full bg-amber-200/40 blur-3xl" />
+        <div className="relative z-10 p-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">
+            <Sparkles className="h-3.5 w-3.5" />
+            Quick Renew
+          </div>
+          <h2 className="mt-5 text-3xl font-black tracking-tight text-slate-950">Renew {member.fullName} instantly?</h2>
+          <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
+            This will create a fresh 1 month membership from this page itself and record the full renewal payment in one smooth step.
+          </p>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <RenewMetric label="Member" value={member.fullName} tone="slate" />
+            <RenewMetric label="Current Expiry" value={formatDate(membership?.endDate)} tone="amber" />
+            <RenewMetric label="Next Expiry" value={formatDate(nextEndDate.toISOString().slice(0, 10))} tone="emerald" />
+          </div>
+
+          <div className="mt-5 rounded-[1.6rem] border border-white/80 bg-white/80 p-5 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Collected On Confirm</div>
+                <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+                  INR {monthlyMembershipFee.toLocaleString("en-IN")}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
+                Start date: {formatDate(nextStartDate)}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 rounded-full border-white/80 bg-white/80 px-6 font-bold"
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
+              No
+            </Button>
+            <Button
+              type="button"
+              className="h-11 rounded-full bg-emerald-600 px-6 font-bold text-white hover:bg-emerald-700"
+              onClick={onConfirm}
+              disabled={isSubmitting || monthlyMembershipFee <= 0}
+            >
+              {isSubmitting ? "Renewing..." : "Yes, Quick Renew"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RenewMetric({ label, value, tone }: { label: string; value: string; tone: "slate" | "amber" | "emerald" }) {
+  const toneClasses = {
+    slate: "border-slate-200 bg-white/80 text-slate-900",
+    amber: "border-amber-200 bg-amber-50/80 text-amber-900",
+    emerald: "border-emerald-200 bg-emerald-50/80 text-emerald-900",
+  }[tone];
+
+  return (
+    <div className={`rounded-[1.4rem] border p-4 shadow-sm ${toneClasses}`}>
+      <div className="text-[10px] font-black uppercase tracking-[0.22em] opacity-70">{label}</div>
+      <div className="mt-2 text-lg font-black">{value}</div>
     </div>
   );
 }

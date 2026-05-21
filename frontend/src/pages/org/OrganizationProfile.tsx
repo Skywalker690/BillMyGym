@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
+type PasswordFieldName = "currentPassword" | "newPassword" | "confirmPassword" | "otp";
+
 export default function OrganizationProfile() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -44,6 +46,32 @@ export default function OrganizationProfile() {
       otp: "",
     },
   });
+
+  const applyPasswordRequestErrors = (error: any) => {
+    const message = error?.response?.data?.message || "Failed to send password verification code.";
+    const fieldErrors = Array.isArray(error?.response?.data?.errors) ? error.response.data.errors : [];
+
+    for (const fieldError of fieldErrors) {
+      const fieldName = fieldError?.field as PasswordFieldName | undefined;
+      const fieldMessage = fieldError?.message as string | undefined;
+      if (fieldName && fieldMessage) {
+        setPasswordError(fieldName, { message: fieldMessage });
+      }
+    }
+
+    if (!fieldErrors.length) {
+      const normalizedMessage = String(message).toLowerCase();
+      if (normalizedMessage.includes("current password")) {
+        setPasswordError("currentPassword", { message });
+      } else if (normalizedMessage.includes("confirm password")) {
+        setPasswordError("confirmPassword", { message });
+      } else if (normalizedMessage.includes("new password")) {
+        setPasswordError("newPassword", { message });
+      }
+    }
+
+    toast.error(message);
+  };
 
   useEffect(() => {
     if (organization) {
@@ -88,18 +116,28 @@ export default function OrganizationProfile() {
     onSuccess: () => {
       setPasswordOtpSent(true);
       setPasswordOtpVerified(false);
+      clearPasswordErrors(["currentPassword", "newPassword", "confirmPassword", "otp"]);
       toast.success("A verification code has been sent to your email.");
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Failed to send password verification code.");
+      setPasswordOtpSent(false);
+      setPasswordOtpVerified(false);
+      applyPasswordRequestErrors(error);
     },
   });
 
   const verifyPasswordOtpMutation = useMutation({
-    mutationFn: (otp: string) => api.post("/auth/verify-otp", {
-      email: user?.email,
-      otp,
-    }),
+    mutationFn: async (otp: string) => {
+      const response = await api.post("/auth/verify-otp", {
+        email: user?.email,
+        otp,
+      });
+      const payload = response.data;
+      if (payload && typeof payload === "object" && "success" in payload && payload.success === false) {
+        throw new Error((payload as { message?: string }).message || "Invalid or expired OTP");
+      }
+      return true;
+    },
     onSuccess: () => {
       setPasswordOtpVerified(true);
       clearErrors("otp");
@@ -125,6 +163,15 @@ export default function OrganizationProfile() {
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to update password.");
     },
+  });
+
+  const handleVerifyPasswordOtp = handlePasswordSubmit(async (data) => {
+    try {
+      setPasswordOtpVerified(false);
+      await verifyPasswordOtpMutation.mutateAsync(data.otp);
+    } catch {
+      // Error presentation is handled by the mutation onError callback.
+    }
   });
 
   if (isLoading) {
@@ -193,7 +240,7 @@ export default function OrganizationProfile() {
             <Field label="Admin Phone Number" icon={<Phone className="h-4 w-4" />}>
               <Input {...register("adminPhone")} className="h-11 rounded-xl bg-white/60 pl-10" />
             </Field>
-            <Field label="Recurring Membership Fee (INR)">
+            <Field label="Monthly Membership Fee (INR)">
               <Input type="number" {...register("monthlyMembershipFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-white/60" />
             </Field>
             <Field label="Admission Fee (INR)">
@@ -233,7 +280,7 @@ export default function OrganizationProfile() {
                       setPasswordError("confirmPassword", { message: "Passwords do not match" });
                       return;
                     }
-                    clearPasswordErrors("confirmPassword");
+                    clearPasswordErrors(["currentPassword", "newPassword", "confirmPassword", "otp"]);
                     requestPasswordOtpMutation.mutate({
                       currentPassword: data.currentPassword,
                       newPassword: data.newPassword,
@@ -257,7 +304,7 @@ export default function OrganizationProfile() {
                     <SecureField label="Verification Code" error={passwordErrors.otp?.message as string | undefined}>
                       <Input id="otp" {...registerPassword("otp", { required: "OTP is required", minLength: { value: 6, message: "OTP must be 6 digits" }, maxLength: { value: 6, message: "OTP must be 6 digits" } })} className="h-11 rounded-xl bg-white/80" />
                     </SecureField>
-                    <Button type="button" variant="outline" onClick={() => verifyPasswordOtpMutation.mutate(watchPassword("otp"))} disabled={verifyPasswordOtpMutation.isPending} className="h-11 rounded-full">
+                    <Button type="button" variant="outline" onClick={handleVerifyPasswordOtp} disabled={verifyPasswordOtpMutation.isPending} className="h-11 rounded-full">
                       {verifyPasswordOtpMutation.isPending ? "Verifying..." : "Verify OTP"}
                     </Button>
                     <Button type="button" disabled={!passwordOtpVerified || confirmPasswordMutation.isPending} onClick={handlePasswordSubmit((data) => confirmPasswordMutation.mutate(data.otp))} className="h-11 rounded-full bg-slate-950 text-white hover:bg-slate-800">

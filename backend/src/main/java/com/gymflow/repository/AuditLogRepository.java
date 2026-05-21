@@ -1,183 +1,146 @@
 package com.gymflow.repository;
 
 import com.gymflow.domain.AuditLog;
+import com.gymflow.domain.enums.AuditCategory;
 import com.gymflow.domain.enums.AuditActivityScope;
 import com.gymflow.domain.enums.AuditEventStatus;
 import java.util.Collection;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.data.jpa.domain.Specification;
 
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSpecificationExecutor<AuditLog> {
-    @Query(
-        value = """
-            select auditLog from AuditLog auditLog
-            where auditLog.organization is not null
-              and (
-                auditLog.activityScope = com.gymflow.domain.enums.AuditActivityScope.GLOBAL_LOGIN
-                or auditLog.category = com.gymflow.domain.enums.AuditCategory.AUTHENTICATION
-              )
-              and (:status is null or auditLog.eventStatus = :status)
-              and (:organizationId is null or auditLog.organization.id = :organizationId)
-              and (:fromTime is null or auditLog.timestamp >= :fromTime)
-              and (:toTime is null or auditLog.timestamp < :toTime)
-              and (
-                :pattern is null
-                or lower(auditLog.actorName) like :pattern
-                or lower(auditLog.actorEmail) like :pattern
-                or lower(auditLog.description) like :pattern
-                or (auditLog.organization is not null and lower(auditLog.organization.name) like :pattern)
-              )
-            order by auditLog.timestamp desc
-            """,
-        countQuery = """
-            select count(auditLog) from AuditLog auditLog
-            where auditLog.organization is not null
-              and (
-                auditLog.activityScope = com.gymflow.domain.enums.AuditActivityScope.GLOBAL_LOGIN
-                or auditLog.category = com.gymflow.domain.enums.AuditCategory.AUTHENTICATION
-              )
-              and (:status is null or auditLog.eventStatus = :status)
-              and (:organizationId is null or auditLog.organization.id = :organizationId)
-              and (:fromTime is null or auditLog.timestamp >= :fromTime)
-              and (:toTime is null or auditLog.timestamp < :toTime)
-              and (
-                :pattern is null
-                or lower(auditLog.actorName) like :pattern
-                or lower(auditLog.actorEmail) like :pattern
-                or lower(auditLog.description) like :pattern
-                or (auditLog.organization is not null and lower(auditLog.organization.name) like :pattern)
-              )
-            """
-    )
-    Page<AuditLog> findGlobalLoginAuditPage(
-        @Param("status") AuditEventStatus status,
-        @Param("organizationId") Long organizationId,
-        @Param("fromTime") Instant fromTime,
-        @Param("toTime") Instant toTime,
-        @Param("pattern") String pattern,
+    default Page<AuditLog> findGlobalLoginAuditPage(
+        AuditEventStatus status,
+        Long organizationId,
+        Instant fromTime,
+        Instant toTime,
+        String pattern,
         Pageable pageable
-    );
+    ) {
+        return findAll(globalLoginSpecification(status, organizationId, fromTime, toTime, pattern), pageable);
+    }
 
-    @Query(
-        value = """
-            select auditLog from AuditLog auditLog
-            where auditLog.organization.id = :organizationId
-              and auditLog.activityScope = :scope
-              and (:fromTime is null or auditLog.timestamp >= :fromTime)
-              and (:toTime is null or auditLog.timestamp < :toTime)
-              and (
-                :pattern is null
-                or lower(auditLog.actorName) like :pattern
-                or lower(auditLog.description) like :pattern
-                or lower(auditLog.event) like :pattern
-                or (auditLog.targetName is not null and lower(auditLog.targetName) like :pattern)
-              )
-            order by auditLog.timestamp desc
-            """,
-        countQuery = """
-            select count(auditLog) from AuditLog auditLog
-            where auditLog.organization.id = :organizationId
-              and auditLog.activityScope = :scope
-              and (:fromTime is null or auditLog.timestamp >= :fromTime)
-              and (:toTime is null or auditLog.timestamp < :toTime)
-              and (
-                :pattern is null
-                or lower(auditLog.actorName) like :pattern
-                or lower(auditLog.description) like :pattern
-                or lower(auditLog.event) like :pattern
-                or (auditLog.targetName is not null and lower(auditLog.targetName) like :pattern)
-              )
-            """
-    )
-    Page<AuditLog> findOrganizationAuditPage(
-        @Param("organizationId") Long organizationId,
-        @Param("scope") AuditActivityScope scope,
-        @Param("fromTime") Instant fromTime,
-        @Param("toTime") Instant toTime,
-        @Param("pattern") String pattern,
+    default Page<AuditLog> findOrganizationAuditPage(
+        Long organizationId,
+        AuditActivityScope scope,
+        Instant fromTime,
+        Instant toTime,
+        String pattern,
         Pageable pageable
-    );
+    ) {
+        return findAll(organizationAuditSpecification(organizationId, fromTime, toTime, pattern, List.of(scope)), pageable);
+    }
 
-    @Query(
-        value = """
-            select auditLog from AuditLog auditLog
-            where auditLog.organization.id = :organizationId
-              and auditLog.activityScope in :scopes
-              and (:fromTime is null or auditLog.timestamp >= :fromTime)
-              and (:toTime is null or auditLog.timestamp < :toTime)
-              and (
-                :pattern is null
-                or lower(auditLog.actorName) like :pattern
-                or lower(auditLog.description) like :pattern
-                or lower(auditLog.event) like :pattern
-                or (auditLog.targetName is not null and lower(auditLog.targetName) like :pattern)
-              )
-            order by auditLog.timestamp desc
-            """,
-        countQuery = """
-            select count(auditLog) from AuditLog auditLog
-            where auditLog.organization.id = :organizationId
-              and auditLog.activityScope in :scopes
-              and (:fromTime is null or auditLog.timestamp >= :fromTime)
-              and (:toTime is null or auditLog.timestamp < :toTime)
-              and (
-                :pattern is null
-                or lower(auditLog.actorName) like :pattern
-                or lower(auditLog.description) like :pattern
-                or lower(auditLog.event) like :pattern
-                or (auditLog.targetName is not null and lower(auditLog.targetName) like :pattern)
-              )
-            """
-    )
-    Page<AuditLog> findOrganizationAuditPageByScopes(
-        @Param("organizationId") Long organizationId,
-        @Param("scopes") Collection<AuditActivityScope> scopes,
-        @Param("fromTime") Instant fromTime,
-        @Param("toTime") Instant toTime,
-        @Param("pattern") String pattern,
+    default Page<AuditLog> findOrganizationAuditPageByScopes(
+        Long organizationId,
+        Collection<AuditActivityScope> scopes,
+        Instant fromTime,
+        Instant toTime,
+        String pattern,
         Pageable pageable
-    );
+    ) {
+        return findAll(organizationAuditSpecification(organizationId, fromTime, toTime, pattern, scopes), pageable);
+    }
 
-    @Query(
-        """
-            select count(auditLog) from AuditLog auditLog
-            where auditLog.organization is not null
-              and (
-                auditLog.activityScope = com.gymflow.domain.enums.AuditActivityScope.GLOBAL_LOGIN
-                or auditLog.category = com.gymflow.domain.enums.AuditCategory.AUTHENTICATION
-              )
-              and auditLog.eventStatus = :status
-              and (:organizationId is null or auditLog.organization.id = :organizationId)
-              and (:fromTime is null or auditLog.timestamp >= :fromTime)
-              and (:toTime is null or auditLog.timestamp < :toTime)
-              and (
-                :pattern is null
-                or lower(auditLog.actorName) like :pattern
-                or lower(auditLog.actorEmail) like :pattern
-                or lower(auditLog.description) like :pattern
-                or (auditLog.organization is not null and lower(auditLog.organization.name) like :pattern)
-              )
-            """
-    )
-    long countGlobalLoginByStatus(
-        @Param("status") AuditEventStatus status,
-        @Param("organizationId") Long organizationId,
-        @Param("fromTime") Instant fromTime,
-        @Param("toTime") Instant toTime,
-        @Param("pattern") String pattern
-    );
+    default long countGlobalLoginByStatus(
+        AuditEventStatus status,
+        Long organizationId,
+        Instant fromTime,
+        Instant toTime,
+        String pattern
+    ) {
+        return count(globalLoginSpecification(status, organizationId, fromTime, toTime, pattern));
+    }
 
     @Modifying
     @Transactional
     long deleteByTimestampBefore(Instant threshold);
+
+    private static Specification<AuditLog> globalLoginSpecification(
+        AuditEventStatus status,
+        Long organizationId,
+        Instant fromTime,
+        Instant toTime,
+        String pattern
+    ) {
+        return (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.isNotNull(root.get("organization")));
+            predicates.add(
+                cb.or(
+                    cb.equal(root.get("activityScope"), AuditActivityScope.GLOBAL_LOGIN),
+                    cb.equal(root.get("category"), AuditCategory.AUTHENTICATION)
+                )
+            );
+            if (status != null) {
+                predicates.add(cb.equal(root.get("eventStatus"), status));
+            }
+            if (organizationId != null) {
+                predicates.add(cb.equal(root.get("organization").get("id"), organizationId));
+            }
+            if (fromTime != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("timestamp"), fromTime));
+            }
+            if (toTime != null) {
+                predicates.add(cb.lessThan(root.get("timestamp"), toTime));
+            }
+            if (pattern != null) {
+                var organizationJoin = root.join("organization", jakarta.persistence.criteria.JoinType.LEFT);
+                predicates.add(
+                    cb.or(
+                        cb.like(cb.lower(root.get("actorName")), pattern),
+                        cb.like(cb.lower(root.get("actorEmail")), pattern),
+                        cb.like(cb.lower(root.get("description")), pattern),
+                        cb.like(cb.lower(organizationJoin.get("name")), pattern)
+                    )
+                );
+            }
+            return cb.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
+    }
+
+    private static Specification<AuditLog> organizationAuditSpecification(
+        Long organizationId,
+        Instant fromTime,
+        Instant toTime,
+        String pattern,
+        Collection<AuditActivityScope> scopes
+    ) {
+        return (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("organization").get("id"), organizationId));
+            predicates.add(root.get("activityScope").in(scopes));
+            if (fromTime != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("timestamp"), fromTime));
+            }
+            if (toTime != null) {
+                predicates.add(cb.lessThan(root.get("timestamp"), toTime));
+            }
+            if (pattern != null) {
+                predicates.add(
+                    cb.or(
+                        cb.like(cb.lower(root.get("actorName")), pattern),
+                        cb.like(cb.lower(root.get("description")), pattern),
+                        cb.like(cb.lower(root.get("event")), pattern),
+                        cb.and(
+                            cb.isNotNull(root.get("targetName")),
+                            cb.like(cb.lower(root.get("targetName")), pattern)
+                        )
+                    )
+                );
+            }
+            return cb.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
+    }
 }

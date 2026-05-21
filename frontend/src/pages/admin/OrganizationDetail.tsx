@@ -407,7 +407,7 @@ export default function OrganizationDetail() {
                   <option value="DEMO">Demo</option>
                 </select>
               </Field>
-              <Field label="Recurring Membership Fee (INR)">
+              <Field label="Monthly Membership Fee (INR)">
                 <Input type="number" min="0" step="0.01" {...register("monthlyMembershipFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-white/70" />
               </Field>
               <Field label="Admission Fee (INR)">
@@ -459,7 +459,7 @@ export default function OrganizationDetail() {
               <InfoRow icon={CalendarDays} label="Joined GymMax" value={formatDate(subscriptionStatus?.joinedAt)} />
               <InfoRow icon={MapPin} label="Place" value={organization.place || "Not set"} />
               <InfoRow icon={MapPin} label="District" value={organization.district || "Not set"} />
-              <InfoRow icon={IndianRupee} label="Recurring Fee" value={money.format(organization.monthlyMembershipFee ?? 0)} />
+              <InfoRow icon={IndianRupee} label="Monthly Fee" value={money.format(organization.monthlyMembershipFee ?? 0)} />
               <InfoRow icon={IndianRupee} label="Admission Fee" value={money.format(organization.admissionFee ?? 0)} />
               <InfoRow icon={Mail} label="Admin Email" value={organization.adminEmail || "Not set"} />
               <InfoRow icon={Phone} label="Admin Phone" value={organization.adminPhoneNumber || "Not set"} />

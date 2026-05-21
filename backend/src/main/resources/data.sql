@@ -1,6 +1,6 @@
 INSERT INTO organizations (
-    id, name, district, logo_url, map_location_link, address, admin_full_name, admin_phone_number, admin_email,
-    description, monthly_membership_fee, organization_type, subscription_plan, status,
+    id, name, district, place, logo_url, map_location_link, address, admin_full_name, admin_phone_number, admin_email,
+    description, monthly_membership_fee, admission_fee, organization_type, subscription_plan, status,
     trial_start_date, trial_end_date, pilot_start_date, pilot_end_date, subscription_due_date,
     paused_at, deactivated_at, deleted, deleted_at, created_at, updated_at, version
 )
@@ -14,6 +14,7 @@ SELECT
         'Pilot Peak Gym'
     ])[org_id],
     (ARRAY['Central', 'North', 'South', 'East', 'West'])[org_id],
+    (ARRAY['Kochi', 'Thrissur', 'Kozhikode', 'Kannur', 'Kollam'])[org_id],
     'https://img.example.com/org-' || org_id || '.png',
     'https://maps.example.com/org-' || org_id,
     (100 + org_id) || ' Fitness Avenue',
@@ -28,6 +29,7 @@ SELECT
     ])[org_id],
     'Seed organization ' || org_id || ' with balanced member and subscription states',
     (ARRAY[1299.00, 1599.00, 999.00, 1899.00, 899.00])[org_id]::numeric(12, 2),
+    (ARRAY[499.00, 699.00, 399.00, 799.00, 0.00])[org_id]::numeric(12, 2),
     CASE WHEN org_id = 5 THEN 'PILOT' ELSE 'REGULAR' END,
     (ARRAY['STARTER', 'GROWTH', 'STARTER', 'PRO', 'PILOT'])[org_id],
     (ARRAY['ACTIVE', 'PAUSED', 'TRIAL', 'ACTIVE', 'ACTIVE'])[org_id],
@@ -85,15 +87,14 @@ SELECT
 FROM generate_series(1, 5) AS org_id;
 
 INSERT INTO members (
-    id, organization_id, full_name, phone, email, status, deleted, deleted_at, deactivated_at, deactivation_reason,
-    notes, created_at, updated_at, version
+    id, organization_id, full_name, phone, status, deleted, deleted_at, deactivated_at, deactivation_reason,
+    created_at, updated_at, version
 )
 SELECT
     ((org_id - 1) * 10) + slot_id,
     org_id,
     'Member ' || org_id || '-' || LPAD(slot_id::text, 2, '0'),
     '+9198' || LPAD((((org_id - 1) * 10) + slot_id)::text, 8, '0'),
-    'member' || org_id || '_' || slot_id || '@example.com',
     CASE
         WHEN slot_id = 5 THEN 'DEACTIVATED'
         WHEN slot_id = 6 THEN 'PAUSED'
@@ -103,15 +104,6 @@ SELECT
     NULL,
     CASE WHEN slot_id = 5 THEN CURRENT_TIMESTAMP - INTERVAL '3 days' ELSE NULL END,
     CASE WHEN slot_id = 5 THEN 'Temporarily inactive member' ELSE NULL END,
-    CASE
-        WHEN slot_id IN (3, 9) THEN 'Overdue-payment test member'
-        WHEN slot_id IN (2, 10) THEN 'Partial-payment test member'
-        WHEN slot_id = 4 THEN 'Expired-membership test member'
-        WHEN slot_id = 5 THEN 'Deactivated member retained for history'
-        WHEN slot_id = 6 THEN 'Paused member profile'
-        WHEN slot_id = 8 THEN 'Completed-membership historical member'
-        ELSE 'Active member seed row'
-    END,
     CURRENT_TIMESTAMP - (((30 - org_id) + slot_id) || ' days')::interval,
     CURRENT_TIMESTAMP - (((10 - org_id) + (slot_id % 4)) || ' days')::interval,
     0
@@ -419,6 +411,40 @@ INSERT INTO api_request_log (
     (4, 4, 'req-membership-004', 'POST:/api/members/31/memberships', md5('seed-response-4'), '{"status":"ok","kind":"membership"}', CURRENT_TIMESTAMP - INTERVAL '7 hours'),
     (5, 5, 'req-reminder-005', 'POST:/api/reminders/run', md5('seed-response-5'), '{"status":"ok","kind":"reminder"}', CURRENT_TIMESTAMP - INTERVAL '6 hours');
 
+INSERT INTO audit_logs (
+    id, event, description, actor_name, actor_email, actor_role, organization_id, category, activity_scope,
+    event_status, target_name, zone, ip_address, device, browser, timestamp
+) VALUES
+    (1, 'PASSWORD_LOGIN', 'Super admin signed in successfully', 'Sanjo K Siby', 'sanjoksiby10@gmail.com', 'SUPER_ADMIN', NULL, 'AUTHENTICATION', 'GLOBAL_LOGIN',
+        'SUCCESS', 'GymMax Admin Console', 'IST', '10.10.10.1', 'MacBook Pro', 'Chrome 136', CURRENT_TIMESTAMP - INTERVAL '18 hours'),
+    (2, 'ORG_CREATED', 'Created organization profile for Iron Forge Fitness', 'Sanjo K Siby', 'sanjoksiby10@gmail.com', 'SUPER_ADMIN', 1, 'ORGANIZATION', 'ADMIN_ACTIVITY',
+        'INFO', 'Iron Forge Fitness', 'IST', '10.10.10.2', 'Windows Laptop', 'Edge 136', CURRENT_TIMESTAMP - INTERVAL '16 hours'),
+    (3, 'MEMBER_IMPORTED', 'Imported members for Pulse Arena onboarding', 'Anita Sharma', 'owner02@billmygym.local', 'ORG_ADMIN', 2, 'MEMBER', 'MEMBER_ACTIVITY',
+        'SUCCESS', 'Pulse Arena Batch Import', 'IST', '10.10.10.3', 'Office Desktop', 'Chrome 136', CURRENT_TIMESTAMP - INTERVAL '12 hours'),
+    (4, 'PAYMENT_RETRY_FAILED', 'Automatic subscription retry failed for Southside Strength', 'System Scheduler', 'system@billmygym.local', 'SYSTEM', 3, 'SYSTEM', 'ADMIN_ACTIVITY',
+        'FAILED', 'Southside Strength Subscription', 'IST', '10.10.10.4', 'Backend Worker', 'Spring Scheduler', CURRENT_TIMESTAMP - INTERVAL '8 hours'),
+    (5, 'MONTHLY_REPORT_GENERATED', 'Generated monthly organization report for Core Motion Club', 'System Scheduler', 'system@billmygym.local', 'SYSTEM', 4, 'SYSTEM', 'ADMIN_ACTIVITY',
+        'INFO', 'Core Motion Club Monthly Report', 'IST', '10.10.10.5', 'Backend Worker', 'Spring Scheduler', CURRENT_TIMESTAMP - INTERVAL '4 hours');
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = current_schema()
+          AND table_name = 'otps'
+    ) THEN
+        INSERT INTO otps (
+            id, email, otp_code, expires_at, verified, created_at
+        ) VALUES
+            (1, 'sanjoksiby10@gmail.com', '412583', CURRENT_TIMESTAMP + INTERVAL '10 minutes', FALSE, CURRENT_TIMESTAMP - INTERVAL '15 minutes'),
+            (2, 'owner02@billmygym.local', '904221', CURRENT_TIMESTAMP + INTERVAL '8 minutes', FALSE, CURRENT_TIMESTAMP - INTERVAL '12 minutes'),
+            (3, 'owner03@billmygym.local', '781144', CURRENT_TIMESTAMP - INTERVAL '2 minutes', FALSE, CURRENT_TIMESTAMP - INTERVAL '9 minutes'),
+            (4, 'sanjoksiby0@gmail.com', '635902', CURRENT_TIMESTAMP - INTERVAL '20 minutes', TRUE, CURRENT_TIMESTAMP - INTERVAL '30 minutes'),
+            (5, 'audit.seed@billmygym.local', '118407', CURRENT_TIMESTAMP + INTERVAL '5 minutes', FALSE, CURRENT_TIMESTAMP - INTERVAL '3 minutes');
+    END IF;
+END $$;
+
 SELECT setval('organizations_id_seq', COALESCE((SELECT MAX(id) FROM organizations), 1), TRUE);
 SELECT setval('users_id_seq', COALESCE((SELECT MAX(id) FROM users), 1), TRUE);
 SELECT setval('organization_settings_id_seq', COALESCE((SELECT MAX(id) FROM organization_settings), 1), TRUE);
@@ -435,3 +461,15 @@ SELECT setval('member_credit_ledger_id_seq', COALESCE((SELECT MAX(id) FROM membe
 SELECT setval('membership_operation_idempotency_id_seq', COALESCE((SELECT MAX(id) FROM membership_operation_idempotency), 1), TRUE);
 SELECT setval('processed_webhook_events_id_seq', COALESCE((SELECT MAX(id) FROM processed_webhook_events), 1), TRUE);
 SELECT setval('api_request_log_id_seq', COALESCE((SELECT MAX(id) FROM api_request_log), 1), TRUE);
+SELECT setval('audit_logs_id_seq', COALESCE((SELECT MAX(id) FROM audit_logs), 1), TRUE);
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.sequences
+        WHERE sequence_schema = current_schema()
+          AND sequence_name = 'otps_id_seq'
+    ) THEN
+        PERFORM setval('otps_id_seq', COALESCE((SELECT MAX(id) FROM otps), 1), TRUE);
+    END IF;
+END $$;

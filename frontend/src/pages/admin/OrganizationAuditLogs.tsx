@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, RefreshCcw, Search } from "lucide-react";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,7 +76,13 @@ export default function OrganizationAuditLogs() {
   const [search, setSearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [appliedTab, setAppliedTab] = useState<TabKey>("MEMBER_ACTIVITY");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [appliedFromDate, setAppliedFromDate] = useState("");
+  const [appliedToDate, setAppliedToDate] = useState("");
   const [page, setPage] = useState(0);
+  const [hasRequested, setHasRequested] = useState(false);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   const organizationQuery = useQuery({
     queryKey: ["organizationBrief", id],
@@ -88,46 +94,50 @@ export default function OrganizationAuditLogs() {
   });
 
   const memberActivityQuery = useQuery<AuditPage<MemberActivityRow>>({
-    queryKey: ["organizationAuditMember", id, tab, search, fromDate, toDate, page],
+    queryKey: ["organizationAuditMember", id, appliedTab, appliedSearch, appliedFromDate, appliedToDate, page, refreshToken],
     queryFn: async () => {
       const endpoint =
-        tab === "MEMBER_ACTIVITY"
+        appliedTab === "MEMBER_ACTIVITY"
           ? `/organizations/${id}/audit-logs/member-activity`
-          : tab === "MEMBER_STATUS_ACTIVITY"
+          : appliedTab === "MEMBER_STATUS_ACTIVITY"
             ? `/organizations/${id}/audit-logs/member-status`
             : `/organizations/${id}/audit-logs/admin-activity`;
       const res = await api.get(endpoint, {
         params: {
-          search: search.trim() || undefined,
-          fromDate: fromDate || undefined,
-          toDate: toDate || undefined,
+          search: appliedSearch.trim() || undefined,
+          fromDate: appliedFromDate || undefined,
+          toDate: appliedToDate || undefined,
           page,
           size: 20,
         },
       });
       return res.data;
     },
-    enabled: Boolean(id) && tab !== "NOTIFICATION_ACTIVITY",
+    enabled: Boolean(id) && hasRequested && appliedTab !== "NOTIFICATION_ACTIVITY",
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const notificationQuery = useQuery<NotificationAuditResponse>({
-    queryKey: ["organizationAuditNotification", id, search, fromDate, toDate, page],
+    queryKey: ["organizationAuditNotification", id, appliedSearch, appliedFromDate, appliedToDate, page, refreshToken],
     queryFn: async () => {
       const res = await api.get(`/organizations/${id}/audit-logs/notification-activity`, {
         params: {
-          search: search.trim() || undefined,
-          fromDate: fromDate || undefined,
-          toDate: toDate || undefined,
+          search: appliedSearch.trim() || undefined,
+          fromDate: appliedFromDate || undefined,
+          toDate: appliedToDate || undefined,
           page,
           size: 20,
         },
       });
       return res.data;
     },
-    enabled: Boolean(id) && tab === "NOTIFICATION_ACTIVITY",
+    enabled: Boolean(id) && hasRequested && appliedTab === "NOTIFICATION_ACTIVITY",
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
-  const pageMeta = tab === "NOTIFICATION_ACTIVITY" ? notificationQuery.data?.page : memberActivityQuery.data;
+  const pageMeta = appliedTab === "NOTIFICATION_ACTIVITY" ? notificationQuery.data?.page : memberActivityQuery.data;
 
   const tabItems = useMemo(
     () => [
@@ -138,6 +148,27 @@ export default function OrganizationAuditLogs() {
     ],
     []
   );
+
+  function applyAuditFilters(nextPage = 0) {
+    setPage(nextPage);
+    setAppliedTab(tab);
+    setAppliedSearch(search);
+    setAppliedFromDate(fromDate);
+    setAppliedToDate(toDate);
+    if (!hasRequested) {
+      setHasRequested(true);
+      return;
+    }
+    if (
+      nextPage === page &&
+      appliedTab === tab &&
+      appliedSearch === search &&
+      appliedFromDate === fromDate &&
+      appliedToDate === toDate
+    ) {
+      setRefreshToken((current) => current + 1);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6 lg:p-8">
@@ -160,7 +191,6 @@ export default function OrganizationAuditLogs() {
               type="button"
               onClick={() => {
                 setTab(item.key);
-                setPage(0);
               }}
               className={`rounded-full px-4 py-2 text-sm font-black ${
                 tab === item.key ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"
@@ -175,10 +205,7 @@ export default function OrganizationAuditLogs() {
             <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
             <Input
               value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(0);
-              }}
+              onChange={(event) => setSearch(event.target.value)}
               className="pl-9"
               placeholder="Search action, admin, member, description"
             />
@@ -186,23 +213,23 @@ export default function OrganizationAuditLogs() {
           <Input
             type="date"
             value={fromDate}
-            onChange={(event) => {
-              setFromDate(event.target.value);
-              setPage(0);
-            }}
+            onChange={(event) => setFromDate(event.target.value)}
           />
           <Input
             type="date"
             value={toDate}
-            onChange={(event) => {
-              setToDate(event.target.value);
-              setPage(0);
-            }}
+            onChange={(event) => setToDate(event.target.value)}
           />
+        </div>
+        <div className="mt-4 flex justify-end">
+          <Button type="button" variant="outline" onClick={() => applyAuditFilters(0)} disabled={memberActivityQuery.isFetching || notificationQuery.isFetching}>
+            <RefreshCcw className={`mr-2 h-4 w-4 ${memberActivityQuery.isFetching || notificationQuery.isFetching ? "animate-spin" : ""}`} />
+            {hasRequested ? "Refresh Audit Logs" : "Load Audit Logs"}
+          </Button>
         </div>
       </section>
 
-      {tab === "NOTIFICATION_ACTIVITY" && (
+      {appliedTab === "NOTIFICATION_ACTIVITY" && hasRequested && (
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <MetricCard label="WhatsApp sent" value={notificationQuery.data?.summary.whatsappSent ?? 0} />
           <MetricCard label="Email sent" value={notificationQuery.data?.summary.emailSent ?? 0} />
@@ -214,7 +241,9 @@ export default function OrganizationAuditLogs() {
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          {tab === "NOTIFICATION_ACTIVITY" ? (
+          {!hasRequested ? (
+            <div className="px-4 py-8 text-center text-sm font-semibold text-slate-500">Click load audit logs to fetch records.</div>
+          ) : appliedTab === "NOTIFICATION_ACTIVITY" ? (
             <table className="min-w-full text-left">
               <thead className="bg-slate-50">
                 <tr className="text-xs uppercase tracking-wide text-slate-500">
@@ -244,7 +273,7 @@ export default function OrganizationAuditLogs() {
                 )}
               </tbody>
             </table>
-          ) : tab === "MEMBER_STATUS_ACTIVITY" ? (
+          ) : appliedTab === "MEMBER_STATUS_ACTIVITY" ? (
             <table className="min-w-full text-left">
               <thead className="bg-slate-50">
                 <tr className="text-xs uppercase tracking-wide text-slate-500">
@@ -274,7 +303,7 @@ export default function OrganizationAuditLogs() {
                 )}
               </tbody>
             </table>
-          ) : tab === "ADMIN_ACTIVITY" ? (
+          ) : appliedTab === "ADMIN_ACTIVITY" ? (
             <table className="min-w-full text-left">
               <thead className="bg-slate-50">
                 <tr className="text-xs uppercase tracking-wide text-slate-500">
@@ -339,13 +368,23 @@ export default function OrganizationAuditLogs() {
             Showing {(pageMeta?.items ?? []).length} of {pageMeta?.totalElements ?? 0}
           </div>
           <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" onClick={() => setPage((current) => Math.max(current - 1, 0))} disabled={(pageMeta?.page ?? 0) <= 0}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => applyAuditFilters(Math.max((pageMeta?.page ?? 0) - 1, 0))}
+              disabled={!hasRequested || (pageMeta?.page ?? 0) <= 0}
+            >
               Previous
             </Button>
             <div className="font-semibold text-slate-600">
               Page {(pageMeta?.page ?? 0) + 1} / {Math.max(pageMeta?.totalPages ?? 1, 1)}
             </div>
-            <Button type="button" variant="outline" onClick={() => setPage((current) => current + 1)} disabled={!pageMeta?.hasNext}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => applyAuditFilters((pageMeta?.page ?? 0) + 1)}
+              disabled={!hasRequested || !pageMeta?.hasNext}
+            >
               Next
             </Button>
           </div>
@@ -363,4 +402,3 @@ function MetricCard({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
-

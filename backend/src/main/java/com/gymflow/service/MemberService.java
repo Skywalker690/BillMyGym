@@ -36,7 +36,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -48,6 +47,11 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class MemberService {
+
+    private static final Set<MemberStatus> INACTIVE_MEMBER_STATUSES = Set.of(
+        MemberStatus.DEACTIVATED,
+        MemberStatus.PAUSED
+    );
 
     private final MemberRepository memberRepository;
     private final MemberMembershipRepository memberMembershipRepository;
@@ -72,19 +76,30 @@ public class MemberService {
         String normalizedMembershipStatus = hasText(membershipStatus) && !"ALL".equalsIgnoreCase(membershipStatus)
             ? membershipStatus.trim().toUpperCase()
             : null;
-        Page<Member> memberPage = memberRepository.searchDirectory(
-            orgId,
-            searchPattern,
-            memberStatus,
-            normalizedMembershipStatus,
-            today,
-            today.plusDays(reminderDays),
-            PageRequest.of(
-                Math.max(page, 0),
-                normalizedSize,
-                Sort.by(Sort.Direction.ASC, "status").and(Sort.by(Sort.Direction.DESC, "createdAt"))
-            )
+        PageRequest pageRequest = PageRequest.of(
+            Math.max(page, 0),
+            normalizedSize,
+            Sort.by(Sort.Direction.ASC, "status").and(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
+        Page<Member> memberPage = memberStatus == MemberStatus.DEACTIVATED
+            ? memberRepository.searchDirectoryByStatuses(
+                orgId,
+                searchPattern,
+                INACTIVE_MEMBER_STATUSES,
+                normalizedMembershipStatus,
+                today,
+                today.plusDays(reminderDays),
+                pageRequest
+            )
+            : memberRepository.searchDirectory(
+                orgId,
+                searchPattern,
+                memberStatus,
+                normalizedMembershipStatus,
+                today,
+                today.plusDays(reminderDays),
+                pageRequest
+            );
         List<MemberDirectoryItem> items = toDirectoryItems(memberPage.getContent(), reminderDays);
         return new MemberPageResponse(
             items,
@@ -270,7 +285,7 @@ public class MemberService {
         return new MemberDirectorySummary(
             memberRepository.countByOrganizationIdAndDeletedFalse(orgId),
             memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(orgId, MemberStatus.ACTIVE),
-            memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(orgId, MemberStatus.DEACTIVATED),
+            memberRepository.countByOrganizationIdAndDeletedFalseAndStatusIn(orgId, INACTIVE_MEMBER_STATUSES),
             memberMembershipRepository.countByOrganizationIdAndDeletedFalseAndStatus(orgId, MembershipStatus.ACTIVE),
             memberMembershipRepository.countExpiringSoon(orgId, today, today.plusDays(reminderDays)),
             memberMembershipRepository.countExpiredOn(orgId, today),
@@ -287,7 +302,7 @@ public class MemberService {
         return new MemberLimitResponse(
             summary.plan(),
             summary.usedMembers(),
-            memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(orgId, MemberStatus.DEACTIVATED),
+            memberRepository.countByOrganizationIdAndDeletedFalseAndStatusIn(orgId, INACTIVE_MEMBER_STATUSES),
             summary.memberLimit(),
             summary.unlimited(),
             summary.remainingSlots(),
@@ -308,9 +323,7 @@ public class MemberService {
             member.getOrganization().getId(),
             member.getFullName(),
             member.getPhone(),
-            member.getEmail(),
             member.getStatus(),
-            member.getNotes(),
             membership == null ? null : toCurrentMembershipSummary(
                 membership,
                 paymentsByMembershipId.getOrDefault(membership.getId(), List.of()),
