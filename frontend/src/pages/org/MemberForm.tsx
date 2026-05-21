@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import type { ChangeEvent, ReactNode } from "react";
+import { useEffect } from "react";
+import type { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -32,16 +32,9 @@ type MemberFormValues = z.infer<typeof memberSchema>;
 type MemberFormInput = z.input<typeof memberSchema>;
 
 const scaleCurrency = (value: number) => Number(value.toFixed(2));
-
-const resolvePlanUnitAmount = (planAmount: number, durationMonths: number, fallbackAmount: number) => {
-  if (durationMonths > 0 && planAmount > 0) {
-    return scaleCurrency(planAmount / durationMonths);
-  }
-  return fallbackAmount;
-};
-
-const resolveDefaultCollectedAmount = (mode: MemberFormMode, planAmount: number, unitAmount: number) =>
-  mode === "create" ? scaleCurrency(planAmount + unitAmount) : scaleCurrency(planAmount);
+const resolveMembershipTotal = (monthlyFee: number, durationMonths: number) => scaleCurrency(monthlyFee * durationMonths);
+const resolveCollectedAmount = (mode: MemberFormMode, membershipTotal: number, admissionFee: number) =>
+  mode === "create" ? scaleCurrency(membershipTotal + admissionFee) : scaleCurrency(membershipTotal);
 
 export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode }) {
   const { id } = useParams();
@@ -53,8 +46,6 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
   const isEdit = mode === "edit";
   const isRenew = mode === "renew";
   const canLoadMember = Boolean((isEdit || isRenew) && memberId);
-  const [autoMultiplyPlan, setAutoMultiplyPlan] = useState(true);
-  const [planUnitAmount, setPlanUnitAmount] = useState<number | null>(null);
 
   const { data: member, isLoading: memberLoading } = useQuery({
     queryKey: ["member", memberId],
@@ -108,17 +99,18 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
   const watchedPlanAmount = Number(watch("planAmount") ?? 0);
   const watchedInitialPaymentAmount = Number(watch("initialPaymentAmount") ?? 0);
   const organizationMonthlyFee = Number(organization?.monthlyMembershipFee ?? 0);
+  const organizationAdmissionFee = Number(organization?.admissionFee ?? 0);
   const normalizedDurationMonths = Number.isFinite(watchedDurationMonths) && watchedDurationMonths > 0
     ? watchedDurationMonths
     : 1;
-  const effectivePlanUnitAmount = planUnitAmount ?? organizationMonthlyFee;
+  const calculatedPlanAmount = resolveMembershipTotal(organizationMonthlyFee, normalizedDurationMonths);
+  const calculatedCollectedAmount = resolveCollectedAmount(mode, calculatedPlanAmount, organizationAdmissionFee);
   const durationMonthsField = register("durationMonths", { valueAsNumber: true });
   const planAmountField = register("planAmount", { valueAsNumber: true });
   const paymentCollectedField = register("initialPaymentAmount", { valueAsNumber: true });
 
   useEffect(() => {
     if (member && isEdit) {
-      setPlanUnitAmount(null);
       reset({
         fullName: member.fullName ?? "",
         phone: member.phone ?? "",
@@ -133,7 +125,6 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
       });
     }
     if (member && isRenew) {
-      setPlanUnitAmount(null);
       reset({
         fullName: member.fullName ?? "",
         phone: member.phone ?? "",
@@ -150,39 +141,19 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
   }, [member, isEdit, isRenew, reset]);
 
   useEffect(() => {
-    if (!organization || planUnitAmount !== null) {
+    if (!organization || isEdit) {
       return;
     }
-    const seededPlanAmount = scaleCurrency(organizationMonthlyFee * normalizedDurationMonths);
-    setPlanUnitAmount(organizationMonthlyFee);
-    setValue("planAmount", seededPlanAmount, { shouldDirty: false });
-    setValue("initialPaymentAmount", resolveDefaultCollectedAmount(mode, seededPlanAmount, organizationMonthlyFee), { shouldDirty: false });
+    setValue("planAmount", calculatedPlanAmount, { shouldDirty: false });
+    setValue("initialPaymentAmount", calculatedCollectedAmount, { shouldDirty: false });
   }, [
+    calculatedCollectedAmount,
+    calculatedPlanAmount,
+    isEdit,
     mode,
     organization,
-    organizationMonthlyFee,
-    planUnitAmount,
-    normalizedDurationMonths,
     setValue,
   ]);
-
-  const handleDurationMonthsChange = (event: ChangeEvent<HTMLInputElement>) => {
-    durationMonthsField.onChange(event);
-    const nextDuration = Math.max(1, Number(event.target.value) || 1);
-    const nextUnitAmount = resolvePlanUnitAmount(watchedPlanAmount, normalizedDurationMonths, effectivePlanUnitAmount);
-    const nextPlanAmount = scaleCurrency(nextUnitAmount * nextDuration);
-    setPlanUnitAmount(nextUnitAmount);
-    setValue("planAmount", nextPlanAmount, { shouldDirty: true });
-    setValue("initialPaymentAmount", resolveDefaultCollectedAmount(mode, nextPlanAmount, nextUnitAmount), { shouldDirty: true });
-  };
-
-  const handlePlanAmountChange = (event: ChangeEvent<HTMLInputElement>) => {
-    planAmountField.onChange(event);
-    const nextPlanAmount = Math.max(0, Number(event.target.value) || 0);
-    const nextUnitAmount = resolvePlanUnitAmount(nextPlanAmount, normalizedDurationMonths, nextPlanAmount);
-    setPlanUnitAmount(nextUnitAmount);
-    setValue("initialPaymentAmount", resolveDefaultCollectedAmount(mode, nextPlanAmount, nextUnitAmount), { shouldDirty: true });
-  };
 
   const mutation = useMutation({
     mutationFn: async (data: MemberFormValues) => {
@@ -205,6 +176,10 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
           durationMonths: data.durationMonths,
           planAmount: data.planAmount,
           startDate: data.startDate || undefined,
+        }, {
+          headers: {
+            "X-Idempotency-Key": crypto.randomUUID(),
+          },
         });
         const membership = membershipResponse.data;
         if (data.initialPaymentAmount && data.initialPaymentAmount > 0) {
@@ -214,6 +189,10 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
             paymentDate: new Date().toISOString().slice(0, 10),
             paymentType: isRenew ? "RENEWAL" : "NEW_MEMBERSHIP",
             paymentStatus: data.initialPaymentAmount >= data.planAmount ? "PAID" : "PARTIAL",
+          }, {
+            headers: {
+              "X-Idempotency-Key": crypto.randomUUID(),
+            },
           });
         }
       }
@@ -283,10 +262,11 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
           </div>
 
           {(isCreate || isRenew) && (
-            <div className="grid gap-3 sm:grid-cols-3">
-              <HeroChip label="Base Monthly Fee" value={`INR ${organizationMonthlyFee.toLocaleString("en-IN")}`} />
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <HeroChip label="Recurring Fee" value={`INR ${organizationMonthlyFee.toLocaleString("en-IN")}`} />
+              <HeroChip label="Admission Fee" value={`INR ${organizationAdmissionFee.toLocaleString("en-IN")}`} />
               <HeroChip label="Membership Total" value={`INR ${watchedPlanAmount.toLocaleString("en-IN")}`} />
-              <HeroChip label="Total Payment Amount" value={`INR ${watchedInitialPaymentAmount.toLocaleString("en-IN")}`} />
+              <HeroChip label="Payment Collected" value={`INR ${watchedInitialPaymentAmount.toLocaleString("en-IN")}`} />
             </div>
           )}
         </div>
@@ -367,25 +347,20 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                         </h2>
                         <p className="mt-1 text-sm font-medium text-slate-600">
                           {isCreate
-                            ? "Start from your organization monthly fee, then let the current plan amount become the monthly base if you override it."
-                            : "Use the selected monthly unit and duration to build the renewal total without the member-creation extra collection logic."}
+                            ? "Membership total is calculated as recurring fee x duration, then admission fee is added to the collected amount for brand-new members."
+                            : "Renewal total is calculated from the recurring fee and selected duration without adding the one-time admission fee."}
                         </p>
                       </div>
                     </div>
 
                     <div className="mt-5 flex flex-wrap items-center gap-3">
-                      <label className="inline-flex cursor-pointer items-center gap-3 rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
-                          checked={autoMultiplyPlan}
-                          onChange={(event) => setAutoMultiplyPlan(event.target.checked)}
-                        />
-                        Auto multiply by duration
-                      </label>
                       <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-emerald-700">
                         <Sparkles className="h-3.5 w-3.5" />
-                        Monthly base INR {organizationMonthlyFee.toLocaleString("en-IN")}
+                        Recurring fee INR {organizationMonthlyFee.toLocaleString("en-IN")}
+                      </div>
+                      <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-amber-700">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Admission fee INR {organizationAdmissionFee.toLocaleString("en-IN")}
                       </div>
                     </div>
                   </div>
@@ -393,37 +368,35 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                   <div className="grid min-w-[280px] gap-3 sm:grid-cols-2 lg:w-[360px] lg:grid-cols-1">
                     <PricingChip label="Membership Total" value={`INR ${watchedPlanAmount.toLocaleString("en-IN")}`} tone="slate" />
                     <PricingChip
-                      label="Total Payment Amount"
+                      label="Payment Collected"
                       value={`INR ${watchedInitialPaymentAmount.toLocaleString("en-IN")}`}
                       tone="emerald"
-                      tooltip={isCreate ? "Base fee plus admission fee" : undefined}
+                      tooltip={isCreate ? "Membership total plus one-time admission fee" : "Renewal collects only the membership total"}
                     />
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2">
-                <Field label="Duration Months" hint="Changing this updates both plan amount and payment amount automatically.">
+                <Field label="Duration Months" hint="Changing this updates the membership total and collected amount automatically.">
                   <Input
                     type="number"
                     min="1"
                     {...durationMonthsField}
-                    onChange={handleDurationMonthsChange}
                     className="h-12 rounded-2xl border-black/5 bg-white/70 text-center text-lg font-black tracking-tight"
                   />
                 </Field>
                 <Field
-                  label={autoMultiplyPlan ? "Plan Amount (Auto)" : "Plan Amount"}
-                  hint={autoMultiplyPlan ? "Current monthly unit x duration months." : "Manual override is allowed, and the new amount becomes the monthly unit for future duration changes."}
+                  label="Membership Total"
+                  hint="Recurring fee x selected duration months."
                 >
                   <Input
                     type="number"
                     min="0"
                     step="0.01"
                     {...planAmountField}
-                    onChange={handlePlanAmountChange}
-                    disabled={autoMultiplyPlan}
-                    className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                    readOnly
+                    className="h-12 rounded-2xl border-black/5 bg-slate-100 text-slate-700"
                   />
                 </Field>
                 <Field label="Start Date">
@@ -433,10 +406,8 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                   label="Payment Collected"
                   hint={
                     isCreate
-                      ? autoMultiplyPlan
-                        ? "Default is plan amount plus one extra current monthly unit."
-                        : "Changing duration refreshes the default amount using the current plan-based monthly unit, and higher values are still allowed."
-                      : "Default matches the renewal plan amount."
+                      ? "Membership total plus one-time admission fee."
+                      : "Renewal collects only the membership total."
                   }
                 >
                   <Input
@@ -444,7 +415,8 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                     min="0"
                     step="0.01"
                     {...paymentCollectedField}
-                    className="h-12 rounded-2xl border-black/5 bg-white/70"
+                    readOnly
+                    className="h-12 rounded-2xl border-black/5 bg-slate-100 text-slate-700"
                   />
                 </Field>
               </div>

@@ -75,4 +75,21 @@ public class AnalyticsDtos {
         List<MonthlyRevenuePoint> months
     ) {
     }
+
+    public record PlatformYearlyReportMonth(
+        int month,
+        String label,
+        long organizationsJoined,
+        BigDecimal revenue
+    ) {
+    }
+
+    public record PlatformYearlyReportResponse(
+        int year,
+        List<Integer> availableYears,
+        long totalOrganizationsJoined,
+        BigDecimal totalRevenue,
+        List<PlatformYearlyReportMonth> months
+    ) {
+    }
 }

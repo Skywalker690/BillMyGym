@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -24,6 +25,15 @@ public class AnalyticsController {
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> platformAnalytics() {
         return ResponseEntity.ok(ApiResponse.success("Platform analytics fetched successfully", analyticsService.platformAnalytics()));
+    }
+
+    @GetMapping("/platform/reports")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<?> platformYearlyReport(@RequestParam(required = false) Integer year) {
+        return ResponseEntity.ok(ApiResponse.success(
+            "Platform yearly report fetched successfully",
+            analyticsService.platformYearlyReport(year)
+        ));
     }
 
     @GetMapping("/organization")

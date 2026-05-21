@@ -36,6 +36,13 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
             OffsetDateTime end
     );
 
+    @Query("""
+        select min(organization.createdAt)
+        from Organization organization
+        where organization.deleted = false
+        """)
+    OffsetDateTime findEarliestCreatedAt();
+
     List<Organization> findAllByDeletedFalseAndStatusIn(
             List<OrganizationStatus> statuses
     );

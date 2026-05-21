@@ -33,6 +33,8 @@ const schema = z.object({
   name: z.string().min(1, "Organization name is required"),
   place: z.string().min(1, "Place is required"),
   district: z.string().min(1, "District is required"),
+  monthlyMembershipFee: z.coerce.number().min(0, "Recurring membership fee must be zero or more"),
+  admissionFee: z.coerce.number().min(0, "Admission fee must be zero or more"),
   organizationType: z.enum(["REGULAR", "PILOT", "DEMO"]),
   subscriptionPlan: z.enum(["STARTER", "GROWTH", "PRO"]),
   adminName: z.string().min(1, "Admin name is required"),
@@ -72,6 +74,8 @@ export default function OrganizationForm() {
       organizationType: "REGULAR",
       subscriptionPlan: "STARTER",
       password: "password123",
+      monthlyMembershipFee: 0,
+      admissionFee: 0,
       district: "",
       place: "",
       logoUrl: "",
@@ -85,6 +89,8 @@ export default function OrganizationForm() {
   const watchedName = watch("name");
   const watchedPlace = watch("place");
   const watchedDistrict = watch("district");
+  const watchedMonthlyMembershipFee = watch("monthlyMembershipFee");
+  const watchedAdmissionFee = watch("admissionFee");
   const watchedAdminName = watch("adminName");
   const watchedAdminEmail = watch("adminEmail");
   const watchedAdminPhone = watch("adminPhone");
@@ -108,6 +114,8 @@ export default function OrganizationForm() {
         adminPhoneNumber: data.adminPhone,
         adminEmail: data.adminEmail,
         organizationDescription: data.description || null,
+        monthlyMembershipFee: data.monthlyMembershipFee,
+        admissionFee: data.admissionFee,
         organizationType: data.organizationType,
         subscriptionPlan: data.organizationType === "REGULAR" ? data.subscriptionPlan : "PILOT",
         password: data.password,
@@ -116,6 +124,7 @@ export default function OrganizationForm() {
       queryClient.invalidateQueries({ queryKey: ["organizationsDirectory"] });
       queryClient.invalidateQueries({ queryKey: ["organizations"] });
       queryClient.invalidateQueries({ queryKey: ["platformAnalytics"] });
+      queryClient.invalidateQueries({ queryKey: ["platformYearlyReport"] });
       toast.success("Organization provisioned successfully");
       navigate("/app/organizations");
     },
@@ -126,7 +135,7 @@ export default function OrganizationForm() {
 
   const nextStep = async () => {
     const fieldsByStep: Record<Step, Array<keyof Values>> = {
-      0: ["name", "organizationType", "place", "district"],
+      0: ["name", "organizationType", "place", "district", "monthlyMembershipFee", "admissionFee"],
       1: ["adminName", "adminEmail", "adminPhone", "password"],
       2: [],
     };
@@ -233,6 +242,28 @@ export default function OrganizationForm() {
                   />
                 </Field>
 
+                <Field label="Recurring Membership Fee (INR)" error={errors.monthlyMembershipFee?.message}>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    {...register("monthlyMembershipFee", { valueAsNumber: true })}
+                    className="h-12 rounded-2xl bg-white/75"
+                    placeholder="1499"
+                  />
+                </Field>
+
+                <Field label="Admission Fee (INR)" error={errors.admissionFee?.message}>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    {...register("admissionFee", { valueAsNumber: true })}
+                    className="h-12 rounded-2xl bg-white/75"
+                    placeholder="499"
+                  />
+                </Field>
+
                 {specialAccess && (
                   <div className="md:col-span-2 rounded-[1.5rem] border border-sky-200 bg-sky-50 p-4 text-sm font-semibold text-slate-700">
                     {foundingPartnerDescription()}
@@ -335,6 +366,8 @@ export default function OrganizationForm() {
                   { label: "Type", value: organizationType === "REGULAR" ? "Regular" : organizationType === "PILOT" ? "Pilot" : "Demo" },
                   { label: "Place", value: watchedPlace },
                   { label: "District", value: watchedDistrict },
+                  { label: "Recurring Fee", value: `INR ${Number(watchedMonthlyMembershipFee ?? 0).toLocaleString("en-IN")}` },
+                  { label: "Admission Fee", value: `INR ${Number(watchedAdmissionFee ?? 0).toLocaleString("en-IN")}` },
                 ]}
               />
               <ReviewColumn

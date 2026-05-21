@@ -1,5 +1,6 @@
 import {
   Activity,
+  BarChart3,
   ClipboardList,
   Bell,
   Building2,
@@ -33,6 +34,12 @@ export const getSidebarNavItems = (role: AppRole | null | undefined): NavItemCon
         label: "Organizations",
         href: "/app/organizations",
         icon: Building2,
+        section: "Platform",
+      },
+      {
+        label: "Reports",
+        href: "/app/platform-reports",
+        icon: BarChart3,
         section: "Platform",
       },
       {
@@ -88,6 +95,12 @@ export const getProfileNavItems = (role: AppRole | null | undefined): NavItemCon
         section: "Account",
       },
       {
+        label: "Reports",
+        href: "/app/platform-reports",
+        icon: BarChart3,
+        section: "Account",
+      },
+      {
         label: "Audit Logs",
         href: "/app/audit-logs",
         icon: ClipboardList,
@@ -137,6 +150,12 @@ export const getPageContext = (pathname: string, role: AppRole | null | undefine
 
   const directMatches: Array<{ match: string; eyebrow: string; title: string; description: string }> = [
     {
+      match: "/app/platform-reports",
+      eyebrow: "Platform Reports",
+      title: "Reports",
+      description: "Year-wise organization joins and revenue in one monthly platform report.",
+    },
+    {
       match: "/app/platform-overview",
       eyebrow: "Platform Command",
       title: "Platform Overview",
@@ -158,7 +177,7 @@ export const getPageContext = (pathname: string, role: AppRole | null | undefine
       match: "/app/audit-logs",
       eyebrow: "Audit Command",
       title: "Audit Logs",
-      description: "Review login activity in categorized tables with strict filters and export support.",
+      description: "Review the latest organization-admin login activity from one dedicated audit log.",
     },
     {
       match: "/app/dashboard",

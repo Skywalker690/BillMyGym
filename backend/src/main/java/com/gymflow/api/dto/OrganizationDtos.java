@@ -26,6 +26,7 @@ public class OrganizationDtos {
         String adminEmail,
         String description,
         BigDecimal monthlyMembershipFee,
+        BigDecimal admissionFee,
         OrganizationType organizationType,
         SubscriptionPlan subscriptionPlan,
         OrganizationStatus status,
@@ -79,6 +80,7 @@ public class OrganizationDtos {
         @Email @NotBlank String adminEmail,
         String description,
         @PositiveOrZero BigDecimal monthlyMembershipFee,
+        @PositiveOrZero BigDecimal admissionFee,
         OrganizationType organizationType,
         SubscriptionPlan subscriptionPlan,
         OrganizationStatus status

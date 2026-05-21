@@ -51,6 +51,9 @@ public class OrganizationSettingService {
         if (request.monthlyMembershipFee() != null) {
             setting.getOrganization().setMonthlyMembershipFee(request.monthlyMembershipFee());
         }
+        if (request.admissionFee() != null) {
+            setting.getOrganization().setAdmissionFee(request.admissionFee());
+        }
 
         auditLogService.log(
             "SETTINGS_UPDATED",
@@ -80,7 +83,8 @@ public class OrganizationSettingService {
             setting.isEmailEnabled(),
             setting.getReminderDaysBeforeExpiry(),
             setting.getBrandingName(),
-            setting.getOrganization().getMonthlyMembershipFee()
+            setting.getOrganization().getMonthlyMembershipFee(),
+            setting.getOrganization().getAdmissionFee()
         );
     }
 

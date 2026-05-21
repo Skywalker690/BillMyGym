@@ -197,6 +197,7 @@ export default function OrganizationsList() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organizationsDirectory"] });
       queryClient.invalidateQueries({ queryKey: ["platformAnalytics"] });
+      queryClient.invalidateQueries({ queryKey: ["platformYearlyReport"] });
       toast.success("Organization successfully soft deleted");
     },
     onError: () => toast.error("Failed to delete organization"),

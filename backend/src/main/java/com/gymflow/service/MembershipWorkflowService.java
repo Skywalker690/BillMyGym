@@ -52,16 +52,13 @@ public class MembershipWorkflowService {
 
         MemberMembership activeMembership = memberMembershipService.findActiveMembership(memberId, organizationId);
         boolean renewalFlow = activeMembership != null;
-        if (activeMembership != null && isPackageSwitch(activeMembership, request)) {
-            throw new BadRequestException("Use the package switch flow when changing an active membership package");
-        }
 
         MemberMembership membership = new MemberMembership();
         membership.setMember(member);
         membership.setOrganization(member.getOrganization());
         membership.setPlanName(resolvePlanName(request.planName(), request.durationMonths()));
         membership.setDurationMonths(request.durationMonths());
-        membership.setPlanAmount(scale(request.planAmount()));
+        membership.setPlanAmount(resolveMembershipAmount(member, request.durationMonths()));
 
         LocalDate startDate = resolveCreateStartDate(request, activeMembership);
         membership.setStartDate(startDate);
@@ -207,13 +204,6 @@ public class MembershipWorkflowService {
         return maxDate(LocalDate.now(), activeMembership.getEndDate().plusDays(1), request.startDate());
     }
 
-    private boolean isPackageSwitch(MemberMembership activeMembership, CreateMembershipRequest request) {
-        String requestedPlan = resolvePlanName(request.planName(), request.durationMonths());
-        return !activeMembership.getPlanName().equalsIgnoreCase(requestedPlan)
-            || activeMembership.getDurationMonths() != request.durationMonths()
-            || activeMembership.getPlanAmount().compareTo(scale(request.planAmount())) != 0;
-    }
-
     private int resolveCompletedMonths(MemberMembership activeMembership, LocalDate switchDate) {
         if (switchDate.isBefore(activeMembership.getStartDate()) || switchDate.isAfter(activeMembership.getEndDate())) {
             throw new BadRequestException("Switch date must fall within the active membership period");
@@ -243,5 +233,12 @@ public class MembershipWorkflowService {
 
     private BigDecimal scale(BigDecimal amount) {
         return MoneyUtils.normalize(amount);
+    }
+
+    private BigDecimal resolveMembershipAmount(Member member, int durationMonths) {
+        BigDecimal recurringFee = member.getOrganization().getMonthlyMembershipFee() == null
+            ? BigDecimal.ZERO
+            : member.getOrganization().getMonthlyMembershipFee();
+        return MoneyUtils.normalize(recurringFee.multiply(BigDecimal.valueOf(durationMonths)));
     }
 }

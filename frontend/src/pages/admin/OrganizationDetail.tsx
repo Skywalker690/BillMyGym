@@ -38,6 +38,7 @@ type Organization = {
   adminEmail?: string | null;
   description?: string | null;
   monthlyMembershipFee?: number | null;
+  admissionFee?: number | null;
   organizationType?: "REGULAR" | "PILOT" | "DEMO";
   subscriptionPlan?: "STARTER" | "GROWTH" | "PRO" | "PILOT";
   status: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
@@ -89,6 +90,8 @@ type FormValues = {
   adminName: string;
   adminPhone: string;
   adminEmail: string;
+  monthlyMembershipFee: number;
+  admissionFee: number;
   organizationType: "REGULAR" | "PILOT" | "DEMO";
   status: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
 };
@@ -180,6 +183,8 @@ export default function OrganizationDetail() {
       adminName: organization.adminFullName ?? "",
       adminPhone: organization.adminPhoneNumber ?? "",
       adminEmail: organization.adminEmail ?? "",
+      monthlyMembershipFee: Number(organization.monthlyMembershipFee ?? 0),
+      admissionFee: Number(organization.admissionFee ?? 0),
       organizationType: organization.organizationType ?? "REGULAR",
       status: organization.status,
     });
@@ -197,7 +202,8 @@ export default function OrganizationDetail() {
       adminFullName: data.adminName,
       adminPhoneNumber: data.adminPhone,
       adminEmail: data.adminEmail,
-      monthlyMembershipFee: organization?.monthlyMembershipFee,
+      monthlyMembershipFee: data.monthlyMembershipFee,
+      admissionFee: data.admissionFee,
       organizationType: data.organizationType,
       subscriptionPlan: organization?.subscriptionPlan,
       status: data.status,
@@ -214,6 +220,7 @@ export default function OrganizationDetail() {
     mutationFn: () => api.delete(`/organizations/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organizationsDirectory"] });
+      queryClient.invalidateQueries({ queryKey: ["platformYearlyReport"] });
       toast.success("Organization deleted successfully");
       navigate("/app/organizations");
     },
@@ -400,6 +407,12 @@ export default function OrganizationDetail() {
                   <option value="DEMO">Demo</option>
                 </select>
               </Field>
+              <Field label="Recurring Membership Fee (INR)">
+                <Input type="number" min="0" step="0.01" {...register("monthlyMembershipFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-white/70" />
+              </Field>
+              <Field label="Admission Fee (INR)">
+                <Input type="number" min="0" step="0.01" {...register("admissionFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-white/70" />
+              </Field>
             </div>
             <div className="grid gap-4 border-t border-black/5 p-6 md:grid-cols-3">
               <DateTile label="Trial Window" value={`${formatDate(organization.trialStartDate)} - ${formatDate(organization.trialEndDate)}`} attention={organization.status === "TRIAL" && needsRenewalAttention} />
@@ -446,6 +459,8 @@ export default function OrganizationDetail() {
               <InfoRow icon={CalendarDays} label="Joined GymMax" value={formatDate(subscriptionStatus?.joinedAt)} />
               <InfoRow icon={MapPin} label="Place" value={organization.place || "Not set"} />
               <InfoRow icon={MapPin} label="District" value={organization.district || "Not set"} />
+              <InfoRow icon={IndianRupee} label="Recurring Fee" value={money.format(organization.monthlyMembershipFee ?? 0)} />
+              <InfoRow icon={IndianRupee} label="Admission Fee" value={money.format(organization.admissionFee ?? 0)} />
               <InfoRow icon={Mail} label="Admin Email" value={organization.adminEmail || "Not set"} />
               <InfoRow icon={Phone} label="Admin Phone" value={organization.adminPhoneNumber || "Not set"} />
             </div>

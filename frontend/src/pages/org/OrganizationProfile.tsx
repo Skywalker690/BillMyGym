@@ -55,6 +55,7 @@ export default function OrganizationProfile() {
         adminPhone: organization.adminPhoneNumber || "",
         adminEmail: organization.adminEmail || "",
         monthlyMembershipFee: organization.monthlyMembershipFee || 0,
+        admissionFee: organization.admissionFee || 0,
       });
     }
   }, [organization, reset]);
@@ -71,6 +72,7 @@ export default function OrganizationProfile() {
       adminPhoneNumber: data.adminPhone,
       adminEmail: data.adminEmail,
       monthlyMembershipFee: data.monthlyMembershipFee,
+      admissionFee: data.admissionFee,
       status: organization.status,
     }),
     onSuccess: () => {
@@ -191,8 +193,11 @@ export default function OrganizationProfile() {
             <Field label="Admin Phone Number" icon={<Phone className="h-4 w-4" />}>
               <Input {...register("adminPhone")} className="h-11 rounded-xl bg-white/60 pl-10" />
             </Field>
-            <Field label="Monthly Membership Fee (INR)">
+            <Field label="Recurring Membership Fee (INR)">
               <Input type="number" {...register("monthlyMembershipFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-white/60" />
+            </Field>
+            <Field label="Admission Fee (INR)">
+              <Input type="number" {...register("admissionFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-white/60" />
             </Field>
           </div>
         </div>

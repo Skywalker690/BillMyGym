@@ -29,6 +29,7 @@ import Subscription from "./pages/org/Subscription";
 
 // SUPER_ADMIN pages
 import PlatformOverview from "./pages/admin/PlatformOverview";
+import PlatformReports from "./pages/admin/PlatformReports";
 import OrganizationsList from "./pages/admin/OrganizationsList";
 import OrganizationForm from "./pages/admin/OrganizationForm";
 import OrganizationDetail from "./pages/admin/OrganizationDetail";
@@ -58,6 +59,7 @@ export default function App() {
               {/* SUPER_ADMIN Routes */}
               <Route element={<ProtectedRoute allowedRoles={["SUPER_ADMIN"]} />}>
                 <Route path="/app/platform-overview" element={<PlatformOverview />} />
+                <Route path="/app/platform-reports" element={<PlatformReports />} />
                 <Route path="/app/organizations" element={<OrganizationsList />} />
                 <Route path="/app/organizations/new" element={<OrganizationForm />} />
                 <Route path="/app/organizations/:id" element={<OrganizationDetail />} />

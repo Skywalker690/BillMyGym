@@ -3,6 +3,8 @@ package com.gymflow.service;
 import com.gymflow.api.dto.AnalyticsDtos.OrganizationAnalyticsResponse;
 import com.gymflow.api.dto.AnalyticsDtos.PlatformBreakdownResponse;
 import com.gymflow.api.dto.AnalyticsDtos.PlatformAnalyticsResponse;
+import com.gymflow.api.dto.AnalyticsDtos.PlatformYearlyReportMonth;
+import com.gymflow.api.dto.AnalyticsDtos.PlatformYearlyReportResponse;
 import com.gymflow.api.error.BadRequestException;
 import com.gymflow.api.error.ForbiddenException;
 import com.gymflow.domain.Organization;
@@ -24,15 +26,22 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class AnalyticsService {
+
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final OrganizationRepository organizationRepository;
     private final OrganizationSubscriptionRepository subscriptionRepository;
@@ -42,9 +51,7 @@ public class AnalyticsService {
     private final NotificationLogRepository notificationLogRepository;
 
     public PlatformAnalyticsResponse platformAnalytics() {
-        if (SecurityUtils.currentUser().role() != Role.SUPER_ADMIN) {
-            throw new ForbiddenException("Only SUPER_ADMIN can access platform analytics");
-        }
+        ensureSuperAdmin();
         YearMonth currentMonth = YearMonth.now();
         LocalDate monthStart = currentMonth.atDay(1);
         LocalDate monthEnd = currentMonth.atEndOfMonth();
@@ -139,6 +146,40 @@ public class AnalyticsService {
         );
     }
 
+    public PlatformYearlyReportResponse platformYearlyReport(Integer year) {
+        ensureSuperAdmin();
+        int currentYear = YearMonth.now(APP_ZONE).getYear();
+        List<Integer> availableYears = resolveAvailableYears(currentYear);
+        int targetYear = year == null ? currentYear : year;
+        if (!availableYears.contains(targetYear)) {
+            throw new BadRequestException("No platform report data exists for the selected year");
+        }
+
+        List<PlatformYearlyReportMonth> months = IntStream.rangeClosed(1, 12)
+            .mapToObj(month -> {
+                LocalDate startDate = LocalDate.of(targetYear, month, 1);
+                LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+                long organizationsJoined = organizationRepository.countByDeletedFalseAndCreatedAtBetween(
+                    startOfDay(startDate),
+                    endOfDay(endDate)
+                );
+                return new PlatformYearlyReportMonth(
+                    month,
+                    startDate.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
+                    organizationsJoined,
+                    safe(subscriptionPaymentRepository.sumPaidBetween(startDate, endDate))
+                );
+            })
+            .toList();
+
+        long totalOrganizationsJoined = months.stream().mapToLong(PlatformYearlyReportMonth::organizationsJoined).sum();
+        BigDecimal totalRevenue = months.stream()
+            .map(PlatformYearlyReportMonth::revenue)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new PlatformYearlyReportResponse(targetYear, availableYears, totalOrganizationsJoined, totalRevenue, months);
+    }
+
     private List<PlatformBreakdownResponse> organizationsByStatus(long totalOrganizations) {
         return Arrays.stream(OrganizationStatus.values())
             .map(status -> breakdown(
@@ -217,12 +258,37 @@ public class AnalyticsService {
         return (int) Math.round(((current - previous) * 100.0) / previous);
     }
 
+    private void ensureSuperAdmin() {
+        if (SecurityUtils.currentUser().role() != Role.SUPER_ADMIN) {
+            throw new ForbiddenException("Only SUPER_ADMIN can access platform analytics");
+        }
+    }
+
+    private List<Integer> resolveAvailableYears(int currentYear) {
+        OffsetDateTime earliestOrganizationCreatedAt = organizationRepository.findEarliestCreatedAt();
+        LocalDate earliestPaidPaymentDate = subscriptionPaymentRepository.findEarliestPaidPaymentDate();
+        Integer earliestOrganizationYear = earliestOrganizationCreatedAt == null
+            ? null
+            : earliestOrganizationCreatedAt.getYear();
+        Integer earliestRevenueYear = earliestPaidPaymentDate == null
+            ? null
+            : earliestPaidPaymentDate.getYear();
+        Integer earliestYear = Stream.of(earliestOrganizationYear, earliestRevenueYear)
+            .filter(java.util.Objects::nonNull)
+            .min(Integer::compareTo)
+            .orElse(currentYear);
+        return IntStream.rangeClosed(earliestYear, currentYear)
+            .boxed()
+            .sorted((left, right) -> Integer.compare(right, left))
+            .toList();
+    }
+
     private OffsetDateTime startOfDay(LocalDate date) {
-        return date.atStartOfDay().atOffset(OffsetDateTime.now().getOffset());
+        return date.atStartOfDay(APP_ZONE).toOffsetDateTime();
     }
 
     private OffsetDateTime endOfDay(LocalDate date) {
-        return date.plusDays(1).atStartOfDay().atOffset(OffsetDateTime.now().getOffset()).minusNanos(1);
+        return date.plusDays(1).atStartOfDay(APP_ZONE).toOffsetDateTime().minusNanos(1);
     }
 
     private String label(String value) {

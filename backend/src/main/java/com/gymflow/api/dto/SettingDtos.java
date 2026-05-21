@@ -12,7 +12,8 @@ public class SettingDtos {
         boolean emailEnabled,
         int reminderDaysBeforeExpiry,
         String brandingName,
-        BigDecimal monthlyMembershipFee
+        BigDecimal monthlyMembershipFee,
+        BigDecimal admissionFee
     ) {
     }
 
@@ -21,7 +22,8 @@ public class SettingDtos {
         Boolean emailEnabled,
         @Min(0) @Max(30) Integer reminderDaysBeforeExpiry,
         String brandingName,
-        @PositiveOrZero BigDecimal monthlyMembershipFee
+        @PositiveOrZero BigDecimal monthlyMembershipFee,
+        @PositiveOrZero BigDecimal admissionFee
     ) {
     }
 }

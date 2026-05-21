@@ -49,6 +49,9 @@ public class Organization extends BaseEntity {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal monthlyMembershipFee = BigDecimal.ZERO;
 
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal admissionFee = BigDecimal.ZERO;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "organization_type", nullable = false)
     private OrganizationType organizationType = OrganizationType.REGULAR;

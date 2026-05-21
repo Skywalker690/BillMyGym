@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Building2, Clock3, Mail, ShieldCheck, User2 } from "lucide-react";
+import { AlertTriangle, Building2, RefreshCcw } from "lucide-react";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 
@@ -25,9 +25,6 @@ type AuditPage<T> = {
 
 type LoginAuditResponse = {
   page: AuditPage<LoginAuditRow>;
-  successfulCount: number;
-  failedCount: number;
-  suspiciousCount: number;
 };
 
 function formatDateTime(value?: string) {
@@ -55,6 +52,9 @@ export default function GlobalAuditLogs() {
       });
       return res.data;
     },
+    staleTime: Number.POSITIVE_INFINITY,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const rows = auditQuery.data?.page.items ?? [];
@@ -65,40 +65,27 @@ export default function GlobalAuditLogs() {
   return (
     <div className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6 lg:p-8">
       <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">
-          Login Audit
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">
+              Login Audit
+            </div>
+            <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950">Organization admin login activity</h1>
+            <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
+              Latest org-admin login events across every organization.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => auditQuery.refetch()}
+            disabled={auditQuery.isFetching}
+            className="rounded-full border-white/80 bg-white px-5 font-black"
+          >
+            <RefreshCcw className={`mr-2 h-4 w-4 ${auditQuery.isFetching ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
-        <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950">Organization admin login activity</h1>
-        <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
-          This page shows the latest login audit log across all organizations. No filters, no export, just the full login timeline.
-        </p>
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <AuditMetricCard
-          icon={ShieldCheck}
-          label="Total Rows"
-          value={meta?.totalElements ?? 0}
-          detail="All org-admin login events"
-        />
-        <AuditMetricCard
-          icon={Clock3}
-          label="Current Page"
-          value={(meta?.page ?? 0) + 1}
-          detail={`of ${Math.max(meta?.totalPages ?? 1, 1)} pages`}
-        />
-        <AuditMetricCard
-          icon={User2}
-          label="Successful"
-          value={auditQuery.data?.successfulCount ?? 0}
-          detail="Successful org-admin logins"
-        />
-        <AuditMetricCard
-          icon={Mail}
-          label="Reviewing"
-          value={rows.length}
-          detail="Rows visible on this page"
-        />
       </section>
 
       <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
@@ -168,27 +155,6 @@ export default function GlobalAuditLogs() {
           </div>
         </div>
       </section>
-    </div>
-  );
-}
-
-function AuditMetricCard({
-  icon: Icon,
-  label,
-  value,
-  detail,
-}: {
-  icon: typeof ShieldCheck;
-  label: string;
-  value: number;
-  detail: string;
-}) {
-  return (
-    <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-      <Icon className="h-5 w-5 text-emerald-600" />
-      <div className="mt-4 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{label}</div>
-      <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{value}</div>
-      <div className="mt-1 text-sm font-semibold text-slate-500">{detail}</div>
     </div>
   );
 }
