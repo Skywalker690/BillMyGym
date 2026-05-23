@@ -3,6 +3,7 @@ package com.gymflow.api;
 import com.gymflow.api.dto.MemberDtos.MemberRequest;
 import com.gymflow.api.response.ApiResponse;
 import com.gymflow.domain.enums.MemberStatus;
+import com.gymflow.service.IndividualWhatsappReminderService;
 import com.gymflow.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class MemberController {
 
     private final MemberService memberService;
+    private final IndividualWhatsappReminderService individualWhatsappReminderService;
 
     @PostMapping
     public ResponseEntity<?> create(@Valid @RequestBody MemberRequest request) {
@@ -48,6 +50,22 @@ public class MemberController {
     @GetMapping("/{id}")
     public ResponseEntity<?> get(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Member fetched successfully", memberService.getMember(id)));
+    }
+
+    @GetMapping("/{id}/whatsapp-reminder/preview")
+    public ResponseEntity<?> whatsappReminderPreview(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(
+            "WhatsApp reminder preview generated",
+            individualWhatsappReminderService.preview(id)
+        ));
+    }
+
+    @PostMapping("/{id}/whatsapp-reminder/send")
+    public ResponseEntity<?> sendWhatsappReminder(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(
+            "WhatsApp reminder processed",
+            individualWhatsappReminderService.send(id)
+        ));
     }
 
     @PatchMapping("/{id}")

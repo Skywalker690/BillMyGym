@@ -66,6 +66,7 @@ public class RevenueService {
             .filter(payment -> payment.getPaymentDate() != null)
             .filter(payment -> !payment.getPaymentDate().isBefore(monthStart) && !payment.getPaymentDate().isAfter(monthEnd))
             .filter(payment -> payment.getPaymentStatus() == PaymentStatus.PAID)
+            .filter(this::isCollectedRevenuePayment)
             .map(MemberPayment::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -192,6 +193,13 @@ public class RevenueService {
         }
         return organizationRepository.findByIdAndDeletedFalse(organizationId)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
+    }
+
+    private boolean isCollectedRevenuePayment(MemberPayment payment) {
+        return payment.getPaymentType() == PaymentType.ADMISSION
+            || payment.getPaymentType() == PaymentType.MEMBERSHIP
+            || payment.getPaymentType() == PaymentType.NEW_MEMBERSHIP
+            || payment.getPaymentType() == PaymentType.RENEWAL;
     }
 
 }

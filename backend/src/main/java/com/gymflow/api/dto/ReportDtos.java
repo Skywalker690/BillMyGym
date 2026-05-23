@@ -7,6 +7,8 @@ import com.gymflow.api.dto.MemberDtos.MemberDirectorySummary;
 import com.gymflow.api.dto.NotificationDtos.NotificationResponse;
 import com.gymflow.api.dto.SubscriptionDtos.PlanAccessResponse;
 import com.gymflow.api.dto.SettingDtos.SettingsResponse;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 public class ReportDtos {
@@ -42,6 +44,48 @@ public class ReportDtos {
     public record ReminderReportResponse(
         SettingsResponse settings,
         List<NotificationResponse> recentReminderLogs
+    ) {
+    }
+
+    public record FinancialReportResponse(
+        String period,
+        String range,
+        LocalDate startDate,
+        LocalDate endDate,
+        String organizationName,
+        String logoUrl,
+        String planName,
+        PlanAccessResponse planAccess,
+        FinancialReportSummary summary,
+        List<FinancialReportMonthResponse> months
+    ) {
+    }
+
+    public record FinancialReportSummary(
+        BigDecimal totalRevenue,
+        BigDecimal admissionRevenue,
+        BigDecimal membershipRevenue,
+        BigDecimal duePayments,
+        BigDecimal expenses,
+        long admissions,
+        long activeMembers,
+        long overdueMembers
+    ) {
+    }
+
+    public record FinancialReportMonthResponse(
+        int year,
+        int month,
+        String label,
+        BigDecimal totalRevenue,
+        BigDecimal admissionRevenue,
+        BigDecimal membershipRevenue,
+        BigDecimal duePayments,
+        BigDecimal expenses,
+        long admissions,
+        long activeMembers,
+        long overdueMembers,
+        String planDetails
     ) {
     }
 }

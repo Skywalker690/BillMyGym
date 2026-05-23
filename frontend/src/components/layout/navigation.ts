@@ -65,6 +65,12 @@ export const getSidebarNavItems = (role: AppRole | null | undefined): NavItemCon
       section: "Operations",
     },
     {
+      label: "Reports",
+      href: "/app/reports",
+      icon: BarChart3,
+      section: "Operations",
+    },
+    {
       label: "Reminders",
       href: "/app/reminders",
       icon: Clock3,
@@ -190,6 +196,12 @@ export const getPageContext = (pathname: string, role: AppRole | null | undefine
       eyebrow: "Member Operations",
       title: "Members",
       description: "Search, review, and update your member directory with payment-aware history.",
+    },
+    {
+      match: "/app/reports",
+      eyebrow: "Financial Reports",
+      title: "Reports",
+      description: "Month-wise revenue, admissions, dues, and export-ready financial summaries.",
     },
     {
       match: "/app/reminders",

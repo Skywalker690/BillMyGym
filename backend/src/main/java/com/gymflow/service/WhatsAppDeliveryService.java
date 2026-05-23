@@ -68,6 +68,29 @@ public class WhatsAppDeliveryService {
     }
 
     @Transactional
+    public WhatsAppSendResult sendText(
+        Organization organization,
+        NotificationLog notification,
+        String recipient,
+        String message,
+        NotificationType type
+    ) {
+        String normalizedRecipient = templateService.normalizeRecipient(recipient);
+        NotificationDeliveryLog log = new NotificationDeliveryLog();
+        log.setNotification(notification);
+        log.setOrganization(organization);
+        log.setType(type);
+        log.setProvider(PROVIDER);
+        log.setTemplateName("freeform_text");
+        log.setRecipient(normalizedRecipient);
+        log.setRequestPayload(buildTextPayload(normalizedRecipient, message));
+        log.setStatus(NotificationDeliveryStatus.PENDING);
+        log.setAttemptCount(0);
+        deliveryLogRepository.save(log);
+        return attemptDelivery(log);
+    }
+
+    @Transactional
     public WhatsAppSendResult sendOrganizationWelcome(Organization organization, String adminName, String dashboardLink) {
         if (!hasText(organization.getAdminPhoneNumber())) {
             return WhatsAppSendResult.skipped("Admin phone number is missing");
@@ -229,6 +252,22 @@ public class WhatsAppDeliveryService {
         } catch (Exception ignored) {
         }
         return "WhatsApp Cloud API returned HTTP " + statusCode;
+    }
+
+    private String buildTextPayload(String recipient, String message) {
+        try {
+            return objectMapper.writeValueAsString(Map.of(
+                "messaging_product", "whatsapp",
+                "to", recipient,
+                "type", "text",
+                "text", Map.of(
+                    "preview_url", false,
+                    "body", message == null ? "" : message
+                )
+            ));
+        } catch (Exception ex) {
+            throw new com.gymflow.api.error.BadRequestException("Unable to build WhatsApp message payload");
+        }
     }
 
     private boolean hasText(String value) {

@@ -58,6 +58,8 @@ export function notificationTypeLabel(type: string): string {
       return "Active Subscription";
     case "ORGANIZATION_WELCOME":
       return "Welcome Message";
+    case "INDIVIDUAL_WHATSAPP_REMINDER":
+      return "Member WhatsApp Reminder";
     default:
       return type.replaceAll("_", " ").toLowerCase();
   }

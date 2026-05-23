@@ -329,6 +329,14 @@ INSERT INTO notification_delivery_logs (
     (5, 5, 5, 'ORGANIZATION_WELCOME', 'SENT', 1, CURRENT_TIMESTAMP - INTERVAL '1 day', 'SYSTEM', 'organization_welcome',
         'kiran@pilotpeak.local', 'msg_005', NULL, NULL, '{"channel":"EMAIL"}', FALSE, CURRENT_TIMESTAMP - INTERVAL '4 days', CURRENT_TIMESTAMP - INTERVAL '1 day');
 
+INSERT INTO whatsapp_reminder_logs (
+    id, organization_id, member_id, message, sent_at, status, deleted, created_at, updated_at
+) VALUES
+    (1, 4, 33, 'Hello Member, your gym subscription payment is overdue. Pending Amount: INR 1899.', CURRENT_TIMESTAMP - INTERVAL '8 hours', 'SENT',
+        FALSE, CURRENT_TIMESTAMP - INTERVAL '8 hours', CURRENT_TIMESTAMP - INTERVAL '8 hours'),
+    (2, 5, 49, 'Hello Member, your gym subscription payment is overdue. Pending Amount: INR 899.', NULL, 'FAILED',
+        FALSE, CURRENT_TIMESTAMP - INTERVAL '3 hours', CURRENT_TIMESTAMP - INTERVAL '3 hours');
+
 INSERT INTO usage_metrics (
     id, organization_id, year, month, monthly_whatsapp_count, monthly_email_count, monthly_digest_count,
     active_members, active_admins, subscription_status, deleted, created_at, updated_at
@@ -455,6 +463,7 @@ SELECT setval('organization_subscriptions_id_seq', COALESCE((SELECT MAX(id) FROM
 SELECT setval('organization_subscription_payments_id_seq', COALESCE((SELECT MAX(id) FROM organization_subscription_payments), 1), TRUE);
 SELECT setval('notifications_id_seq', COALESCE((SELECT MAX(id) FROM notifications), 1), TRUE);
 SELECT setval('notification_delivery_logs_id_seq', COALESCE((SELECT MAX(id) FROM notification_delivery_logs), 1), TRUE);
+SELECT setval('whatsapp_reminder_logs_id_seq', COALESCE((SELECT MAX(id) FROM whatsapp_reminder_logs), 1), TRUE);
 SELECT setval('usage_metrics_id_seq', COALESCE((SELECT MAX(id) FROM usage_metrics), 1), TRUE);
 SELECT setval('organization_usage_stats_id_seq', COALESCE((SELECT MAX(id) FROM organization_usage_stats), 1), TRUE);
 SELECT setval('member_credit_ledger_id_seq', COALESCE((SELECT MAX(id) FROM member_credit_ledger), 1), TRUE);

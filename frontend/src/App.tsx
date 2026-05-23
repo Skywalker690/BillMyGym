@@ -26,6 +26,7 @@ import Notifications from "./pages/org/Notifications";
 import Settings from "./pages/org/Settings";
 import OrganizationProfile from "./pages/org/OrganizationProfile";
 import Subscription from "./pages/org/Subscription";
+import Reports from "./pages/org/Reports";
 
 // SUPER_ADMIN pages
 import PlatformOverview from "./pages/admin/PlatformOverview";
@@ -76,6 +77,7 @@ export default function App() {
                 <Route path="/app/members/:id/renew" element={<MemberForm mode="renew" />} />
                 <Route path="/app/reminders" element={<Reminders />} />
                 <Route path="/app/notifications" element={<Notifications />} />
+                <Route path="/app/reports" element={<Reports />} />
                 <Route path="/app/subscription" element={<Subscription />} />
                 <Route path="/app/subscription/plans" element={<Subscription showPlans />} />
                 <Route path="/app/settings" element={<Settings />} />

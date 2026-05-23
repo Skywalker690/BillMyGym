@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, Info, Pencil, Plus, RefreshCw, Search, ShieldAlert, Sparkles, Trash2, XCircle, Zap } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, Info, MessageCircleMore, Pencil, PhoneOff, Plus, RefreshCw, Search, Send, ShieldAlert, Sparkles, Trash2, XCircle, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,13 @@ const formatDate = (value?: string) =>
     ? new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value))
     : "-";
 
+const money = (value?: number | string | null) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(Number(value ?? 0));
+
 export default function MembersList() {
   const { user } = useAuth();
   const [searchInput, setSearchInput] = useState("");
@@ -26,6 +34,7 @@ export default function MembersList() {
   const [page, setPage] = useState(0);
   const [quickRenewMember, setQuickRenewMember] = useState<any | null>(null);
   const [deactivateMember, setDeactivateMember] = useState<any | null>(null);
+  const [reminderMember, setReminderMember] = useState<any | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -51,6 +60,25 @@ export default function MembersList() {
     },
     enabled: Boolean(user?.organizationId),
     staleTime: 60_000,
+  });
+
+  const { data: subscriptionStatus } = useQuery({
+    queryKey: ["memberMessagingSubscriptionStatus"],
+    queryFn: async () => {
+      const res = await api.get("/subscription/status");
+      return res.data;
+    },
+    staleTime: 60_000,
+  });
+
+  const reminderPreviewQuery = useQuery({
+    queryKey: ["whatsappReminderPreview", reminderMember?.id],
+    queryFn: async () => {
+      const res = await api.get(`/members/${reminderMember.id}/whatsapp-reminder/preview`);
+      return res.data;
+    },
+    enabled: Boolean(reminderMember?.id),
+    retry: false,
   });
 
   const deleteMutation = useMutation({
@@ -114,6 +142,24 @@ export default function MembersList() {
     },
   });
 
+  const sendReminderMutation = useMutation({
+    mutationFn: (memberId: string | number) => api.post(`/members/${memberId}/whatsapp-reminder/send`),
+    onSuccess: (response) => {
+      const result = response.data;
+      queryClient.invalidateQueries({ queryKey: ["reminderReport"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardReport"] });
+      if (result?.sent) {
+        setReminderMember(null);
+        toast.success("Reminder sent successfully");
+      } else {
+        toast.error(result?.failureReason || "Unable to send reminder");
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Unable to send reminder");
+    },
+  });
+
   const members = useMemo(() => {
     const items = [...(data?.members ?? [])];
     items.sort((left: any, right: any) => {
@@ -134,6 +180,7 @@ export default function MembersList() {
   }, [data?.members]);
   const summary = data?.summary ?? {};
   const memberLimit = summary.memberLimit;
+  const canUseMemberMessaging = Boolean(subscriptionStatus?.planAccess?.canUsePremiumFeatures);
   const memberTabs = [
     { id: "ALL" as const, label: "All Members", count: summary.totalMembers ?? 0 },
     { id: "ACTIVE" as const, label: "Active", count: summary.activeMembers ?? 0 },
@@ -270,14 +317,30 @@ export default function MembersList() {
                               </Badge>
                             </div>
                           </div>
-                          <Link
-                            to={`/app/members/${member.id}/edit`}
-                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/5 bg-white/70 text-slate-500 shadow-sm transition-colors hover:bg-white hover:text-emerald-700"
-                            aria-label={`Edit ${member.fullName}`}
-                            title="Edit member"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Link>
+                          <div className="flex shrink-0 items-center gap-2">
+                            {canSendMemberWhatsApp(member, canUseMemberMessaging) && (
+                              <button
+                                type="button"
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100 hover:text-emerald-800"
+                                aria-label={`Send WhatsApp reminder to ${member.fullName}`}
+                                title="Send WhatsApp reminder"
+                                onClick={() => {
+                                  sendReminderMutation.reset();
+                                  setReminderMember(member);
+                                }}
+                              >
+                                <MessageCircleMore className="h-4 w-4" />
+                              </button>
+                            )}
+                            <Link
+                              to={`/app/members/${member.id}/edit`}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-black/5 bg-white/70 text-slate-500 shadow-sm transition-colors hover:bg-white hover:text-emerald-700"
+                              aria-label={`Edit ${member.fullName}`}
+                              title="Edit member"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Link>
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-5 text-xs font-semibold text-slate-500">
@@ -402,6 +465,26 @@ export default function MembersList() {
           onConfirm={() => deleteMutation.mutate(deactivateMember.id)}
         />
       )}
+
+      <AnimatePresence>
+        {reminderMember && (
+          <WhatsappReminderModal
+            member={reminderMember}
+            preview={reminderPreviewQuery.data}
+            isLoading={reminderPreviewQuery.isLoading}
+            error={reminderPreviewQuery.error}
+            isSubmitting={sendReminderMutation.isPending}
+            hasFailed={sendReminderMutation.data?.data?.sent === false}
+            onCancel={() => {
+              if (!sendReminderMutation.isPending) {
+                setReminderMember(null);
+                sendReminderMutation.reset();
+              }
+            }}
+            onConfirm={() => sendReminderMutation.mutate(reminderMember.id)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -439,6 +522,10 @@ function canRenewMember(member: any) {
   return member.status !== "DEACTIVATED" && member.currentMembership?.status !== "ACTIVE";
 }
 
+function canSendMemberWhatsApp(member: any, canUseMemberMessaging: boolean) {
+  return canUseMemberMessaging && member.status === "ACTIVE" && member.currentMembership?.status === "OVERDUE";
+}
+
 function resolveQuickRenewStartDate(currentEndDate?: string) {
   if (!currentEndDate) {
     return new Date().toISOString().slice(0, 10);
@@ -446,6 +533,160 @@ function resolveQuickRenewStartDate(currentEndDate?: string) {
   const baseDate = new Date(`${currentEndDate}T00:00:00`);
   baseDate.setDate(baseDate.getDate() + 1);
   return baseDate.toISOString().slice(0, 10);
+}
+
+function WhatsappReminderModal({
+  member,
+  preview,
+  isLoading,
+  error,
+  isSubmitting,
+  hasFailed,
+  onCancel,
+  onConfirm,
+}: {
+  member: any;
+  preview?: any;
+  isLoading: boolean;
+  error: unknown;
+  isSubmitting: boolean;
+  hasFailed: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const messageLines = String(preview?.message ?? "").split("\n");
+  const blockedMessage = preview?.disabledReason || (error ? "Unable to prepare WhatsApp reminder" : null);
+  const sendDisabled = isLoading || Boolean(error) || !preview?.canSend || isSubmitting;
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-end justify-center p-4 sm:items-center">
+      <motion.button
+        type="button"
+        className="absolute inset-0 bg-slate-950/45 backdrop-blur-md"
+        aria-label="Close WhatsApp reminder dialog"
+        onClick={onCancel}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      />
+      <motion.div
+        className="relative z-10 w-full max-w-xl overflow-hidden rounded-t-[2rem] border border-white/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(236,253,245,0.96))] shadow-[0_30px_90px_-30px_rgba(15,23,42,0.52)] sm:rounded-[2rem]"
+        initial={{ opacity: 0, y: 48, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 36, scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 260, damping: 26 }}
+      >
+        <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-emerald-300/30 blur-3xl" />
+        <div className="absolute bottom-0 left-8 h-36 w-36 rounded-full bg-sky-200/30 blur-3xl" />
+        <div className="relative z-10 p-6 sm:p-7">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">
+                <MessageCircleMore className="h-3.5 w-3.5" />
+                WhatsApp Reminder
+              </div>
+              <h2 className="mt-4 text-2xl font-black tracking-tight text-slate-950">Send overdue reminder?</h2>
+            </div>
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/80 text-slate-500 shadow-sm transition-colors hover:bg-white hover:text-slate-900"
+              onClick={onCancel}
+              aria-label="Close reminder dialog"
+            >
+              <XCircle className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="mt-5 rounded-[1.35rem] border border-white/80 bg-white/78 p-4 shadow-sm">
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Member</div>
+            <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div className="text-xl font-black text-slate-950">{preview?.memberName ?? member.fullName}</div>
+              <div className="text-sm font-bold text-slate-500">{preview?.phone ?? member.phone ?? "-"}</div>
+            </div>
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-[1.6rem] border border-emerald-100 bg-[#e7f7ef] shadow-sm">
+            <div className="flex items-center gap-2 bg-[#075e54] px-4 py-3 text-white">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
+                <MessageCircleMore className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="text-sm font-black">{preview?.gymName ?? "Gym"}</div>
+                <div className="text-[11px] font-semibold text-white/75">WhatsApp preview</div>
+              </div>
+            </div>
+            <div className="p-4">
+              {isLoading ? (
+                <div className="rounded-2xl bg-white px-4 py-5 text-sm font-semibold text-slate-500 shadow-sm">
+                  Preparing reminder preview...
+                </div>
+              ) : error ? (
+                <div className="rounded-2xl bg-white px-4 py-5 text-sm font-semibold text-rose-700 shadow-sm">
+                  Unable to prepare WhatsApp reminder.
+                </div>
+              ) : (
+                <div className="max-w-[92%] rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-sm font-semibold leading-6 text-slate-800 shadow-sm">
+                  {messageLines.map((line, index) => (
+                    <div key={`${line}-${index}`} className={line.trim() === "" ? "h-3" : ""}>
+                      {line}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <ReminderMetric label="Due Date" value={formatReminderDate(preview?.dueDate)} />
+            <ReminderMetric label="Pending Amount" value={money(preview?.pendingAmount)} />
+          </div>
+
+          {blockedMessage && (
+            <div className="mt-4 flex items-start gap-3 rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
+              <PhoneOff className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{blockedMessage}</span>
+            </div>
+          )}
+
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 rounded-full border-white/80 bg-white/80 px-6 font-bold"
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="h-11 rounded-full bg-[#128c7e] px-6 font-bold text-white hover:bg-[#0f766a]"
+              onClick={onConfirm}
+              disabled={sendDisabled}
+            >
+              <Send className="mr-2 h-4 w-4" />
+              {isSubmitting ? "Sending..." : hasFailed ? "Retry Reminder" : "Send Reminder"}
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function ReminderMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.25rem] border border-white/80 bg-white/75 p-4 shadow-sm">
+      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{label}</div>
+      <div className="mt-1 text-lg font-black text-slate-950">{value}</div>
+    </div>
+  );
+}
+
+function formatReminderDate(value?: string) {
+  return value
+    ? new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(`${value}T00:00:00`))
+    : "-";
 }
 
 function QuickRenewModal({
