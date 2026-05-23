@@ -50,17 +50,16 @@ public class MembershipWorkflowService {
             return memberMembershipService.membershipResponse(existing.getResourceId(), organizationId);
         }
 
-        MemberMembership activeMembership = memberMembershipService.findActiveMembership(memberId, organizationId);
-        boolean renewalFlow = activeMembership != null;
+        MemberMembership latestMembership = memberMembershipService.findLatestMembership(memberId, organizationId);
+        boolean renewalFlow = latestMembership != null;
 
         MemberMembership membership = new MemberMembership();
         membership.setMember(member);
         membership.setOrganization(member.getOrganization());
-        membership.setPlanName(resolvePlanName(request.planName(), request.durationMonths()));
         membership.setDurationMonths(request.durationMonths());
         membership.setPlanAmount(resolveMembershipAmount(member, request.durationMonths()));
 
-        LocalDate startDate = resolveCreateStartDate(request, activeMembership);
+        LocalDate startDate = resolveCreateStartDate(request, latestMembership);
         membership.setStartDate(startDate);
         membership.setEndDate(membershipLifecycleService.calculateMembershipEndDate(startDate, request.durationMonths()));
         membershipLifecycleService.refreshMembership(
@@ -129,7 +128,7 @@ public class MembershipWorkflowService {
                 .divide(BigDecimal.valueOf(activeMembership.getDurationMonths()), MoneyUtils.SCALE, MoneyUtils.ROUNDING_MODE)
         );
 
-        activeMembership.setStatus(MembershipStatus.COMPLETED);
+        activeMembership.setStatus(MembershipStatus.DEACTIVATED);
 
         if (switchCredit.compareTo(BigDecimal.ZERO) > 0) {
             memberCreditLedgerService.createEntry(
@@ -146,7 +145,6 @@ public class MembershipWorkflowService {
         MemberMembership newMembership = new MemberMembership();
         newMembership.setMember(member);
         newMembership.setOrganization(member.getOrganization());
-        newMembership.setPlanName(request.planName());
         newMembership.setDurationMonths(request.durationMonths());
         newMembership.setPlanAmount(scale(request.planAmount()));
         newMembership.setStartDate(switchDate);
@@ -197,11 +195,21 @@ public class MembershipWorkflowService {
         return organizationId;
     }
 
-    private LocalDate resolveCreateStartDate(CreateMembershipRequest request, MemberMembership activeMembership) {
-        if (activeMembership == null) {
+    private LocalDate resolveCreateStartDate(CreateMembershipRequest request, MemberMembership latestMembership) {
+        if (latestMembership == null) {
             return request.startDate() == null ? LocalDate.now() : request.startDate();
         }
-        return maxDate(LocalDate.now(), activeMembership.getEndDate().plusDays(1), request.startDate());
+        
+        LocalDate nextContinuationDate = latestMembership.getEndDate().plusDays(1);
+        
+        if (request.startDate() != null) {
+            if (latestMembership.getStatus() == com.gymflow.domain.enums.MembershipStatus.ACTIVE && request.startDate().isBefore(nextContinuationDate)) {
+                return nextContinuationDate;
+            }
+            return request.startDate();
+        }
+        
+        return nextContinuationDate;
     }
 
     private int resolveCompletedMonths(MemberMembership activeMembership, LocalDate switchDate) {
@@ -222,13 +230,6 @@ public class MembershipWorkflowService {
             return requested;
         }
         return result;
-    }
-
-    private String resolvePlanName(String requestPlanName, int durationMonths) {
-        if (requestPlanName != null && !requestPlanName.isBlank()) {
-            return requestPlanName.trim();
-        }
-        return durationMonths == 1 ? "Monthly Membership" : durationMonths + "-Month Membership";
     }
 
     private BigDecimal scale(BigDecimal amount) {

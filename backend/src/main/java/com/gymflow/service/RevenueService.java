@@ -59,7 +59,7 @@ public class RevenueService {
         BigDecimal currentRevenue = payments.stream()
             .filter(payment -> payment.getPaymentDate() != null)
             .filter(payment -> !payment.getPaymentDate().isBefore(monthStart) && !payment.getPaymentDate().isAfter(monthEnd))
-            .filter(payment -> payment.getPaymentStatus() == PaymentStatus.PAID || payment.getPaymentStatus() == PaymentStatus.PARTIAL)
+            .filter(payment -> payment.getPaymentStatus() == PaymentStatus.PAID)
             .map(MemberPayment::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -80,13 +80,13 @@ public class RevenueService {
             boolean isCurrentObligation = membership.getStatus() == MembershipStatus.ACTIVE
                 && !membership.getStartDate().isAfter(monthEnd)
                 && !membership.getEndDate().isBefore(monthStart);
-            if (isCurrentObligation && membership.getStatus() != MembershipStatus.COMPLETED) {
+            if (isCurrentObligation && membership.getStatus() != MembershipStatus.DEACTIVATED) {
                 expectedRevenue = expectedRevenue.add(membership.getPlanAmount());
             }
             if (isCurrentObligation && membership.getStatus() == MembershipStatus.ACTIVE) {
                 pendingRevenue = pendingRevenue.add(coverage.pendingAmount());
             }
-            if (membership.getStatus() == MembershipStatus.EXPIRED || membership.getStatus() == MembershipStatus.OVERDUE) {
+            if (membership.getStatus() == MembershipStatus.DEACTIVATED || membership.getStatus() == MembershipStatus.OVERDUE) {
                 overdueRevenue = overdueRevenue.add(coverage.pendingAmount());
             }
             if (membership.getDurationMonths() > 1 && coverage.pendingAmount().compareTo(BigDecimal.ZERO) == 0

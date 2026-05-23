@@ -33,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MemberMembershipService {
 
     private static final String AUTO_DEACTIVATION_REASON =
-        "Automatically deactivated after fully paid membership expired without renewal";
+        "Automatically deactivated after membership expired without renewal for 30 days";
 
     private final MemberRepository memberRepository;
     private final MemberMembershipRepository memberMembershipRepository;
@@ -100,6 +100,13 @@ public class MemberMembershipService {
             .orElse(null);
     }
 
+    @Transactional(readOnly = true)
+    public MemberMembership findLatestMembership(Long memberId, Long organizationId) {
+        List<MemberMembership> memberships = memberMembershipRepository
+            .findByMemberIdAndOrganizationIdAndDeletedFalseOrderByStartDateDescCreatedAtDesc(memberId, organizationId);
+        return memberships.isEmpty() ? null : memberships.get(0);
+    }
+
     @Transactional
     public MemberMembership findActiveMembershipForUpdate(Long memberId, Long organizationId) {
         return memberMembershipRepository.findActiveMembershipForUpdate(memberId, organizationId)
@@ -120,7 +127,6 @@ public class MemberMembershipService {
             membership.getId(),
             membership.getMember().getId(),
             membership.getOrganization().getId(),
-            membership.getPlanName(),
             membership.getDurationMonths(),
             membership.getPlanAmount(),
             membership.getStartDate(),
@@ -155,7 +161,6 @@ public class MemberMembershipService {
             membership.getId(),
             membership.getMember().getId(),
             membership.getOrganization().getId(),
-            membership.getPlanName(),
             membership.getDurationMonths(),
             membership.getPlanAmount(),
             membership.getStartDate(),
@@ -214,12 +219,12 @@ public class MemberMembershipService {
                 paymentsByMembershipId.getOrDefault(latestMembership.getId(), List.of()),
                 reminderDays
             );
-            boolean fullyPaid = coverage.pendingAmount().compareTo(BigDecimal.ZERO) == 0;
             boolean membershipExpiredWithoutRenewal =
-                latestMembership.getStatus() == MembershipStatus.EXPIRED
+                latestMembership.getStatus() == MembershipStatus.DEACTIVATED
                     || latestMembership.getStatus() == MembershipStatus.OVERDUE;
+            boolean isOverdueBy30Days = latestMembership.getEndDate().plusDays(30).isBefore(LocalDate.now());
 
-            if (member.getStatus() == MemberStatus.ACTIVE && fullyPaid && membershipExpiredWithoutRenewal) {
+            if (member.getStatus() == MemberStatus.ACTIVE && membershipExpiredWithoutRenewal && isOverdueBy30Days) {
                 member.setStatus(MemberStatus.DEACTIVATED);
                 if (member.getDeactivatedAt() == null) {
                     member.setDeactivatedAt(OffsetDateTime.now());

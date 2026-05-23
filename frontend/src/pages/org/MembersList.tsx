@@ -76,7 +76,6 @@ export default function MembersList() {
         {
           durationMonths: 1,
           planAmount: monthlyMembershipFee,
-          planName: "Monthly Membership",
           startDate,
         },
         {
@@ -241,7 +240,6 @@ export default function MembersList() {
               <thead className="border-b border-black/5 bg-white/30 text-slate-500">
                 <tr>
                   <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Member</th>
-                  <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Plan</th>
                   <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Period</th>
                   <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Membership</th>
                   <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Payment</th>
@@ -280,9 +278,6 @@ export default function MembersList() {
                           </Link>
                         </div>
                       </td>
-                      <td className="px-6 py-5 font-semibold text-slate-700">
-                        {membership ? `${membership.durationMonths} month${membership.durationMonths > 1 ? "s" : ""}` : "No membership"}
-                      </td>
                       <td className="px-6 py-5 text-xs font-semibold text-slate-500">
                         <div>{formatDate(membership?.startDate)}</div>
                         <div className="mt-1">to {formatDate(membership?.endDate)}</div>
@@ -294,9 +289,6 @@ export default function MembersList() {
                         <Badge variant="outline" className="rounded-full border-transparent bg-slate-100 px-2.5 py-1 font-black tracking-[0.14em] text-slate-700">
                           {membership?.paymentStatus ?? "N/A"}
                         </Badge>
-                        {membership && Number(membership.pendingAmount) > 0 && (
-                          <div className="mt-2 text-xs font-bold text-amber-700">INR {Number(membership.pendingAmount).toLocaleString("en-IN")} pending</div>
-                        )}
                       </td>
                       <td className="min-w-[240px] px-6 py-5">
                         <div className="flex flex-wrap justify-end gap-2">
@@ -415,7 +407,7 @@ function renewalPriority(member: any) {
   if (membership.status === "OVERDUE") {
     return 0;
   }
-  if (membership.status === "EXPIRED") {
+  if (membership.status === "DEACTIVATED") {
     return 1;
   }
   if (membership.expiringSoon) {
@@ -440,13 +432,12 @@ function canRenewMember(member: any) {
 }
 
 function resolveQuickRenewStartDate(currentEndDate?: string) {
-  const today = new Date();
-  const baseDate = currentEndDate ? new Date(`${currentEndDate}T00:00:00`) : today;
-  if (currentEndDate && baseDate >= today) {
-    baseDate.setDate(baseDate.getDate() + 1);
-    return baseDate.toISOString().slice(0, 10);
+  if (!currentEndDate) {
+    return new Date().toISOString().slice(0, 10);
   }
-  return today.toISOString().slice(0, 10);
+  const baseDate = new Date(`${currentEndDate}T00:00:00`);
+  baseDate.setDate(baseDate.getDate() + 1);
+  return baseDate.toISOString().slice(0, 10);
 }
 
 function QuickRenewModal({
@@ -640,7 +631,7 @@ function SummaryTile({ label, value, tone }: { label: string; value?: number; to
 function StatusBadge({ status }: { status: string }) {
   const active = status === "ACTIVE";
   const expiring = status === "EXPIRING_SOON";
-  const overdue = status === "EXPIRED" || status === "OVERDUE";
+  const overdue = status === "DEACTIVATED" || status === "OVERDUE";
   return (
     <Badge
       variant="outline"

@@ -12,3 +12,5 @@
 backend/src/main/resources/application-local.yml
 backend.zip
 .env
+/backend/boot.err
+/backend/boot.log

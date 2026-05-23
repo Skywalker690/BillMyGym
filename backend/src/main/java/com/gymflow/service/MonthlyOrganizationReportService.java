@@ -66,7 +66,7 @@ public class MonthlyOrganizationReportService {
         BigDecimal collectedRevenue = payments.stream()
             .filter(payment -> payment.getPaymentDate() != null)
             .filter(payment -> !payment.getPaymentDate().isBefore(monthStart) && !payment.getPaymentDate().isAfter(monthEnd))
-            .filter(payment -> payment.getPaymentStatus() == PaymentStatus.PAID || payment.getPaymentStatus() == PaymentStatus.PARTIAL)
+            .filter(payment -> payment.getPaymentStatus() == PaymentStatus.PAID)
             .map(MemberPayment::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -77,7 +77,7 @@ public class MonthlyOrganizationReportService {
             }
             boolean overlapsMonth = !membership.getStartDate().isAfter(monthEnd)
                 && !membership.getEndDate().isBefore(monthStart)
-                && membership.getStatus() != MembershipStatus.COMPLETED;
+                && membership.getStatus() != MembershipStatus.DEACTIVATED;
             if (!overlapsMonth) {
                 continue;
             }

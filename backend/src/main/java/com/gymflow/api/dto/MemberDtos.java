@@ -34,7 +34,6 @@ public class MemberDtos {
 
     public record CurrentMembershipSummary(
         Long id,
-        String planName,
         int durationMonths,
         BigDecimal planAmount,
         LocalDate startDate,

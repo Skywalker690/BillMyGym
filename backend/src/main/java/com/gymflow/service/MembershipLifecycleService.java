@@ -15,7 +15,11 @@ import org.springframework.stereotype.Service;
 public class MembershipLifecycleService {
 
     public void refreshMembership(MemberMembership membership, int reminderDaysBeforeExpiry) {
-        if (membership.getStatus() == MembershipStatus.COMPLETED) {
+        if (membership.getStatus() == MembershipStatus.DEACTIVATED) {
+            return;
+        }
+        if (membership.getMember().getStatus() == com.gymflow.domain.enums.MemberStatus.DEACTIVATED) {
+            membership.setStatus(MembershipStatus.DEACTIVATED);
             return;
         }
         membership.setStatus(resolveMembershipStatus(
@@ -38,9 +42,6 @@ public class MembershipLifecycleService {
     public MembershipStatus resolveMembershipStatus(LocalDate today, LocalDate membershipEndDate, int reminderDaysBeforeExpiry) {
         if (membershipEndDate.isBefore(today)) {
             return MembershipStatus.OVERDUE;
-        }
-        if (membershipEndDate.isEqual(today)) {
-            return MembershipStatus.EXPIRED;
         }
         return MembershipStatus.ACTIVE;
     }
@@ -84,7 +85,7 @@ public class MembershipLifecycleService {
 
     public BigDecimal successfulPaymentTotal(List<MemberPayment> payments) {
         return payments.stream()
-            .filter(payment -> payment.getPaymentStatus() == PaymentStatus.PAID || payment.getPaymentStatus() == PaymentStatus.PARTIAL)
+            .filter(payment -> payment.getPaymentStatus() == PaymentStatus.PAID)
             .map(MemberPayment::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
@@ -92,9 +93,6 @@ public class MembershipLifecycleService {
     public PaymentStatus resolveCoverageStatus(BigDecimal planAmount, BigDecimal paidAmount) {
         if (paidAmount.compareTo(planAmount) >= 0) {
             return PaymentStatus.PAID;
-        }
-        if (paidAmount.compareTo(BigDecimal.ZERO) > 0) {
-            return PaymentStatus.PARTIAL;
         }
         return PaymentStatus.PENDING;
     }

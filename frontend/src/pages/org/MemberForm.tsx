@@ -18,7 +18,7 @@ type MemberFormMode = "create" | "edit" | "renew";
 const memberSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   phone: z.string().min(1, "Phone is required"),
-  status: z.enum(["ACTIVE", "PAUSED", "DEACTIVATED"]),
+  status: z.enum(["ACTIVE", "DEACTIVATED"]),
   deactivationReason: z.string().optional(),
   durationMonths: z.coerce.number().min(1).optional(),
   planAmount: z.coerce.number().min(0).optional(),
@@ -120,6 +120,13 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
       });
     }
     if (member && isRenew) {
+      let nextStartDate = new Date().toISOString().slice(0, 10);
+      if (memberships && memberships.length > 0) {
+        const baseDate = new Date(`${memberships[0].endDate}T00:00:00`);
+        baseDate.setDate(baseDate.getDate() + 1);
+        nextStartDate = baseDate.toISOString().slice(0, 10);
+      }
+      
       reset({
         fullName: member.fullName ?? "",
         phone: member.phone ?? "",
@@ -127,11 +134,11 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
         deactivationReason: member.deactivationReason ?? "",
         durationMonths: 1,
         planAmount: 0,
-        startDate: new Date().toISOString().slice(0, 10),
+        startDate: nextStartDate,
         initialPaymentAmount: 0,
       });
     }
-  }, [member, isEdit, isRenew, reset]);
+  }, [member, isEdit, isRenew, reset, memberships]);
 
   useEffect(() => {
     if (!organization || isEdit) {
@@ -180,7 +187,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
             amount: data.initialPaymentAmount,
             paymentDate: new Date().toISOString().slice(0, 10),
             paymentType: isRenew ? "RENEWAL" : "NEW_MEMBERSHIP",
-            paymentStatus: data.initialPaymentAmount >= data.planAmount ? "PAID" : "PARTIAL",
+            paymentStatus: "PAID",
           }, {
             headers: {
               "X-Idempotency-Key": crypto.randomUUID(),
@@ -295,7 +302,6 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                   <Field label="Status">
                     <select {...register("status")} disabled={isRenew} className="h-12 w-full rounded-2xl border border-black/5 bg-white/70 px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">
                       <option value="ACTIVE">Active</option>
-                      <option value="PAUSED">Paused</option>
                       <option value="DEACTIVATED">Deactivated</option>
                     </select>
                   </Field>

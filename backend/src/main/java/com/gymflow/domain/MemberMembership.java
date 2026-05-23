@@ -31,9 +31,6 @@ public class MemberMembership extends BaseEntity {
     private Organization organization;
 
     @Column(nullable = false)
-    private String planName;
-
-    @Column(nullable = false)
     private int durationMonths;
 
     @Column(nullable = false, precision = 12, scale = 2)

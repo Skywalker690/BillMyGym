@@ -97,7 +97,7 @@ SELECT
     '+9198' || LPAD((((org_id - 1) * 10) + slot_id)::text, 8, '0'),
     CASE
         WHEN slot_id = 5 THEN 'DEACTIVATED'
-        WHEN slot_id = 6 THEN 'PAUSED'
+        WHEN slot_id = 6 THEN 'ACTIVE'
         ELSE 'ACTIVE'
     END,
     FALSE,
@@ -111,19 +111,13 @@ FROM generate_series(1, 5) AS org_id
 CROSS JOIN generate_series(1, 10) AS slot_id;
 
 INSERT INTO member_memberships (
-    id, member_id, organization_id, plan_name, duration_months, plan_amount, start_date, end_date, status,
+    id, member_id, organization_id, duration_months, plan_amount, start_date, end_date, status,
     last_sent_at, deleted, deleted_at, version, created_at, updated_at
 )
 SELECT
     member_id,
     member_id,
     org_id,
-    CASE
-        WHEN slot_id IN (1, 2, 10) THEN 'Starter Monthly'
-        WHEN slot_id IN (3, 4, 9) THEN 'Growth Monthly'
-        WHEN slot_id IN (5, 6, 8) THEN 'Quarterly Flex'
-        ELSE 'Pro Annual'
-    END,
     CASE
         WHEN slot_id IN (5, 6, 8) THEN 3
         WHEN slot_id = 7 THEN 12
@@ -154,8 +148,8 @@ SELECT
     END,
     CASE
         WHEN slot_id IN (3, 9) THEN 'OVERDUE'
-        WHEN slot_id = 4 THEN 'EXPIRED'
-        WHEN slot_id IN (5, 8) THEN 'COMPLETED'
+        WHEN slot_id = 4 THEN 'DEACTIVATED'
+        WHEN slot_id IN (5, 8) THEN 'DEACTIVATED'
         ELSE 'ACTIVE'
     END,
     CASE
@@ -187,34 +181,19 @@ SELECT
     membership_id,
     org_id,
     CASE
-        WHEN slot_id IN (1, 6, 7, 8) THEN plan_amount
-        WHEN slot_id IN (2, 10) THEN ROUND(plan_amount / 2.0, 2)
-        WHEN slot_id = 9 THEN ROUND(plan_amount / 3.0, 2)
-        ELSE 0.00
+        WHEN slot_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9, 10) THEN plan_amount
+        ELSE plan_amount
     END::numeric(12, 2),
     CURRENT_DATE - (slot_id + org_id),
     TO_CHAR(CURRENT_DATE - (slot_id + org_id), 'YYYY-MM'),
-    CASE
-        WHEN slot_id IN (1, 6, 7, 8) THEN 'PAID'
-        WHEN slot_id IN (2, 9, 10) THEN 'PARTIAL'
-        WHEN slot_id = 4 THEN 'PENDING'
-        ELSE 'FAILED'
-    END,
+    'PAID',
     CASE
         WHEN slot_id IN (1, 6) THEN 'NEW_MEMBERSHIP'
         WHEN slot_id IN (2, 3, 4, 9, 10) THEN 'RENEWAL'
         ELSE 'ADJUSTMENT'
     END,
-    CASE
-        WHEN slot_id IN (3, 4, 10) THEN NULL
-        ELSE 'txn_member_' || LPAD(membership_id::text, 4, '0')
-    END,
-    CASE
-        WHEN slot_id IN (1, 6, 7, 8) THEN 'Fully paid membership seed'
-        WHEN slot_id IN (2, 9, 10) THEN 'Partial collection seed'
-        WHEN slot_id = 4 THEN 'Pending payment seed'
-        ELSE 'Failed collection seed'
-    END,
+    'txn_member_' || LPAD(membership_id::text, 4, '0'),
+    'Fully paid membership seed',
     FALSE,
     NULL,
     CURRENT_TIMESTAMP - (((26 - org_id) + slot_id) || ' days')::interval,

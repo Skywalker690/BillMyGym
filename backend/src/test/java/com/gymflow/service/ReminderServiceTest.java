@@ -71,7 +71,6 @@ class ReminderServiceTest {
         MemberMembership membership = new MemberMembership();
         membership.setOrganization(organization);
         membership.setMember(member);
-        membership.setPlanName("Plan");
         membership.setPlanAmount(new BigDecimal("1000.00"));
         membership.setStartDate(LocalDate.of(2026, 5, 1));
         membership.setEndDate(LocalDate.of(2026, 5, 15));

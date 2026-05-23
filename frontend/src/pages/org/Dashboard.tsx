@@ -35,7 +35,6 @@ type MembershipSnapshot = {
     endDate?: string;
     status?: string;
     paymentStatus?: string;
-    pendingAmount?: number;
   } | null;
 };
 
@@ -566,7 +565,6 @@ function MembershipListCard({
         ) : (
           <div className="space-y-3">
             {items.map((member) => {
-              const pendingAmount = Number(member.currentMembership?.pendingAmount ?? 0);
               return (
                 <div key={member.id} className="rounded-[1.4rem] border border-white/80 bg-white/72 p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-4">
@@ -580,11 +578,6 @@ function MembershipListCard({
                   </div>
                   <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-500">
                     <span>Ends {shortDate(member.currentMembership?.endDate)}</span>
-                    {pendingAmount > 0 && (
-                      <span className={cn("rounded-full px-3 py-1 text-xs font-black", tone === "amber" ? "bg-amber-100 text-amber-800" : "bg-rose-100 text-rose-800")}>
-                        {money(pendingAmount)} pending
-                      </span>
-                    )}
                   </div>
                   <div className="mt-4">
                     <Link to={`/app/members/${member.id}/renew`}>
@@ -609,14 +602,14 @@ function StatusPill({ status }: { status: string }) {
   const style =
     normalized === "PAID" || normalized === "ACTIVE" || normalized === "SENT"
       ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-      : normalized === "PARTIAL" || normalized === "PENDING" || normalized === "EXPIRING_SOON" || normalized === "RETRYING"
+      : normalized === "PENDING" || normalized === "EXPIRING_SOON" || normalized === "RETRYING"
         ? "bg-amber-100 text-amber-800 border-amber-200"
         : "bg-rose-100 text-rose-800 border-rose-200";
 
   const Icon =
     normalized === "PAID" || normalized === "ACTIVE" || normalized === "SENT"
       ? CheckCircle2
-      : normalized === "PARTIAL" || normalized === "PENDING" || normalized === "EXPIRING_SOON" || normalized === "RETRYING"
+      : normalized === "PENDING" || normalized === "EXPIRING_SOON" || normalized === "RETRYING"
         ? Clock3
         : AlertCircle;
 

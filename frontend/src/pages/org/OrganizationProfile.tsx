@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Building, KeyRound, Mail, MapPin, Phone, ShieldCheck, User } from "lucide-react";
+import { Building, KeyRound, Mail, Phone, ShieldCheck, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,11 +76,8 @@ export default function OrganizationProfile() {
   useEffect(() => {
     if (organization) {
       reset({
-        name: organization.name || "",
-        district: organization.district || "",
-        description: organization.description || "",
         adminName: organization.adminFullName || "",
-        adminPhone: organization.adminPhoneNumber || "",
+        adminPhone: formatIndianPhone(organization.adminPhoneNumber || ""),
         adminEmail: organization.adminEmail || "",
         monthlyMembershipFee: organization.monthlyMembershipFee || 0,
         admissionFee: organization.admissionFee || 0,
@@ -90,17 +87,17 @@ export default function OrganizationProfile() {
 
   const mutation = useMutation({
     mutationFn: (data: any) => api.patch(`/organizations/${organization.id}`, {
-      name: data.name,
-      district: data.district,
+      name: organization.name,
+      district: organization.district,
       logoUrl: organization.logoUrl,
       mapLocationLink: organization.mapLocationLink,
       address: organization.address,
-      description: data.description || null,
-      adminFullName: data.adminName,
-      adminPhoneNumber: data.adminPhone,
-      adminEmail: data.adminEmail,
-      monthlyMembershipFee: data.monthlyMembershipFee,
-      admissionFee: data.admissionFee,
+      description: organization.description || null,
+      adminFullName: organization.adminFullName,
+      adminPhoneNumber: organization.adminPhoneNumber,
+      adminEmail: organization.adminEmail,
+      monthlyMembershipFee: organization.monthlyMembershipFee,
+      admissionFee: organization.admissionFee,
       status: organization.status,
     }),
     onSuccess: () => {
@@ -201,50 +198,25 @@ export default function OrganizationProfile() {
         <div className="glass-panel overflow-hidden rounded-[1.9rem]">
           <div className="border-b border-white/70 p-6">
             <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-slate-950">
-              <Building className="h-5 w-5 text-emerald-700" />
-              General Information
-            </h2>
-          </div>
-          <div className="grid gap-6 p-6 md:grid-cols-2">
-            <Field label="Organization Name" icon={<Building className="h-4 w-4" />}>
-              <Input {...register("name")} className="h-11 rounded-xl bg-white/60 pl-10" />
-            </Field>
-            <Field label="District / Region" icon={<MapPin className="h-4 w-4" />}>
-              <Input {...register("district")} className="h-11 rounded-xl bg-white/60 pl-10" />
-            </Field>
-            <div className="space-y-2 md:col-span-2">
-              <Label className="font-semibold text-slate-700">Description</Label>
-              <textarea
-                {...register("description")}
-                className="min-h-[110px] w-full rounded-xl border border-black/5 bg-white/60 p-4 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                placeholder="A short description of your facility..."
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="glass-panel overflow-hidden rounded-[1.9rem]">
-          <div className="border-b border-white/70 p-6">
-            <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-slate-950">
               <User className="h-5 w-5 text-emerald-700" />
               Primary Contact
             </h2>
           </div>
           <div className="grid gap-6 p-6 md:grid-cols-2">
             <Field label="Admin Full Name" icon={<User className="h-4 w-4" />}>
-              <Input {...register("adminName")} className="h-11 rounded-xl bg-white/60 pl-10" />
+              <Input readOnly {...register("adminName")} className="h-11 rounded-xl bg-slate-50/80 pl-10 text-slate-600" />
             </Field>
             <Field label="Admin Email" icon={<Mail className="h-4 w-4" />}>
-              <Input type="email" {...register("adminEmail")} className="h-11 rounded-xl bg-white/60 pl-10" />
+              <Input readOnly type="email" {...register("adminEmail")} className="h-11 rounded-xl bg-slate-50/80 pl-10 text-slate-600" />
             </Field>
             <Field label="Admin Phone Number" icon={<Phone className="h-4 w-4" />}>
-              <Input {...register("adminPhone")} className="h-11 rounded-xl bg-white/60 pl-10" />
+              <Input readOnly {...register("adminPhone")} className="h-11 rounded-xl bg-slate-50/80 pl-10 text-slate-600" />
             </Field>
             <Field label="Monthly Membership Fee (INR)">
-              <Input type="number" {...register("monthlyMembershipFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-white/60" />
+              <Input readOnly type="number" {...register("monthlyMembershipFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-slate-50/80 text-slate-600" />
             </Field>
             <Field label="Admission Fee (INR)">
-              <Input type="number" {...register("admissionFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-white/60" />
+              <Input readOnly type="number" {...register("admissionFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-slate-50/80 text-slate-600" />
             </Field>
           </div>
         </div>
@@ -360,4 +332,8 @@ function SecureField({ label, error, children }: { label: string; error?: string
       {error && <p className="text-sm font-medium text-red-500">{error}</p>}
     </div>
   );
+}
+
+function formatIndianPhone(phone: string) {
+  return phone.replace(/^\+?91\s?/, "").trim();
 }

@@ -93,7 +93,7 @@ class PaymentLedgerServiceTest {
         when(organizationSettingService.getOrCreateSettings(100L)).thenReturn(setting);
         when(memberPaymentRepository.save(any(MemberPayment.class))).thenAnswer(invocation -> {
             MemberPayment payment = invocation.getArgument(0);
-            payment.setPaymentStatus(PaymentStatus.PARTIAL);
+            payment.setPaymentStatus(PaymentStatus.PAID);
             return payment;
         });
 
@@ -102,13 +102,13 @@ class PaymentLedgerServiceTest {
             new BigDecimal("1000.00"),
             LocalDate.of(2026, 5, 16),
             PaymentType.NEW_MEMBERSHIP,
-            PaymentStatus.PARTIAL,
+            PaymentStatus.PAID,
             "manual payment"
         );
 
         var response = paymentLedgerService.recordPayment(request, "payment-key");
 
-        assertEquals(PaymentStatus.PARTIAL, response.paymentStatus());
+        assertEquals(PaymentStatus.PAID, response.paymentStatus());
         assertEquals("2026-05", response.billingMonth());
         verify(memberPaymentRepository).save(any(MemberPayment.class));
     }

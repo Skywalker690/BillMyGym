@@ -49,8 +49,7 @@ import org.springframework.stereotype.Service;
 public class MemberService {
 
     private static final Set<MemberStatus> INACTIVE_MEMBER_STATUSES = Set.of(
-        MemberStatus.DEACTIVATED,
-        MemberStatus.PAUSED
+        MemberStatus.DEACTIVATED
     );
 
     private final MemberRepository memberRepository;
@@ -349,7 +348,6 @@ public class MemberService {
         );
         return new CurrentMembershipSummary(
             membership.getId(),
-            membership.getPlanName(),
             membership.getDurationMonths(),
             membership.getPlanAmount(),
             membership.getStartDate(),

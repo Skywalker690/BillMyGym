@@ -36,8 +36,6 @@ public class OrganizationDigestBuilderService {
                 .append(". ")
                 .append(membership.getMember().getFullName())
                 .append(" | ")
-                .append(membership.getPlanName())
-                .append(" | ")
                 .append(membershipStatusSummary(membership))
                 .append('\n');
         }
@@ -49,8 +47,6 @@ public class OrganizationDigestBuilderService {
         for (MemberMembership membership : memberships) {
             listBuilder.append("<li>")
                 .append(membership.getMember().getFullName())
-                .append(" - ")
-                .append(membership.getPlanName())
                 .append(" - expires ")
                 .append(membership.getEndDate())
                 .append(" - ")
@@ -68,7 +64,7 @@ public class OrganizationDigestBuilderService {
     }
 
     private String membershipStatusSummary(MemberMembership membership) {
-        if (membership.getStatus() == MembershipStatus.EXPIRED) {
+        if (membership.getStatus() == MembershipStatus.DEACTIVATED) {
             return "expired today";
         }
         long overdueDays = Math.max(1, ChronoUnit.DAYS.between(membership.getEndDate(), LocalDate.now()));
