@@ -3,7 +3,6 @@ package com.gymflow.service;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationSetting;
-import com.gymflow.domain.enums.MembershipStatus;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -64,9 +63,6 @@ public class OrganizationDigestBuilderService {
     }
 
     private String membershipStatusSummary(MemberMembership membership) {
-        if (membership.getStatus() == MembershipStatus.DEACTIVATED) {
-            return "expired today";
-        }
         long overdueDays = Math.max(1, ChronoUnit.DAYS.between(membership.getEndDate(), LocalDate.now()));
         return "overdue by " + overdueDays + " day" + (overdueDays == 1 ? "" : "s");
     }

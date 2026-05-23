@@ -5,6 +5,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock3,
+  Info,
   MessageCircleMore,
   Plus,
   TrendingUp,
@@ -52,6 +53,14 @@ type DashboardReport = {
     overdueRevenue?: number;
     activeMembers?: number;
     prepaidMembers?: number;
+    activeMembersCollected?: number;
+    activeMembersPendingCollection?: number;
+  };
+  revenueSegmentation?: {
+    admissionsThisMonth?: number;
+    admissionRevenue?: number;
+    recurringRevenue?: number;
+    totalRevenue?: number;
   };
   memberSummary?: {
     totalMembers?: number;
@@ -111,6 +120,7 @@ export default function Dashboard() {
   }
 
   const revenue = report?.revenue ?? {};
+  const revenueSegmentation = report?.revenueSegmentation ?? {};
   const summary = report?.memberSummary ?? {};
   const expiringSoon = report?.expiringSoon ?? [];
   const overdue = report?.overdue ?? [];
@@ -119,56 +129,66 @@ export default function Dashboard() {
   const joinedThisMonth = monthlyMemberJoins.at(-1)?.joinedMembers ?? 0;
   const canViewAdvancedAnalytics = report?.planAccess?.canViewAdvancedAnalytics ?? true;
 
+  const membershipCollectedRevenue = Math.max(
+    0,
+    Number(revenue.currentRevenue ?? 0) - Number(revenueSegmentation.admissionRevenue ?? 0)
+  );
+  const activeMembersTotal = Number(revenue.activeMembers ?? summary.activeMembers ?? 0);
+  const activeMembersPendingCollection = Number(revenue.activeMembersPendingCollection ?? 0);
+  const activeMembersCollected = Math.max(
+    0,
+    Number(revenue.activeMembersCollected ?? activeMembersTotal - activeMembersPendingCollection)
+  );
+  const activeCollectionRate =
+    activeMembersTotal > 0 ? Math.round((activeMembersCollected / activeMembersTotal) * 100) : 0;
   const collectionRate =
     Number(revenue.expectedRevenue ?? 0) > 0
-      ? Math.round((Number(revenue.currentRevenue ?? 0) / Number(revenue.expectedRevenue ?? 0)) * 100)
+      ? Math.round((membershipCollectedRevenue / Number(revenue.expectedRevenue ?? 0)) * 100)
       : 0;
   const atRiskMembers = Number(summary.expiringSoonMemberships ?? 0) + Number(summary.overdueMemberships ?? 0);
   const operationsSignal = recentReminderLogs[0]?.status ?? "QUIET";
 
   const statCards = [
     {
-      title: "Collected Revenue",
-      value: money(revenue.currentRevenue),
-      eyebrow: `${collectionRate}% collection pace`,
-      icon: Wallet,
+      title: "Admissions This Month",
+      value: `${revenueSegmentation.admissionsThisMonth ?? 0} Members`,
+      eyebrow: money(revenueSegmentation.admissionRevenue),
+      icon: Users,
       panel: "from-emerald-500/18 via-emerald-400/8 to-transparent",
       badge: "bg-emerald-100 text-emerald-800 border-emerald-200",
     },
     {
-      title: "Expected This Cycle",
-      value: money(revenue.expectedRevenue),
-      eyebrow: "Pipeline target",
+      title: "Monthly Revenue",
+      value: money(revenueSegmentation.recurringRevenue),
+      eyebrow: "Membership",
       icon: TrendingUp,
       panel: "from-slate-900/10 via-slate-500/5 to-transparent",
       badge: "bg-slate-100 text-slate-700 border-slate-200",
     },
     {
-      title: "Pending Revenue",
-      value: money(revenue.pendingRevenue),
-      eyebrow: `${summary.expiringSoonMemberships ?? 0} expiring soon`,
-      icon: Clock3,
+      title: "Total Revenue",
+      value: money(revenueSegmentation.totalRevenue),
+      eyebrow: "Admission + monthly",
+      icon: Wallet,
       panel: "from-amber-500/20 via-amber-300/8 to-transparent",
       badge: "bg-amber-100 text-amber-800 border-amber-200",
     },
     {
+      title: "Collection",
+      value: `${collectionRate}%`,
+      eyebrow: `${summary.expiringSoonMemberships ?? 0} expiring soon`,
+      icon: Clock3,
+      panel: "from-sky-500/18 via-sky-300/8 to-transparent",
+      badge: "bg-sky-100 text-sky-800 border-sky-200",
+    },
+    {
       title: "Overdue Exposure",
       value: money(revenue.overdueRevenue),
-      eyebrow: `${summary.overdueMemberships ?? 0} overdue memberships`,
+      eyebrow: `${summary.overdueMemberships ?? 0} overdue`,
       icon: AlertTriangle,
       panel: "from-rose-500/18 via-rose-300/8 to-transparent",
       badge: "bg-rose-100 text-rose-800 border-rose-200",
     },
-  ];
-
-  const memberSignals = [
-    { label: "Total Members", value: summary.totalMembers ?? 0 },
-    { label: "Active Members", value: summary.activeMembers ?? 0 },
-    { label: "Active Memberships", value: summary.activeMemberships ?? 0 },
-    { label: "Joined This Month", value: joinedThisMonth },
-    { label: "Prepaid Members", value: revenue.prepaidMembers ?? 0 },
-    { label: "Expiring Soon", value: summary.expiringSoonMemberships ?? 0 },
-    { label: "Overdue", value: summary.overdueMemberships ?? 0 },
   ];
 
   if (!canViewAdvancedAnalytics) {
@@ -293,7 +313,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
@@ -325,7 +345,7 @@ export default function Dashboard() {
                 <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Collections Command Center</h2>
               </div>
               <div className="rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">
-                {money(revenue.currentRevenue)} realized
+                {money(revenueSegmentation.totalRevenue)} collected this month
               </div>
             </div>
           </div>
@@ -333,9 +353,13 @@ export default function Dashboard() {
           <div className="grid gap-4 p-7 md:grid-cols-2">
             <RevenueBand
               label="Current Revenue"
-              value={money(revenue.currentRevenue)}
+              value={money(revenueSegmentation.totalRevenue)}
               accent="emerald"
-              helper="Already collected and safely recognized"
+              helper="Admission plus membership revenue collected this month"
+              breakdown={{
+                admission: money(revenueSegmentation.admissionRevenue),
+                recurring: money(revenueSegmentation.recurringRevenue),
+              }}
             />
             <RevenueBand
               label="Expected Revenue"
@@ -364,13 +388,55 @@ export default function Dashboard() {
               <div className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Member Health</div>
               <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Directory Performance</h2>
             </div>
-            <div className="grid gap-3 p-7 sm:grid-cols-2">
-              {memberSignals.map((signal) => (
-                <div key={signal.label} className="rounded-[1.4rem] border border-white/80 bg-white/72 p-4 shadow-sm">
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{signal.label}</div>
-                  <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{signal.value}</div>
+            <div className="space-y-5 p-7">
+              <div className="relative overflow-hidden rounded-[1.8rem] border border-emerald-100 bg-[linear-gradient(135deg,rgba(16,185,129,0.12),rgba(255,255,255,0.9)_42%,rgba(14,165,233,0.12))] p-6 shadow-sm">
+                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-200/30 blur-2xl" />
+                <div className="absolute -bottom-12 left-10 h-28 w-28 rounded-full bg-sky-200/30 blur-2xl" />
+                <div className="relative z-10 flex flex-col gap-5">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">Collection Coverage</div>
+                      <h3 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+                        {activeMembersCollected} / {activeMembersTotal}
+                      </h3>
+                      <p className="mt-2 max-w-md text-sm font-medium leading-6 text-slate-600">
+                        Active members fully covered for the current billing cycle, out of your total active member base.
+                      </p>
+                    </div>
+                    <div className="rounded-[1.3rem] border border-white/90 bg-white/80 px-4 py-3 text-right shadow-sm">
+                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Coverage Rate</div>
+                      <div className="mt-1 text-2xl font-black tracking-tight text-slate-950">{activeCollectionRate}%</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="h-3 overflow-hidden rounded-full bg-white/80 ring-1 ring-inset ring-emerald-100">
+                      <div
+                        className="h-full rounded-full bg-[linear-gradient(90deg,#059669,#22c55e,#38bdf8)] shadow-[0_10px_30px_-12px_rgba(5,150,105,0.8)] transition-all"
+                        style={{ width: `${Math.max(activeCollectionRate, activeMembersTotal > 0 ? 8 : 0)}%` }}
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-slate-600">
+                      <span>{activeMembersCollected} members covered</span>
+                      <span>{activeMembersPendingCollection} still need collection</span>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[1.4rem] border border-white/85 bg-white/78 p-4 shadow-sm">
+                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Need Collection</div>
+                      <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{activeMembersPendingCollection}</div>
+                      <div className="mt-1 text-sm font-medium text-slate-500">Active members still waiting for collection</div>
+                    </div>
+                    <div className="rounded-[1.4rem] border border-white/85 bg-white/78 p-4 shadow-sm">
+                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Active members</div>
+                      <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{activeMembersTotal}</div>
+                      <div className="mt-1 text-sm font-medium text-slate-500">Total active members currently in your directory</div>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              </div>
+
             </div>
           </div>
 
@@ -479,11 +545,16 @@ function RevenueBand({
   value,
   accent,
   helper,
+  breakdown,
 }: {
   label: string;
   value: string;
   accent: "emerald" | "slate" | "amber" | "rose";
   helper: string;
+  breakdown?: {
+    admission: string;
+    recurring: string;
+  };
 }) {
   const accentClass = {
     emerald: "from-emerald-500 to-emerald-300",
@@ -495,7 +566,27 @@ function RevenueBand({
   return (
     <div className="rounded-[1.5rem] border border-white/80 bg-white/75 p-5 shadow-sm">
       <div className={cn("h-1.5 w-16 rounded-full bg-gradient-to-r", accentClass)} />
-      <div className="mt-4 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{label}</div>
+      <div className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
+        <span>{label}</span>
+        {breakdown && (
+          <div className="group relative">
+            <span className="flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500 transition-colors hover:bg-slate-50">
+              <Info className="h-2.5 w-2.5" />
+            </span>
+            <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-[260px] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 text-left opacity-0 shadow-xl transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Revenue Split</div>
+              <div className="mt-2 flex items-center justify-between text-xs font-semibold text-slate-700">
+                <span>Admission</span>
+                <span>{breakdown.admission}</span>
+              </div>
+              <div className="mt-1 flex items-center justify-between text-xs font-semibold text-slate-700">
+                <span>Monthly</span>
+                <span>{breakdown.recurring}</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
       <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{value}</div>
       <div className="mt-2 text-sm font-medium leading-6 text-slate-500">{helper}</div>
     </div>

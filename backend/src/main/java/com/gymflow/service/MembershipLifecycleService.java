@@ -15,13 +15,6 @@ import org.springframework.stereotype.Service;
 public class MembershipLifecycleService {
 
     public void refreshMembership(MemberMembership membership, int reminderDaysBeforeExpiry) {
-        if (membership.getStatus() == MembershipStatus.DEACTIVATED) {
-            return;
-        }
-        if (membership.getMember().getStatus() == com.gymflow.domain.enums.MemberStatus.DEACTIVATED) {
-            membership.setStatus(MembershipStatus.DEACTIVATED);
-            return;
-        }
         membership.setStatus(resolveMembershipStatus(
             LocalDate.now(),
             membership.getEndDate(),

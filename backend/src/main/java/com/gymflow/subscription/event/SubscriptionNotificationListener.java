@@ -28,6 +28,7 @@ public class SubscriptionNotificationListener {
             event.usage().getActiveMembers(),
             event.billingSummary()
         );
+        emailService.sendSuperAdminSubscriptionPaymentEmail(event.payment());
         notificationDeliveryLogService.recordSuccessfulDelivery(event.organization(), NotificationType.SUBSCRIPTION_PAYMENT_SUCCESS);
         whatsAppDeliveryService.sendPaymentSuccess(
             event.organization(),
@@ -48,6 +49,7 @@ public class SubscriptionNotificationListener {
             event.usage().getActiveMembers(),
             event.billingSummary()
         );
+        emailService.sendSuperAdminSubscriptionPaymentEmail(event.payment());
         notificationDeliveryLogService.recordSuccessfulDelivery(
             event.payment().getOrganization(),
             NotificationType.SUBSCRIPTION_PAYMENT_FAILED

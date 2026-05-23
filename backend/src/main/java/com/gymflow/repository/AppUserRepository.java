@@ -20,6 +20,8 @@ public interface AppUserRepository extends JpaRepository<User, Long> {
 
     List<User> findByOrganizationIdAndRoleAndDeletedFalse(Long organizationId, Role role);
 
+    List<User> findByRoleAndStatusAndDeletedFalse(Role role, UserStatus status);
+
     boolean existsByEmailAndDeletedFalse(String email);
 
     boolean existsByEmailAndDeletedFalseAndIdNot(String email, Long id);

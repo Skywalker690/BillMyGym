@@ -2,7 +2,11 @@ package com.gymflow.api.dto;
 
 import com.gymflow.domain.enums.NotificationChannel;
 import com.gymflow.domain.enums.NotificationStatus;
+import com.gymflow.domain.enums.SubscriptionPaymentStatus;
+import com.gymflow.domain.enums.SubscriptionPlan;
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 public class AuditDtos {
@@ -36,6 +40,27 @@ public class AuditDtos {
         String ip,
         String status,
         String description
+    ) {
+    }
+
+    public record GlobalSubscriptionAuditResponse(
+        AuditPageResponse<GlobalSubscriptionAuditRow> page
+    ) {
+    }
+
+    public record GlobalSubscriptionAuditRow(
+        Instant time,
+        Long organizationId,
+        String organizationName,
+        SubscriptionPlan plan,
+        BigDecimal amount,
+        SubscriptionPaymentStatus status,
+        LocalDate paymentDate,
+        LocalDate subscriptionStart,
+        LocalDate subscriptionEnd,
+        String orderId,
+        String paymentId,
+        String failureReason
     ) {
     }
 
@@ -89,4 +114,3 @@ public class AuditDtos {
     ) {
     }
 }
-

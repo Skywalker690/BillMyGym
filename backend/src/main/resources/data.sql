@@ -148,8 +148,8 @@ SELECT
     END,
     CASE
         WHEN slot_id IN (3, 9) THEN 'OVERDUE'
-        WHEN slot_id = 4 THEN 'DEACTIVATED'
-        WHEN slot_id IN (5, 8) THEN 'DEACTIVATED'
+        WHEN slot_id = 4 THEN 'OVERDUE'
+        WHEN slot_id IN (5, 8) THEN 'OVERDUE'
         ELSE 'ACTIVE'
     END,
     CASE
@@ -188,8 +188,8 @@ SELECT
     TO_CHAR(CURRENT_DATE - (slot_id + org_id), 'YYYY-MM'),
     'PAID',
     CASE
-        WHEN slot_id IN (1, 6) THEN 'NEW_MEMBERSHIP'
-        WHEN slot_id IN (2, 3, 4, 9, 10) THEN 'RENEWAL'
+        WHEN slot_id IN (1, 6) THEN 'MEMBERSHIP'
+        WHEN slot_id IN (2, 3, 4, 9, 10) THEN 'MEMBERSHIP'
         ELSE 'ADJUSTMENT'
     END,
     'txn_member_' || LPAD(membership_id::text, 4, '0'),

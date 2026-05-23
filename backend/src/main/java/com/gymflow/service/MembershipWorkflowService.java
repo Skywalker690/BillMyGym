@@ -128,7 +128,8 @@ public class MembershipWorkflowService {
                 .divide(BigDecimal.valueOf(activeMembership.getDurationMonths()), MoneyUtils.SCALE, MoneyUtils.ROUNDING_MODE)
         );
 
-        activeMembership.setStatus(MembershipStatus.DEACTIVATED);
+        activeMembership.setEndDate(switchDate.minusDays(1));
+        activeMembership.setStatus(MembershipStatus.ACTIVE);
 
         if (switchCredit.compareTo(BigDecimal.ZERO) > 0) {
             memberCreditLedgerService.createEntry(

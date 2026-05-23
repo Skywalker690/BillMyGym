@@ -26,7 +26,7 @@ public class PilotConversionService {
             if (organization.getOrganizationType() != OrganizationType.PILOT) {
                 continue;
             }
-            billingLifecycleService.startRegularTrial(organization, today);
+            billingLifecycleService.convertExpiredPilotToRegularBilling(organization, today);
             usageMetricService.refreshMonthlySnapshot(organization);
         }
     }

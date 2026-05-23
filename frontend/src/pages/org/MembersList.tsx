@@ -407,9 +407,6 @@ function renewalPriority(member: any) {
   if (membership.status === "OVERDUE") {
     return 0;
   }
-  if (membership.status === "DEACTIVATED") {
-    return 1;
-  }
   if (membership.expiringSoon) {
     return 2;
   }
@@ -631,7 +628,7 @@ function SummaryTile({ label, value, tone }: { label: string; value?: number; to
 function StatusBadge({ status }: { status: string }) {
   const active = status === "ACTIVE";
   const expiring = status === "EXPIRING_SOON";
-  const overdue = status === "DEACTIVATED" || status === "OVERDUE";
+  const overdue = status === "OVERDUE";
   return (
     <Badge
       variant="outline"

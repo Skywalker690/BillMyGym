@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Building2, RefreshCcw } from "lucide-react";
+import { AlertTriangle, Building2, CreditCard, RefreshCcw } from "lucide-react";
 import api from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+type AuditTab = "LOGIN" | "SUBSCRIPTIONS";
 
 type LoginAuditRow = {
   time: string;
@@ -10,8 +14,22 @@ type LoginAuditRow = {
   organizationName?: string | null;
   adminName?: string | null;
   email?: string | null;
-  device?: string | null;
   description: string;
+};
+
+type SubscriptionAuditRow = {
+  time: string;
+  organizationId?: number | null;
+  organizationName?: string | null;
+  plan?: string | null;
+  amount?: number | null;
+  status: "PENDING" | "PAID" | "FAILED";
+  paymentDate?: string | null;
+  subscriptionStart?: string | null;
+  subscriptionEnd?: string | null;
+  orderId?: string | null;
+  paymentId?: string | null;
+  failureReason?: string | null;
 };
 
 type AuditPage<T> = {
@@ -27,7 +45,22 @@ type LoginAuditResponse = {
   page: AuditPage<LoginAuditRow>;
 };
 
-function formatDateTime(value?: string) {
+type SubscriptionAuditResponse = {
+  page: AuditPage<SubscriptionAuditRow>;
+};
+
+const money = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
+
+function formatDate(value?: string | null) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+}
+
+function formatDateTime(value?: string | null) {
   if (!value) return "-";
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",
@@ -38,15 +71,24 @@ function formatDateTime(value?: string) {
   }).format(new Date(value));
 }
 
+function paymentStatusClass(status: SubscriptionAuditRow["status"]) {
+  return {
+    PAID: "border-emerald-200 bg-emerald-100 text-emerald-800",
+    PENDING: "border-amber-200 bg-amber-100 text-amber-800",
+    FAILED: "border-rose-200 bg-rose-100 text-rose-800",
+  }[status];
+}
+
 export default function GlobalAuditLogs() {
+  const [activeTab, setActiveTab] = useState<AuditTab>("LOGIN");
   const [page, setPage] = useState(0);
   const [hasRequested, setHasRequested] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
 
-  const auditQuery = useQuery<LoginAuditResponse>({
-    queryKey: ["globalLoginAudit", page, refreshToken],
+  const auditQuery = useQuery<LoginAuditResponse | SubscriptionAuditResponse>({
+    queryKey: ["globalAudit", activeTab, page, refreshToken],
     queryFn: async () => {
-      const res = await api.get("/audit-logs/login", {
+      const res = await api.get(activeTab === "LOGIN" ? "/audit-logs/login" : "/audit-logs/subscriptions", {
         params: {
           page,
           size: 20,
@@ -63,7 +105,15 @@ export default function GlobalAuditLogs() {
   const rows = auditQuery.data?.page.items ?? [];
   const meta = auditQuery.data?.page;
   const queryErrorMessage =
-    auditQuery.error instanceof Error ? auditQuery.error.message : "Unable to load the login audit right now.";
+    auditQuery.error instanceof Error ? auditQuery.error.message : "Unable to load the audit log right now.";
+
+  function switchTab(tab: AuditTab) {
+    setActiveTab(tab);
+    setPage(0);
+    if (hasRequested) {
+      setRefreshToken((current) => current + 1);
+    }
+  }
 
   function requestAuditRefresh(nextPage = 0) {
     setPage(nextPage);
@@ -82,11 +132,15 @@ export default function GlobalAuditLogs() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">
-              Login Audit
+              Global Audit
             </div>
-            <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950">Organization admin login activity</h1>
+            <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950">
+              {activeTab === "LOGIN" ? "Organization admin login activity" : "Organization subscription ledger"}
+            </h1>
             <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
-              Latest org-admin login events across every organization.
+              {activeTab === "LOGIN"
+                ? "Latest org-admin login events across every organization."
+                : "Subscription payments across all organizations, including pending and failed attempts."}
             </p>
           </div>
           <Button
@@ -100,12 +154,37 @@ export default function GlobalAuditLogs() {
             {hasRequested ? "Refresh" : "Load Audit Logs"}
           </Button>
         </div>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => switchTab("LOGIN")}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black",
+              activeTab === "LOGIN" ? "border-emerald-200 bg-emerald-100 text-emerald-800" : "border-slate-200 bg-white text-slate-600"
+            )}
+          >
+            <Building2 className="h-4 w-4" />
+            Login Audit
+          </button>
+          <button
+            type="button"
+            onClick={() => switchTab("SUBSCRIPTIONS")}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black",
+              activeTab === "SUBSCRIPTIONS" ? "border-emerald-200 bg-emerald-100 text-emerald-800" : "border-slate-200 bg-white text-slate-600"
+            )}
+          >
+            <CreditCard className="h-4 w-4" />
+            Subscriptions
+          </button>
+        </div>
       </section>
 
       <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
         {auditQuery.isFetching && (
           <div className="border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-            Refreshing login audit...
+            Refreshing audit...
           </div>
         )}
         {auditQuery.isError && (
@@ -116,42 +195,13 @@ export default function GlobalAuditLogs() {
             </div>
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left">
-            <thead className="bg-slate-50">
-              <tr className="text-xs uppercase tracking-wide text-slate-500">
-                <th className="px-4 py-3">Time</th>
-                <th className="px-4 py-3">Organization</th>
-                <th className="px-4 py-3">Admin Name</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 && (
-                <tr>
-                  <td className="px-4 py-8 text-center text-sm font-semibold text-slate-500" colSpan={5}>
-                    {hasRequested ? "No login audit rows found." : "Click load audit logs to fetch records."}
-                  </td>
-                </tr>
-              )}
-              {rows.map((row, index) => (
-                <tr key={`${row.time}-${index}`} className="border-t border-slate-100 text-sm text-slate-700">
-                  <td className="px-4 py-3">{formatDateTime(row.time)}</td>
-                  <td className="px-4 py-3">
-                    <div className="inline-flex items-center gap-2 font-semibold text-slate-700">
-                      <Building2 className="h-4 w-4 text-slate-300" />
-                      {row.organizationName || "-"}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 font-semibold text-slate-900">{row.adminName || "-"}</td>
-                  <td className="px-4 py-3">{row.email || "-"}</td>
-                  <td className="px-4 py-3">{row.description}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+
+        {activeTab === "LOGIN" ? (
+          <LoginAuditTable rows={rows as LoginAuditRow[]} hasRequested={hasRequested} />
+        ) : (
+          <SubscriptionAuditTable rows={rows as SubscriptionAuditRow[]} hasRequested={hasRequested} />
+        )}
+
         <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-sm">
           <div className="font-semibold text-slate-500">
             Showing {rows.length} of {meta?.totalElements ?? 0}
@@ -179,6 +229,96 @@ export default function GlobalAuditLogs() {
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function LoginAuditTable({ rows, hasRequested }: { rows: LoginAuditRow[]; hasRequested: boolean }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-left">
+        <thead className="bg-slate-50">
+          <tr className="text-xs uppercase tracking-wide text-slate-500">
+            <th className="px-4 py-3">Time</th>
+            <th className="px-4 py-3">Organization</th>
+            <th className="px-4 py-3">Admin Name</th>
+            <th className="px-4 py-3">Email</th>
+            <th className="px-4 py-3">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 && (
+            <tr>
+              <td className="px-4 py-8 text-center text-sm font-semibold text-slate-500" colSpan={5}>
+                {hasRequested ? "No login audit rows found." : "Click load audit logs to fetch records."}
+              </td>
+            </tr>
+          )}
+          {rows.map((row, index) => (
+            <tr key={`${row.time}-${index}`} className="border-t border-slate-100 text-sm text-slate-700">
+              <td className="px-4 py-3">{formatDateTime(row.time)}</td>
+              <td className="px-4 py-3">
+                <div className="inline-flex items-center gap-2 font-semibold text-slate-700">
+                  <Building2 className="h-4 w-4 text-slate-300" />
+                  {row.organizationName || "-"}
+                </div>
+              </td>
+              <td className="px-4 py-3 font-semibold text-slate-900">{row.adminName || "-"}</td>
+              <td className="px-4 py-3">{row.email || "-"}</td>
+              <td className="px-4 py-3">{row.description}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SubscriptionAuditTable({ rows, hasRequested }: { rows: SubscriptionAuditRow[]; hasRequested: boolean }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-[1120px] w-full text-left">
+        <thead className="bg-slate-50">
+          <tr className="text-xs uppercase tracking-wide text-slate-500">
+            <th className="px-4 py-3">Time</th>
+            <th className="px-4 py-3">Organization</th>
+            <th className="px-4 py-3">Plan</th>
+            <th className="px-4 py-3">Amount</th>
+            <th className="px-4 py-3">Status</th>
+            <th className="px-4 py-3">Payment Date</th>
+            <th className="px-4 py-3">Period</th>
+            <th className="px-4 py-3">Gateway</th>
+            <th className="px-4 py-3">Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 && (
+            <tr>
+              <td className="px-4 py-8 text-center text-sm font-semibold text-slate-500" colSpan={9}>
+                {hasRequested ? "No subscription rows found." : "Click load audit logs to fetch records."}
+              </td>
+            </tr>
+          )}
+          {rows.map((row, index) => (
+            <tr key={`${row.time}-${row.orderId}-${index}`} className="border-t border-slate-100 text-sm text-slate-700">
+              <td className="px-4 py-3">{formatDateTime(row.time)}</td>
+              <td className="px-4 py-3 font-semibold text-slate-900">{row.organizationName || "-"}</td>
+              <td className="px-4 py-3">{row.plan || "-"}</td>
+              <td className="px-4 py-3 font-black text-slate-950">{money.format(Number(row.amount ?? 0))}</td>
+              <td className="px-4 py-3">
+                <Badge className={paymentStatusClass(row.status)}>{row.status}</Badge>
+              </td>
+              <td className="px-4 py-3">{formatDate(row.paymentDate)}</td>
+              <td className="px-4 py-3">{formatDate(row.subscriptionStart)} - {formatDate(row.subscriptionEnd)}</td>
+              <td className="px-4 py-3 text-xs font-semibold text-slate-500">
+                <div>Order: {row.orderId || "-"}</div>
+                <div className="mt-1">Payment: {row.paymentId || "-"}</div>
+              </td>
+              <td className="px-4 py-3">{row.failureReason || "Subscription payment record"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

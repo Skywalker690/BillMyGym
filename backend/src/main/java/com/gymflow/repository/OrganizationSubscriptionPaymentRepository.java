@@ -4,6 +4,7 @@ import com.gymflow.domain.OrganizationSubscriptionPayment;
 import com.gymflow.domain.enums.SubscriptionPaymentStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -38,6 +39,9 @@ public interface OrganizationSubscriptionPaymentRepository extends JpaRepository
     @EntityGraph(attributePaths = "organization")
     List<OrganizationSubscriptionPayment> findByDeletedFalseOrderByCreatedAtDesc();
 
+    @EntityGraph(attributePaths = "organization")
+    Page<OrganizationSubscriptionPayment> findByDeletedFalseOrderByCreatedAtDesc(Pageable pageable);
+
     Optional<OrganizationSubscriptionPayment> findTopByOrganizationIdAndPaymentStatusInAndDeletedFalseOrderByCreatedAtDesc(
         Long organizationId,
         Collection<SubscriptionPaymentStatus> statuses
@@ -52,6 +56,25 @@ public interface OrganizationSubscriptionPaymentRepository extends JpaRepository
     long countByPaymentStatusInAndDeletedFalse(Collection<SubscriptionPaymentStatus> statuses);
 
     long countByPaymentStatusAndDeletedFalse(SubscriptionPaymentStatus status);
+
+    long countByPaymentStatusAndDeletedFalseAndCreatedAtBetween(
+        SubscriptionPaymentStatus status,
+        OffsetDateTime start,
+        OffsetDateTime end
+    );
+
+    @Query("""
+        select coalesce(sum(payment.amount), 0)
+        from OrganizationSubscriptionPayment payment
+        where payment.deleted = false
+          and payment.paymentStatus = :status
+          and payment.createdAt between :start and :end
+        """)
+    BigDecimal sumByPaymentStatusAndCreatedAtBetween(
+        @Param("status") SubscriptionPaymentStatus status,
+        @Param("start") OffsetDateTime start,
+        @Param("end") OffsetDateTime end
+    );
 
     @Query("""
         select coalesce(sum(payment.amount), 0)

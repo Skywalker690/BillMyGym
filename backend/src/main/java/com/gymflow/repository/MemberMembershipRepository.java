@@ -53,6 +53,7 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
           and membership.member.id = :memberId
           and membership.organization.id = :organizationId
           and membership.status = 'ACTIVE'
+          and membership.endDate >= CURRENT_DATE
         """)
     Optional<MemberMembership> findActiveMembershipForUpdate(
         @Param("memberId") Long memberId,
@@ -84,7 +85,17 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
           and membership.member.status = 'ACTIVE'
           and membership.organization.status in ('ACTIVE', 'TRIAL')
           and membership.organization.id = :organizationId
-          and membership.status in ('DEACTIVATED', 'OVERDUE')
+          and membership.status = 'OVERDUE'
+          and not exists (
+              select newer.id
+              from MemberMembership newer
+              where newer.deleted = false
+                and newer.member = membership.member
+                and (
+                    newer.endDate > membership.endDate
+                    or (newer.endDate = membership.endDate and newer.createdAt > membership.createdAt)
+                )
+          )
         order by membership.organization.id, membership.endDate asc
         """)
     List<MemberMembership> findReminderCandidates(@Param("organizationId") Long organizationId);
@@ -99,8 +110,18 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
           and membership.organization.deleted = false
           and membership.organization.status in ('ACTIVE', 'TRIAL')
           and membership.organization.id = :organizationId
-          and membership.status in ('DEACTIVATED', 'OVERDUE')
+          and membership.status = 'OVERDUE'
           and (membership.lastSentAt is null or membership.lastSentAt < :dayStart)
+          and not exists (
+              select newer.id
+              from MemberMembership newer
+              where newer.deleted = false
+                and newer.member = membership.member
+                and (
+                    newer.endDate > membership.endDate
+                    or (newer.endDate = membership.endDate and newer.createdAt > membership.createdAt)
+                )
+          )
         order by membership.organization.id, membership.endDate asc
         """)
     List<MemberMembership> findReminderCandidatesForDay(
@@ -136,7 +157,17 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
           and membership.member.status = 'ACTIVE'
           and membership.organization.id = :organizationId
           and membership.endDate <= :today
-          and membership.status <> 'DEACTIVATED'
+          and membership.status = 'OVERDUE'
+          and not exists (
+              select newer.id
+              from MemberMembership newer
+              where newer.deleted = false
+                and newer.member = membership.member
+                and (
+                    newer.endDate > membership.endDate
+                    or (newer.endDate = membership.endDate and newer.createdAt > membership.createdAt)
+                )
+          )
         order by membership.endDate asc
         """)
     List<MemberMembership> findOverdueOrExpiredMemberships(
@@ -155,7 +186,6 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
           and membership.member.status = 'ACTIVE'
           and membership.organization.id = :organizationId
           and membership.endDate between :startDate and :endDate
-          and membership.status <> 'DEACTIVATED'
         """)
     long countExpiredBetween(
         @Param("organizationId") Long organizationId,
@@ -185,7 +215,6 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
           and membership.member.status = 'ACTIVE'
           and membership.organization.id = :organizationId
           and membership.endDate = :today
-          and membership.status <> 'DEACTIVATED'
         """)
     long countExpiredOn(
         @Param("organizationId") Long organizationId,
@@ -200,7 +229,7 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
           and membership.member.status = 'ACTIVE'
           and membership.organization.id = :organizationId
           and membership.endDate < :today
-          and membership.status <> 'DEACTIVATED'
+          and membership.status = 'OVERDUE'
         """)
     long countOverdueBefore(
         @Param("organizationId") Long organizationId,

@@ -3,6 +3,7 @@ package com.gymflow.service;
 import com.gymflow.api.dto.AnalyticsDtos.OrganizationAnalyticsResponse;
 import com.gymflow.api.dto.AnalyticsDtos.PlatformBreakdownResponse;
 import com.gymflow.api.dto.AnalyticsDtos.PlatformAnalyticsResponse;
+import com.gymflow.api.dto.AnalyticsDtos.PlatformSubscriptionMonthResponse;
 import com.gymflow.api.dto.AnalyticsDtos.PlatformYearlyReportMonth;
 import com.gymflow.api.dto.AnalyticsDtos.PlatformYearlyReportResponse;
 import com.gymflow.api.error.BadRequestException;
@@ -134,6 +135,7 @@ public class AnalyticsService {
             currentMonthNewOrganizations,
             previousMonthNewOrganizations,
             growthPercent(previousMonthNewOrganizations, currentMonthNewOrganizations),
+            monthlySubscriptionActivity(currentMonth),
             organizationsByStatus(totalOrganizations),
             organizationsByPlan(totalOrganizations),
             paymentsByStatus(),
@@ -227,6 +229,41 @@ public class AnalyticsService {
                 BigDecimal.ZERO,
                 totalPayments
             ))
+            .toList();
+    }
+
+    private List<PlatformSubscriptionMonthResponse> monthlySubscriptionActivity(YearMonth currentMonth) {
+        YearMonth startMonth = currentMonth.minusMonths(5);
+        return IntStream.rangeClosed(0, 5)
+            .mapToObj(offset -> {
+                YearMonth month = startMonth.plusMonths(offset);
+                OffsetDateTime start = startOfDay(month.atDay(1));
+                OffsetDateTime end = endOfDay(month.atEndOfMonth());
+                return new PlatformSubscriptionMonthResponse(
+                    month.toString(),
+                    month.atDay(1).getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
+                    subscriptionPaymentRepository.countByPaymentStatusAndDeletedFalseAndCreatedAtBetween(
+                        SubscriptionPaymentStatus.PAID,
+                        start,
+                        end
+                    ),
+                    subscriptionPaymentRepository.countByPaymentStatusAndDeletedFalseAndCreatedAtBetween(
+                        SubscriptionPaymentStatus.PENDING,
+                        start,
+                        end
+                    ),
+                    safe(subscriptionPaymentRepository.sumByPaymentStatusAndCreatedAtBetween(
+                        SubscriptionPaymentStatus.PAID,
+                        start,
+                        end
+                    )),
+                    safe(subscriptionPaymentRepository.sumByPaymentStatusAndCreatedAtBetween(
+                        SubscriptionPaymentStatus.PENDING,
+                        start,
+                        end
+                    ))
+                );
+            })
             .toList();
     }
 

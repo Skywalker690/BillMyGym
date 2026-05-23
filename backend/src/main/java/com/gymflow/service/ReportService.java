@@ -2,6 +2,7 @@ package com.gymflow.service;
 
 import com.gymflow.api.dto.MemberDtos.MemberDirectoryItem;
 import com.gymflow.api.dto.MemberDtos.MemberDirectorySummary;
+import com.gymflow.api.dto.AnalyticsDtos.RevenueSegmentationResponse;
 import com.gymflow.api.dto.AnalyticsDtos.RevenueSummaryResponse;
 import com.gymflow.api.dto.ReportDtos.DashboardReportResponse;
 import com.gymflow.api.dto.ReportDtos.MonthlyMemberJoinResponse;
@@ -69,10 +70,14 @@ public class ReportService {
         RevenueSummaryResponse revenueSummary = planAccessService.canViewAdvancedAnalytics(organization)
             ? revenueService.revenueSummary()
             : null;
+        RevenueSegmentationResponse revenueSegmentation = planAccessService.canViewAdvancedAnalytics(organization)
+            ? revenueService.revenueSegmentationSummary()
+            : null;
         MemberDirectorySummary memberSummary = memberService.memberDirectorySummary(organizationId, reminderDays);
 
         return new DashboardReportResponse(
             revenueSummary,
+            revenueSegmentation,
             memberSummary,
             monthlyMemberJoins(organizationId),
             toPlanAccessResponse(planAccessService.summary(organization)),

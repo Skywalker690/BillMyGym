@@ -81,16 +81,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
               )
           )
           or (
-              :membershipStatus = 'DEACTIVATED'
-              and exists (
-                  select membership.id
-                  from MemberMembership membership
-                  where membership.member = member
-                    and membership.deleted = false
-                    and membership.status = com.gymflow.domain.enums.MembershipStatus.DEACTIVATED
-              )
-          )
-          or (
               :membershipStatus = 'OVERDUE'
               and exists (
                   select membership.id
@@ -145,16 +135,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
                     and membership.deleted = false
                     and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
                     and membership.endDate between :today and :expiringThrough
-              )
-          )
-          or (
-              :membershipStatus = 'DEACTIVATED'
-              and exists (
-                  select membership.id
-                  from MemberMembership membership
-                  where membership.member = member
-                    and membership.deleted = false
-                    and membership.status = com.gymflow.domain.enums.MembershipStatus.DEACTIVATED
               )
           )
           or (

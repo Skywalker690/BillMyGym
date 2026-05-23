@@ -1,6 +1,7 @@
 package com.gymflow.api.dto;
 
 import com.gymflow.api.dto.AnalyticsDtos.RevenueSummaryResponse;
+import com.gymflow.api.dto.AnalyticsDtos.RevenueSegmentationResponse;
 import com.gymflow.api.dto.MemberDtos.MemberDirectoryItem;
 import com.gymflow.api.dto.MemberDtos.MemberDirectorySummary;
 import com.gymflow.api.dto.NotificationDtos.NotificationResponse;
@@ -19,6 +20,7 @@ public class ReportDtos {
 
     public record DashboardReportResponse(
         RevenueSummaryResponse revenue,
+        RevenueSegmentationResponse revenueSegmentation,
         MemberDirectorySummary memberSummary,
         List<MonthlyMemberJoinResponse> monthlyMemberJoins,
         PlanAccessResponse planAccess,

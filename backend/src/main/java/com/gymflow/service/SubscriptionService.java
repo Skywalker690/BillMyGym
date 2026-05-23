@@ -69,6 +69,7 @@ public class SubscriptionService {
     private final AuditLogService auditLogService;
     private final OrganizationPaymentWebhookService organizationPaymentWebhookService;
     private final BillingLifecycleService billingLifecycleService;
+    private final OrganizationLifecycleService organizationLifecycleService;
     private final ObjectMapper objectMapper;
 
     @Value("${razorpay.key-id:}")
@@ -186,6 +187,7 @@ public class SubscriptionService {
         }
         Organization organization = organizationRepository.findByIdAndDeletedFalse(organizationId)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
+        organizationLifecycleService.normalize(organization, LocalDate.now());
         return toStatusResponse(organization);
     }
 
@@ -356,8 +358,10 @@ public class SubscriptionService {
         if (user.organizationId() == null) {
             throw new BadRequestException("Organization context is required");
         }
-        return organizationRepository.findByIdAndDeletedFalse(user.organizationId())
+        Organization organization = organizationRepository.findByIdAndDeletedFalse(user.organizationId())
             .orElseThrow(() -> new NotFoundException("Organization not found"));
+        organizationLifecycleService.normalize(organization, LocalDate.now());
+        return organization;
     }
 
     private String createRazorpayOrder(long amountInPaise, String receipt, SubscriptionPlan selectedPlan) {

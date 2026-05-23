@@ -132,13 +132,10 @@ public class PaymentLedgerService {
         List<MemberPayment> previousPayments,
         RecordPaymentRequest request
     ) {
-        if (request.paymentStatus() == PaymentStatus.FAILED) {
-            return PaymentStatus.FAILED;
+        if (request.paymentStatus() != null) {
+            return request.paymentStatus();
         }
         BigDecimal totalPaid = membershipLifecycleService.successfulPaymentTotal(previousPayments).add(request.amount());
-        if (request.paymentStatus() == PaymentStatus.PENDING) {
-            return PaymentStatus.PENDING;
-        }
         return membershipLifecycleService.resolveCoverageStatus(membership.getPlanAmount(), totalPaid);
     }
 

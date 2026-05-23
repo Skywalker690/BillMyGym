@@ -6,7 +6,6 @@ import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationUsageStats;
 import com.gymflow.domain.enums.MemberStatus;
-import com.gymflow.domain.enums.MembershipStatus;
 import com.gymflow.domain.enums.PaymentStatus;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberPaymentRepository;
@@ -76,8 +75,7 @@ public class MonthlyOrganizationReportService {
                 continue;
             }
             boolean overlapsMonth = !membership.getStartDate().isAfter(monthEnd)
-                && !membership.getEndDate().isBefore(monthStart)
-                && membership.getStatus() != MembershipStatus.DEACTIVATED;
+                && !membership.getEndDate().isBefore(monthStart);
             if (!overlapsMonth) {
                 continue;
             }

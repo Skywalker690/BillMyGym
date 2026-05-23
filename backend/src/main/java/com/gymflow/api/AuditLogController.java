@@ -56,6 +56,17 @@ public class AuditLogController {
             .body(csv);
     }
 
+    @GetMapping("/audit-logs/subscriptions")
+    public ResponseEntity<?> globalSubscriptionAudit(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+            "Global subscription audit fetched successfully",
+            auditQueryService.listGlobalSubscriptionAudit(page, size)
+        ));
+    }
+
     @GetMapping("/organizations/{organizationId}/audit-logs/member-activity")
     public ResponseEntity<?> organizationMemberActivity(
         @PathVariable Long organizationId,

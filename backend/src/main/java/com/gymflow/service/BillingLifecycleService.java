@@ -24,6 +24,8 @@ public class BillingLifecycleService {
         organization.setStatus(OrganizationStatus.TRIAL);
         organization.setTrialStartDate(startDate);
         organization.setTrialEndDate(trialEndDate);
+        organization.setPilotStartDate(null);
+        organization.setPilotEndDate(null);
         organization.setSubscriptionDueDate(trialEndDate);
         organization.setPausedAt(null);
         organization.setDeactivatedAt(null);
@@ -65,8 +67,31 @@ public class BillingLifecycleService {
             organization.setSubscriptionPlan(SubscriptionPlan.STARTER);
         }
         organization.setStatus(OrganizationStatus.ACTIVE);
+        organization.setTrialStartDate(null);
+        organization.setTrialEndDate(null);
+        if (organization.getOrganizationType() != OrganizationType.PILOT) {
+            organization.setPilotStartDate(null);
+            organization.setPilotEndDate(null);
+        }
         organization.setSubscriptionDueDate(nextDueDate(periodEnd));
         organization.setPausedAt(null);
+        organization.setDeactivatedAt(null);
+    }
+
+    public void convertExpiredPilotToRegularBilling(Organization organization, LocalDate today) {
+        organization.setOrganizationType(OrganizationType.REGULAR);
+        if (organization.getSubscriptionPlan() == null || organization.getSubscriptionPlan() == SubscriptionPlan.PILOT) {
+            organization.setSubscriptionPlan(SubscriptionPlan.STARTER);
+        }
+        organization.setStatus(OrganizationStatus.PAUSED);
+        organization.setTrialStartDate(null);
+        organization.setTrialEndDate(null);
+        organization.setPilotStartDate(null);
+        organization.setPilotEndDate(null);
+        organization.setSubscriptionDueDate(today);
+        if (organization.getPausedAt() == null) {
+            organization.setPausedAt(OffsetDateTime.now());
+        }
         organization.setDeactivatedAt(null);
     }
 

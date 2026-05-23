@@ -4,6 +4,8 @@ import com.gymflow.api.dto.AuditDtos.AdminActivityAuditRow;
 import com.gymflow.api.dto.AuditDtos.AuditPageResponse;
 import com.gymflow.api.dto.AuditDtos.GlobalLoginAuditResponse;
 import com.gymflow.api.dto.AuditDtos.GlobalLoginAuditRow;
+import com.gymflow.api.dto.AuditDtos.GlobalSubscriptionAuditResponse;
+import com.gymflow.api.dto.AuditDtos.GlobalSubscriptionAuditRow;
 import com.gymflow.api.dto.AuditDtos.MemberActivityAuditRow;
 import com.gymflow.api.dto.AuditDtos.MemberStatusAuditRow;
 import com.gymflow.api.dto.AuditDtos.NotificationAuditResponse;
@@ -13,6 +15,7 @@ import com.gymflow.api.error.ForbiddenException;
 import com.gymflow.api.error.NotFoundException;
 import com.gymflow.domain.AuditLog;
 import com.gymflow.domain.NotificationLog;
+import com.gymflow.domain.OrganizationSubscriptionPayment;
 import com.gymflow.domain.enums.AuditActivityScope;
 import com.gymflow.domain.enums.AuditEventStatus;
 import com.gymflow.domain.enums.NotificationChannel;
@@ -21,6 +24,7 @@ import com.gymflow.domain.enums.Role;
 import com.gymflow.repository.AuditLogRepository;
 import com.gymflow.repository.NotificationLogRepository;
 import com.gymflow.repository.OrganizationRepository;
+import com.gymflow.repository.OrganizationSubscriptionPaymentRepository;
 import com.gymflow.security.SecurityUtils;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -45,6 +49,7 @@ public class AuditQueryService {
     private final AuditLogRepository auditLogRepository;
     private final NotificationLogRepository notificationLogRepository;
     private final OrganizationRepository organizationRepository;
+    private final OrganizationSubscriptionPaymentRepository subscriptionPaymentRepository;
 
     @Transactional(readOnly = true)
     public GlobalLoginAuditResponse listGlobalLoginAudit(
@@ -112,6 +117,24 @@ public class AuditQueryService {
                 .append(safeCsv(row.description())).append('\n');
         }
         return csv.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    @Transactional(readOnly = true)
+    public GlobalSubscriptionAuditResponse listGlobalSubscriptionAudit(int page, int size) {
+        ensureSuperAdmin();
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        Page<OrganizationSubscriptionPayment> result = subscriptionPaymentRepository.findByDeletedFalseOrderByCreatedAtDesc(
+            PageRequest.of(safePage, safeSize)
+        );
+        return new GlobalSubscriptionAuditResponse(new AuditPageResponse<>(
+            result.getContent().stream().map(this::toGlobalSubscriptionRow).toList(),
+            result.getNumber(),
+            result.getSize(),
+            result.getTotalElements(),
+            result.getTotalPages(),
+            result.hasNext()
+        ));
     }
 
     @Transactional(readOnly = true)
@@ -375,6 +398,23 @@ public class AuditQueryService {
             notificationLog.getRecipient(),
             notificationLog.getStatus(),
             notificationDescription(notificationLog)
+        );
+    }
+
+    private GlobalSubscriptionAuditRow toGlobalSubscriptionRow(OrganizationSubscriptionPayment payment) {
+        return new GlobalSubscriptionAuditRow(
+            payment.getCreatedAt() == null ? null : payment.getCreatedAt().toInstant(),
+            payment.getOrganization() == null ? null : payment.getOrganization().getId(),
+            payment.getOrganization() == null ? "-" : payment.getOrganization().getName(),
+            payment.getSubscriptionPlan(),
+            payment.getAmount(),
+            payment.getPaymentStatus(),
+            payment.getPaymentDate(),
+            payment.getSubscriptionStart(),
+            payment.getSubscriptionEnd(),
+            payment.getRazorpayOrderId(),
+            payment.getRazorpayPaymentId(),
+            payment.getFailureReason()
         );
     }
 

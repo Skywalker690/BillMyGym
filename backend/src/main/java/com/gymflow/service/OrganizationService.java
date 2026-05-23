@@ -274,7 +274,12 @@ public class OrganizationService {
             return;
         }
 
-        if (previousType == OrganizationType.PILOT || previousType == OrganizationType.DEMO) {
+        if (previousType == OrganizationType.PILOT) {
+            billingLifecycleService.convertExpiredPilotToRegularBilling(organization, today);
+            return;
+        }
+
+        if (previousType == OrganizationType.DEMO) {
             billingLifecycleService.startRegularTrial(organization, today);
             return;
         }

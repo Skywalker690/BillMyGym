@@ -50,7 +50,7 @@ public class MemberPayment extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private PaymentType paymentType = PaymentType.NEW_MEMBERSHIP;
+    private PaymentType paymentType = PaymentType.MEMBERSHIP;
 
     @Column(name = "gateway_transaction_id")
     private String gatewayTransactionId;

@@ -220,9 +220,8 @@ public class MemberMembershipService {
                 reminderDays
             );
             boolean membershipExpiredWithoutRenewal =
-                latestMembership.getStatus() == MembershipStatus.DEACTIVATED
-                    || latestMembership.getStatus() == MembershipStatus.OVERDUE;
-            boolean isOverdueBy30Days = latestMembership.getEndDate().plusDays(30).isBefore(LocalDate.now());
+                latestMembership.getStatus() == MembershipStatus.OVERDUE;
+            boolean isOverdueBy30Days = !latestMembership.getEndDate().plusDays(30).isAfter(LocalDate.now());
 
             if (member.getStatus() == MemberStatus.ACTIVE && membershipExpiredWithoutRenewal && isOverdueBy30Days) {
                 member.setStatus(MemberStatus.DEACTIVATED);

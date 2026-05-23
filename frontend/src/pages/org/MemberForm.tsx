@@ -182,17 +182,41 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
         });
         const membership = membershipResponse.data;
         if (data.initialPaymentAmount && data.initialPaymentAmount > 0) {
-          await api.post("/payments", {
-            membershipId: membership.id,
-            amount: data.initialPaymentAmount,
-            paymentDate: new Date().toISOString().slice(0, 10),
-            paymentType: isRenew ? "RENEWAL" : "NEW_MEMBERSHIP",
-            paymentStatus: "PAID",
-          }, {
-            headers: {
-              "X-Idempotency-Key": crypto.randomUUID(),
-            },
-          });
+          const isAdmissionApplicable = isCreate && !existingMember && organizationAdmissionFee > 0;
+          
+          if (isAdmissionApplicable) {
+            // Record admission fee payment
+            await api.post("/payments", {
+              membershipId: membership.id,
+              amount: organizationAdmissionFee,
+              paymentDate: new Date().toISOString().slice(0, 10),
+              paymentType: "ADMISSION",
+              paymentStatus: "PAID",
+            }, {
+              headers: {
+                "X-Idempotency-Key": crypto.randomUUID(),
+              },
+            });
+          }
+          
+          const membershipAmount = isAdmissionApplicable 
+            ? (data.planAmount && data.planAmount > 0 ? data.planAmount : 0) 
+            : data.initialPaymentAmount;
+            
+          if (membershipAmount > 0) {
+            // Record membership fee payment
+            await api.post("/payments", {
+              membershipId: membership.id,
+              amount: membershipAmount,
+              paymentDate: new Date().toISOString().slice(0, 10),
+              paymentType: "MEMBERSHIP",
+              paymentStatus: "PAID",
+            }, {
+              headers: {
+                "X-Idempotency-Key": crypto.randomUUID(),
+              },
+            });
+          }
         }
       }
 

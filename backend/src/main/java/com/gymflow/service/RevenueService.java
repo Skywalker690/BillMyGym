@@ -2,6 +2,7 @@ package com.gymflow.service;
 
 import com.gymflow.api.dto.AnalyticsDtos.MonthlyRevenuePoint;
 import com.gymflow.api.dto.AnalyticsDtos.MonthlyRevenueResponse;
+import com.gymflow.api.dto.AnalyticsDtos.RevenueSegmentationResponse;
 import com.gymflow.api.dto.AnalyticsDtos.RevenueSummaryResponse;
 import com.gymflow.api.dto.MembershipDtos.PaymentCoverageSummary;
 import com.gymflow.api.error.BadRequestException;
@@ -12,6 +13,7 @@ import com.gymflow.domain.Organization;
 import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.MembershipStatus;
 import com.gymflow.domain.enums.PaymentStatus;
+import com.gymflow.domain.enums.PaymentType;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberPaymentRepository;
 import com.gymflow.repository.MemberRepository;
@@ -19,9 +21,12 @@ import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.security.SecurityUtils;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
@@ -30,6 +35,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class RevenueService {
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final OrganizationRepository organizationRepository;
     private final MemberRepository memberRepository;
@@ -67,6 +73,7 @@ public class RevenueService {
         BigDecimal pendingRevenue = BigDecimal.ZERO;
         BigDecimal overdueRevenue = BigDecimal.ZERO;
         long prepaidMembers = 0L;
+        long activeMembersPendingCollection = 0L;
 
         for (MemberMembership membership : memberships) {
             if (membership.getMember().getStatus() != MemberStatus.ACTIVE) {
@@ -80,13 +87,16 @@ public class RevenueService {
             boolean isCurrentObligation = membership.getStatus() == MembershipStatus.ACTIVE
                 && !membership.getStartDate().isAfter(monthEnd)
                 && !membership.getEndDate().isBefore(monthStart);
-            if (isCurrentObligation && membership.getStatus() != MembershipStatus.DEACTIVATED) {
+            if (isCurrentObligation) {
                 expectedRevenue = expectedRevenue.add(membership.getPlanAmount());
             }
             if (isCurrentObligation && membership.getStatus() == MembershipStatus.ACTIVE) {
                 pendingRevenue = pendingRevenue.add(coverage.pendingAmount());
+                if (coverage.pendingAmount().compareTo(BigDecimal.ZERO) > 0) {
+                    activeMembersPendingCollection++;
+                }
             }
-            if (membership.getStatus() == MembershipStatus.DEACTIVATED || membership.getStatus() == MembershipStatus.OVERDUE) {
+            if (membership.getStatus() == MembershipStatus.OVERDUE) {
                 overdueRevenue = overdueRevenue.add(coverage.pendingAmount());
             }
             if (membership.getDurationMonths() > 1 && coverage.pendingAmount().compareTo(BigDecimal.ZERO) == 0
@@ -95,13 +105,18 @@ public class RevenueService {
             }
         }
 
+        long activeMembers = memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(organization.getId(), MemberStatus.ACTIVE);
+        long activeMembersCollected = Math.max(activeMembers - activeMembersPendingCollection, 0);
+
         return new RevenueSummaryResponse(
             currentRevenue,
             pendingRevenue,
             expectedRevenue,
             overdueRevenue,
-            memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(organization.getId(), MemberStatus.ACTIVE),
-            prepaidMembers
+            activeMembers,
+            prepaidMembers,
+            activeMembersCollected,
+            activeMembersPendingCollection
         );
     }
 
@@ -118,6 +133,50 @@ public class RevenueService {
                 summary.overdueRevenue()
             )
         ));
+    }
+
+    @Cacheable(value = "revenueReports", key = "'segmentation:' + T(com.gymflow.security.SecurityUtils).currentUser().organizationId()")
+    public RevenueSegmentationResponse revenueSegmentationSummary() {
+        Organization organization = currentOrganization();
+        YearMonth currentMonth = YearMonth.now(APP_ZONE);
+        LocalDate monthStart = currentMonth.atDay(1);
+        LocalDate monthEnd = currentMonth.atEndOfMonth();
+        OffsetDateTime monthStartAt = monthStart.atStartOfDay(APP_ZONE).toOffsetDateTime();
+        OffsetDateTime monthEndAt = currentMonth.plusMonths(1).atDay(1).atStartOfDay(APP_ZONE).toOffsetDateTime().minusNanos(1);
+
+        BigDecimal admissionRevenue = BigDecimal.ZERO;
+        BigDecimal recurringRevenue = BigDecimal.ZERO;
+        Set<Long> admittedMemberIds = new java.util.HashSet<>();
+        List<MemberPayment> payments = memberPaymentRepository.findByOrganizationIdAndDeletedFalseOrderByPaymentDateDescCreatedAtDesc(
+            organization.getId()
+        );
+
+        for (MemberPayment payment : payments) {
+            if (payment.getPaymentStatus() != PaymentStatus.PAID || payment.getPaymentDate() == null) {
+                continue;
+            }
+            LocalDate paymentDate = payment.getPaymentDate();
+            if (paymentDate.isBefore(monthStart) || paymentDate.isAfter(monthEnd)) {
+                continue;
+            }
+            if (payment.getPaymentType() == PaymentType.ADMISSION) {
+                admissionRevenue = admissionRevenue.add(payment.getAmount());
+                if (payment.getAmount().compareTo(BigDecimal.ZERO) > 0) {
+                    admittedMemberIds.add(payment.getMember().getId());
+                }
+            } else if (payment.getPaymentType() == PaymentType.MEMBERSHIP
+                || payment.getPaymentType() == PaymentType.NEW_MEMBERSHIP
+                || payment.getPaymentType() == PaymentType.RENEWAL) {
+                recurringRevenue = recurringRevenue.add(payment.getAmount());
+            }
+        }
+
+        return new RevenueSegmentationResponse(
+            admittedMemberIds.size(),
+            admissionRevenue,
+            recurringRevenue,
+            admissionRevenue.add(recurringRevenue)
+        );
     }
 
     private Organization currentOrganization() {

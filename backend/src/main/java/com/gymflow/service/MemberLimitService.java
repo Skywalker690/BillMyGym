@@ -39,7 +39,12 @@ public class MemberLimitService {
     public MemberLimitSummary usage(Organization organization) {
         SubscriptionPlan plan = planAccessService.resolvePlan(organization);
         long usedMembers = memberRepository.countByOrganizationIdAndDeletedFalse(organization.getId());
-        Integer limit = organization.getOrganizationType() == OrganizationType.DEMO ? 3 : plan.memberLimit();
+        Integer limit;
+        if (organization.getOrganizationType() == OrganizationType.DEMO) {
+            limit = Integer.valueOf(3);
+        } else {
+            limit = plan.memberLimit();
+        }
         boolean unlimited = limit == null;
         long remaining = unlimited ? Long.MAX_VALUE : Math.max(limit - usedMembers, 0);
         int usagePercent = unlimited || limit == 0

@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Bell,
   Building2,
   ChevronDown,
-  CreditCard,
   FolderPlus,
   LogOut,
   Menu,
@@ -74,7 +72,6 @@ export function Topbar({
 
   const primaryName = (user?.name || user?.email || "BillMyGym").split(" ")[0];
   const initials = (user?.name || user?.email || "G").trim().charAt(0).toUpperCase();
-  const isOrgAdmin = role === "ORG_ADMIN";
   const isSuperAdmin = role === "SUPER_ADMIN";
   const quickLinks = isSuperAdmin
     ? [
@@ -108,12 +105,6 @@ export function Topbar({
           to: "/app/settings",
           label: "Settings",
           icon: Settings,
-          iconClassName: "text-emerald-700",
-        },
-        {
-          to: "/app/subscription",
-          label: "Billing",
-          icon: CreditCard,
           iconClassName: "text-emerald-700",
         },
       ];
@@ -174,16 +165,6 @@ export function Topbar({
               <span className="hidden sm:inline">{item.label}</span>
             </Link>
           ))}
-
-          {isOrgAdmin && (
-            <Link
-              to="/app/notifications"
-              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-            >
-              <Bell className="h-4 w-4 text-amber-600" />
-              <span className="hidden sm:inline">Alerts</span>
-            </Link>
-          )}
 
           <div className="relative z-50" ref={profileRef}>
             <button

@@ -1,7 +1,11 @@
 package com.gymflow.service;
 
 import com.gymflow.domain.Organization;
+import com.gymflow.domain.OrganizationSubscriptionPayment;
 import com.gymflow.domain.enums.OrganizationType;
+import com.gymflow.domain.enums.Role;
+import com.gymflow.domain.enums.UserStatus;
+import com.gymflow.repository.AppUserRepository;
 import jakarta.mail.internet.MimeMessage;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -27,6 +31,7 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
     private final UsageMetricService usageMetricService;
+    private final AppUserRepository appUserRepository;
 
     @Value("${spring.mail.username}")
     private String fromEmail;
@@ -191,6 +196,18 @@ public class EmailService {
             true,
             organization
         );
+    }
+
+    @Async
+    public void sendSuperAdminSubscriptionPaymentEmail(OrganizationSubscriptionPayment payment) {
+        appUserRepository.findByRoleAndStatusAndDeletedFalse(Role.SUPER_ADMIN, UserStatus.ACTIVE)
+            .forEach(superAdmin -> sendHtmlEmail(
+                superAdmin.getEmail(),
+                "BillMyGym subscription " + payment.getPaymentStatus().name().toLowerCase(Locale.ENGLISH)
+                    + " - " + payment.getOrganization().getName(),
+                buildSuperAdminSubscriptionPaymentEmail(payment),
+                true
+            ));
     }
 
     @Async
@@ -542,6 +559,47 @@ public class EmailService {
             activeMembers,
             "Failure reason: %s. %s".formatted(failureReason == null ? "Unavailable" : failureReason, lastBillingSummary),
             "Payment failure notice"
+        );
+    }
+
+    private String buildSuperAdminSubscriptionPaymentEmail(OrganizationSubscriptionPayment payment) {
+        Organization organization = payment.getOrganization();
+        String status = payment.getPaymentStatus() == null ? "-" : payment.getPaymentStatus().name();
+        String title = "Subscription " + status.toLowerCase(Locale.ENGLISH);
+        String content = """
+            <p style="margin:0 0 16px 0;">A BillMyGym organization subscription payment changed state.</p>
+            <table width="100%%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #d7e3dc;border-radius:16px;overflow:hidden;background:#f8fcfa;margin:24px 0;">
+              <tr>
+                <td colspan="2" style="padding:14px 18px;background:#e7f6ee;color:#166534;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">Subscription Event</td>
+              </tr>
+              %s
+              %s
+              %s
+              %s
+              %s
+              %s
+              %s
+              %s
+            </table>
+            """.formatted(
+            detailRow("Organization", organization == null ? "-" : organization.getName()),
+            detailRow("Plan", payment.getSubscriptionPlan() == null ? "-" : payment.getSubscriptionPlan().name()),
+            detailRow("Status", status),
+            detailRow("Amount", currency(payment.getAmount())),
+            detailRow("Payment Date", payment.getPaymentDate() == null ? "-" : payment.getPaymentDate().toString()),
+            detailRow("Period", "%s to %s".formatted(payment.getSubscriptionStart(), payment.getSubscriptionEnd())),
+            detailRow("Gateway Payment", payment.getRazorpayPaymentId() == null ? "-" : payment.getRazorpayPaymentId()),
+            detailRow("Failure Reason", payment.getFailureReason() == null ? "-" : payment.getFailureReason())
+        );
+
+        return buildShell(
+            title,
+            "Platform subscription alert",
+            "A subscription payment event was recorded for an organization.",
+            content,
+            "Open Subscription Audit",
+            "/app/audit-logs",
+            "This email was sent to active BillMyGym super admins."
         );
     }
 

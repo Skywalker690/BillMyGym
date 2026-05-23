@@ -29,6 +29,7 @@ public class AnalyticsDtos {
         long currentMonthNewOrganizations,
         long previousMonthNewOrganizations,
         int organizationGrowthPercent,
+        List<PlatformSubscriptionMonthResponse> monthlySubscriptionActivity,
         List<PlatformBreakdownResponse> organizationsByStatus,
         List<PlatformBreakdownResponse> organizationsBySubscriptionPlan,
         List<PlatformBreakdownResponse> paymentsByStatus,
@@ -45,6 +46,16 @@ public class AnalyticsDtos {
     ) {
     }
 
+    public record PlatformSubscriptionMonthResponse(
+        String month,
+        String label,
+        long paidSubscriptions,
+        long pendingSubscriptions,
+        BigDecimal paidAmount,
+        BigDecimal pendingAmount
+    ) {
+    }
+
     public record OrganizationAnalyticsResponse(
         long activeMembers,
         long remindersSent
@@ -57,7 +68,17 @@ public class AnalyticsDtos {
         BigDecimal expectedRevenue,
         BigDecimal overdueRevenue,
         long activeMembers,
-        long prepaidMembers
+        long prepaidMembers,
+        long activeMembersCollected,
+        long activeMembersPendingCollection
+    ) {
+    }
+
+    public record RevenueSegmentationResponse(
+        long admissionsThisMonth,
+        BigDecimal admissionRevenue,
+        BigDecimal recurringRevenue,
+        BigDecimal totalRevenue
     ) {
     }
 

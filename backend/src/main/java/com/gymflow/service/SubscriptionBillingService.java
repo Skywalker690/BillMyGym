@@ -22,7 +22,7 @@ public class SubscriptionBillingService {
 
     private static final String PAYMENT_LINK = "/app/subscription";
     private static final List<Integer> REMINDER_OFFSETS = List.of(7, 3, 1);
-    private static final List<OrganizationType> BILLABLE_TYPES = List.of(OrganizationType.REGULAR, OrganizationType.PILOT);
+    private static final List<OrganizationType> BILLABLE_TYPES = List.of(OrganizationType.REGULAR);
 
     private final OrganizationRepository organizationRepository;
     private final OrganizationSubscriptionPaymentRepository subscriptionPaymentRepository;
@@ -32,10 +32,12 @@ public class SubscriptionBillingService {
     private final BillingLifecycleService billingLifecycleService;
     private final WhatsAppDeliveryService whatsAppDeliveryService;
     private final PlanAccessService planAccessService;
+    private final PilotConversionService pilotConversionService;
 
     @Transactional
     public void processDailyBilling() {
         LocalDate today = LocalDate.now();
+        pilotConversionService.convertEligiblePilots();
         sendUpcomingDueReminders(today);
         pauseOverdueOrganizations(today);
         deactivateLongUnpaidOrganizations(today);

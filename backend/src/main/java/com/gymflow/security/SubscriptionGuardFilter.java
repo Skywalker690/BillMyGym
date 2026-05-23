@@ -4,7 +4,7 @@ import com.gymflow.domain.Organization;
 import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.Role;
-import com.gymflow.repository.OrganizationRepository;
+import com.gymflow.service.OrganizationLifecycleService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,7 +20,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @RequiredArgsConstructor
 public class SubscriptionGuardFilter extends OncePerRequestFilter {
 
-    private final OrganizationRepository organizationRepository;
+    private final OrganizationLifecycleService organizationLifecycleService;
     private final JsonSecurityErrorWriter errorWriter;
 
     @Override
@@ -44,7 +44,7 @@ public class SubscriptionGuardFilter extends OncePerRequestFilter {
             return;
         }
 
-        Organization organization = organizationRepository.findByIdAndDeletedFalse(user.organizationId()).orElse(null);
+        Organization organization = organizationLifecycleService.normalizeForAccess(user.organizationId());
         if (organization == null) {
             errorWriter.write(response, HttpStatus.FORBIDDEN.value(), "Organization context is invalid", "ORGANIZATION_CONTEXT_INVALID");
             return;

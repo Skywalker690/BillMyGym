@@ -33,6 +33,15 @@ type PlatformBreakdown = {
   percentage: number;
 };
 
+type PlatformSubscriptionMonth = {
+  month: string;
+  label: string;
+  paidSubscriptions: number;
+  pendingSubscriptions: number;
+  paidAmount: number;
+  pendingAmount: number;
+};
+
 type PlatformAnalytics = {
   totalOrganizations: number;
   activeOrganizations: number;
@@ -57,6 +66,7 @@ type PlatformAnalytics = {
   currentMonthNewOrganizations: number;
   previousMonthNewOrganizations: number;
   organizationGrowthPercent: number;
+  monthlySubscriptionActivity: PlatformSubscriptionMonth[];
   organizationsByStatus: PlatformBreakdown[];
   organizationsBySubscriptionPlan: PlatformBreakdown[];
   paymentsByStatus: PlatformBreakdown[];
@@ -128,6 +138,33 @@ function BreakdownBar({ item, amount = false }: { item: PlatformBreakdown; amoun
   );
 }
 
+function SubscriptionActivityChart({ items }: { items: PlatformSubscriptionMonth[] }) {
+  const maxCount = Math.max(...items.map((item) => item.paidSubscriptions + item.pendingSubscriptions), 1);
+
+  if (items.length === 0) {
+    return <div className="mt-5 rounded-2xl border border-dashed border-slate-200 p-6 text-sm font-semibold text-slate-500">No subscription activity yet.</div>;
+  }
+
+  return (
+    <div className="mt-6 grid gap-3 sm:grid-cols-6">
+      {items.map((item) => {
+        const paidHeight = Math.max((item.paidSubscriptions / maxCount) * 100, item.paidSubscriptions > 0 ? 10 : 3);
+        const pendingHeight = Math.max((item.pendingSubscriptions / maxCount) * 100, item.pendingSubscriptions > 0 ? 10 : 3);
+        return (
+          <div key={item.month} className="rounded-2xl border border-white/75 bg-white/70 p-4 shadow-sm">
+            <div className="flex h-32 items-end justify-center gap-2 rounded-xl bg-slate-50 p-3">
+              <div className="w-5 rounded-full bg-emerald-600" style={{ height: `${paidHeight}%` }} title={`${item.paidSubscriptions} paid`} />
+              <div className="w-5 rounded-full bg-amber-400" style={{ height: `${pendingHeight}%` }} title={`${item.pendingSubscriptions} pending`} />
+            </div>
+            <div className="mt-3 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{item.label}</div>
+            <div className="mt-1 text-center text-sm font-black text-slate-950">{item.paidSubscriptions} / {item.pendingSubscriptions}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function PlatformOverview() {
   const [showLifetimeRevenue, setShowLifetimeRevenue] = useState(false);
   const { data: analytics, isLoading } = useQuery<PlatformAnalytics>({
@@ -167,6 +204,7 @@ export default function PlatformOverview() {
     currentMonthNewOrganizations: 0,
     previousMonthNewOrganizations: 0,
     organizationGrowthPercent: 0,
+    monthlySubscriptionActivity: [],
     organizationsByStatus: [],
     organizationsBySubscriptionPlan: [],
     paymentsByStatus: [],
@@ -177,23 +215,30 @@ export default function PlatformOverview() {
     {
       label: "Total gyms",
       value: data.totalOrganizations,
-      detail: `${data.currentMonthNewOrganizations} added this month`,
+      detail: `${data.currentMonthNewOrganizations} new this month`,
       icon: Building2,
       tone: "from-slate-950 to-slate-800 text-white",
     },
     {
-      label: "Active organizations",
+      label: "Paid active orgs",
       value: data.activeOrganizations,
-      detail: `${data.activeSubscriptionRecords} paid subscription records active`,
+      detail: `${data.activeSubscriptionRecords} active billing periods`,
       icon: Activity,
       tone: "from-emerald-600 to-teal-500 text-white",
     },
     {
-      label: "Expired / overdue",
-      value: data.expiredOrganizations,
-      detail: `${data.pausedOrganizations} paused · ${data.deactivatedOrganizations} deactivated`,
+      label: "Renewal required",
+      value: data.pausedOrganizations,
+      detail: `${data.renewalsDueInSevenDays} renewals due in 7 days`,
       icon: AlertTriangle,
       tone: "from-orange-500 to-rose-500 text-white",
+    },
+    {
+      label: "Overdue access",
+      value: data.expiredOrganizations,
+      detail: `${data.deactivatedOrganizations} inactive accounts`,
+      icon: PauseCircle,
+      tone: "from-amber-600 to-orange-500 text-white",
     },
     {
       label: "Projected MRR",
@@ -203,7 +248,6 @@ export default function PlatformOverview() {
       tone: "from-indigo-700 to-sky-500 text-white",
     },
   ];
-
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
       <div className="relative overflow-hidden rounded-[2.25rem] border border-white/75 bg-slate-950 p-6 text-white shadow-[0_30px_90px_rgba(15,23,42,0.28)] sm:p-8 lg:p-10">
@@ -269,7 +313,7 @@ export default function PlatformOverview() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {metricCards.map((card) => {
           const Icon = card.icon;
           return (
@@ -284,6 +328,35 @@ export default function PlatformOverview() {
             </div>
           );
         })}
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[1fr_0.78fr]">
+        <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Subscription Rate</div>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Paid vs pending subscriptions by month</h2>
+            </div>
+            <Badge className="w-fit border-slate-200 bg-white text-slate-800">
+              {data.pendingPayments} pending now
+            </Badge>
+          </div>
+          <SubscriptionActivityChart items={data.monthlySubscriptionActivity} />
+        </div>
+
+        <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
+          <CreditCard className="h-7 w-7 text-emerald-700" />
+          <div className="mt-5 text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Current Month</div>
+          <div className="mt-2 text-3xl font-black text-slate-950">
+            {data.monthlySubscriptionActivity.at(-1)?.paidSubscriptions ?? 0} paid
+          </div>
+          <p className="mt-2 text-sm font-bold text-slate-500">
+            {data.monthlySubscriptionActivity.at(-1)?.pendingSubscriptions ?? 0} pending subscriptions this month.
+          </p>
+          <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-black text-emerald-800">
+            {money.format(data.monthlySubscriptionActivity.at(-1)?.paidAmount ?? 0)} received
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1fr_0.9fr]">

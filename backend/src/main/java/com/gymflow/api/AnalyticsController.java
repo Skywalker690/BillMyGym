@@ -59,4 +59,13 @@ public class AnalyticsController {
             revenueService.monthlyRevenue()
         ));
     }
+
+    @GetMapping("/revenue/segmentation")
+    public ResponseEntity<?> revenueSegmentationAnalytics() {
+        planAccessService.requireAdvancedAnalytics();
+        return ResponseEntity.ok(ApiResponse.success(
+            "Revenue segmentation fetched successfully",
+            revenueService.revenueSegmentationSummary()
+        ));
+    }
 }
