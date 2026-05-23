@@ -7,11 +7,15 @@ import com.gymflow.api.dto.AnalyticsDtos.RevenueSummaryResponse;
 import com.gymflow.api.dto.ReportDtos.DashboardReportResponse;
 import com.gymflow.api.dto.ReportDtos.MonthlyMemberJoinResponse;
 import com.gymflow.api.dto.ReportDtos.ReminderReportResponse;
+import com.gymflow.api.dto.ReportDtos.SubscriptionValiditySummary;
 import com.gymflow.api.dto.SubscriptionDtos.PlanAccessResponse;
 import com.gymflow.api.error.BadRequestException;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
+import com.gymflow.domain.Organization;
+import com.gymflow.domain.enums.OrganizationStatus;
+import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberRepository;
 import com.gymflow.repository.MemberPaymentRepository;
@@ -19,6 +23,7 @@ import com.gymflow.security.SecurityUtils;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +86,7 @@ public class ReportService {
             memberSummary,
             monthlyMemberJoins(organizationId),
             toPlanAccessResponse(planAccessService.summary(organization)),
+            buildSubscriptionValidity(organization),
             expiringItems,
             overdueItems,
             notificationQueryService.listRecentReminderLogs(organizationId, 5)
@@ -135,6 +141,67 @@ public class ReportService {
             summary.canExportReports(),
             summary.canUsePremiumFeatures()
         );
+    }
+
+    private SubscriptionValiditySummary buildSubscriptionValidity(Organization organization) {
+        LocalDate today = LocalDate.now();
+        LocalDate validThrough = resolveValidityDate(organization);
+        long daysRemaining = validThrough == null ? 0 : ChronoUnit.DAYS.between(today, validThrough);
+
+        if (organization.getOrganizationType() == OrganizationType.PILOT) {
+            return new SubscriptionValiditySummary(
+                "Pilot access",
+                daysRemaining,
+                validThrough == null ? "Access date unavailable" : "Valid through",
+                validThrough
+            );
+        }
+
+        if (organization.getStatus() == OrganizationStatus.TRIAL) {
+            return new SubscriptionValiditySummary(
+                "Trial access",
+                daysRemaining,
+                validThrough == null ? "Trial date unavailable" : "Valid through",
+                validThrough
+            );
+        }
+
+        if (organization.getStatus() == OrganizationStatus.DEACTIVATED) {
+            return new SubscriptionValiditySummary(
+                "Subscription inactive",
+                daysRemaining,
+                validThrough == null ? "Renew to restore access" : "Expired on",
+                validThrough
+            );
+        }
+
+        if (organization.getStatus() == OrganizationStatus.PAUSED) {
+            return new SubscriptionValiditySummary(
+                "Renewal overdue",
+                daysRemaining,
+                validThrough == null ? "Renewal date unavailable" : "Due on",
+                validThrough
+            );
+        }
+
+        return new SubscriptionValiditySummary(
+            "Subscription valid",
+            daysRemaining,
+            validThrough == null ? "Renewal date unavailable" : "Valid through",
+            validThrough
+        );
+    }
+
+    private LocalDate resolveValidityDate(Organization organization) {
+        if (organization.getOrganizationType() == OrganizationType.PILOT) {
+            return organization.getPilotEndDate();
+        }
+        if (organization.getStatus() == OrganizationStatus.TRIAL) {
+            return organization.getTrialEndDate() != null
+                ? organization.getTrialEndDate()
+                : organization.getSubscriptionDueDate();
+        }
+        return organization.getSubscriptionDueDate();
     }
 
     private List<MonthlyMemberJoinResponse> monthlyMemberJoins(Long organizationId) {

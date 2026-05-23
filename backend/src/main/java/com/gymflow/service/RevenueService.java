@@ -74,6 +74,9 @@ public class RevenueService {
         BigDecimal overdueRevenue = BigDecimal.ZERO;
         long prepaidMembers = 0L;
         long activeMembersPendingCollection = 0L;
+        BigDecimal monthlyMembershipFee = organization.getMonthlyMembershipFee() == null
+            ? BigDecimal.ZERO
+            : organization.getMonthlyMembershipFee();
 
         for (MemberMembership membership : memberships) {
             if (membership.getMember().getStatus() != MemberStatus.ACTIVE) {
@@ -88,16 +91,19 @@ public class RevenueService {
                 && !membership.getStartDate().isAfter(monthEnd)
                 && !membership.getEndDate().isBefore(monthStart);
             if (isCurrentObligation) {
-                expectedRevenue = expectedRevenue.add(membership.getPlanAmount());
+                expectedRevenue = expectedRevenue.add(monthlyMembershipFee);
             }
             if (isCurrentObligation && membership.getStatus() == MembershipStatus.ACTIVE) {
-                pendingRevenue = pendingRevenue.add(coverage.pendingAmount());
+                pendingRevenue = pendingRevenue.add(
+                    coverage.pendingAmount().compareTo(BigDecimal.ZERO) > 0 ? monthlyMembershipFee : BigDecimal.ZERO
+                );
                 if (coverage.pendingAmount().compareTo(BigDecimal.ZERO) > 0) {
                     activeMembersPendingCollection++;
                 }
             }
             if (membership.getStatus() == MembershipStatus.OVERDUE) {
-                overdueRevenue = overdueRevenue.add(coverage.pendingAmount());
+                overdueRevenue = overdueRevenue.add(monthlyMembershipFee);
+                activeMembersPendingCollection++;
             }
             if (membership.getDurationMonths() > 1 && coverage.pendingAmount().compareTo(BigDecimal.ZERO) == 0
                 && membership.getStatus() == MembershipStatus.ACTIVE) {
@@ -187,4 +193,5 @@ public class RevenueService {
         return organizationRepository.findByIdAndDeletedFalse(organizationId)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
     }
+
 }

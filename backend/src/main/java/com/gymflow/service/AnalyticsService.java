@@ -117,6 +117,7 @@ public class AnalyticsService {
             trialOrganizations,
             pilotOrganizations,
             pausedOrganizations,
+            overdueRegularOrganizations,
             deactivatedOrganizations,
             expiredOrganizations,
             subscriptionRepository.countByDeletedFalseAndEndDateGreaterThanEqual(today),

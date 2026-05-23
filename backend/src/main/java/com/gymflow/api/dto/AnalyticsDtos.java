@@ -11,6 +11,7 @@ public class AnalyticsDtos {
         long trialOrganizations,
         long pilotOrganizations,
         long pausedOrganizations,
+        long overdueOrganizations,
         long deactivatedOrganizations,
         long expiredOrganizations,
         long activeSubscriptionRecords,

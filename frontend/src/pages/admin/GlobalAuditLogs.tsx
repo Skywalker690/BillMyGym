@@ -104,6 +104,11 @@ export default function GlobalAuditLogs() {
 
   const rows = auditQuery.data?.page.items ?? [];
   const meta = auditQuery.data?.page;
+  const subscriptionRows = activeTab === "SUBSCRIPTIONS" ? (rows as SubscriptionAuditRow[]) : [];
+  const paidOnPage = subscriptionRows.filter((row) => row.status === "PAID").length;
+  const pendingOnPage = subscriptionRows.filter((row) => row.status === "PENDING").length;
+  const failedOnPage = subscriptionRows.filter((row) => row.status === "FAILED").length;
+  const amountOnPage = subscriptionRows.reduce((total, row) => total + Number(row.amount ?? 0), 0);
   const queryErrorMessage =
     auditQuery.error instanceof Error ? auditQuery.error.message : "Unable to load the audit log right now.";
 
@@ -182,6 +187,14 @@ export default function GlobalAuditLogs() {
       </section>
 
       <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+        {activeTab === "SUBSCRIPTIONS" && hasRequested && (
+          <div className="grid gap-3 border-b border-slate-100 bg-slate-50/80 p-4 sm:grid-cols-4">
+            <AuditMetric label="Paid on page" value={paidOnPage} tone="emerald" />
+            <AuditMetric label="Pending on page" value={pendingOnPage} tone="amber" />
+            <AuditMetric label="Failed on page" value={failedOnPage} tone="rose" />
+            <AuditMetric label="Amount on page" value={money.format(amountOnPage)} tone="slate" />
+          </div>
+        )}
         {auditQuery.isFetching && (
           <div className="border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
             Refreshing audit...
@@ -277,10 +290,10 @@ function LoginAuditTable({ rows, hasRequested }: { rows: LoginAuditRow[]; hasReq
 function SubscriptionAuditTable({ rows, hasRequested }: { rows: SubscriptionAuditRow[]; hasRequested: boolean }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-[1120px] w-full text-left">
+      <table className="min-w-[1240px] w-full text-left">
         <thead className="bg-slate-50">
           <tr className="text-xs uppercase tracking-wide text-slate-500">
-            <th className="px-4 py-3">Time</th>
+            <th className="px-4 py-3">Logged At</th>
             <th className="px-4 py-3">Organization</th>
             <th className="px-4 py-3">Plan</th>
             <th className="px-4 py-3">Amount</th>
@@ -301,9 +314,12 @@ function SubscriptionAuditTable({ rows, hasRequested }: { rows: SubscriptionAudi
           )}
           {rows.map((row, index) => (
             <tr key={`${row.time}-${row.orderId}-${index}`} className="border-t border-slate-100 text-sm text-slate-700">
-              <td className="px-4 py-3">{formatDateTime(row.time)}</td>
-              <td className="px-4 py-3 font-semibold text-slate-900">{row.organizationName || "-"}</td>
-              <td className="px-4 py-3">{row.plan || "-"}</td>
+              <td className="px-4 py-3 font-semibold text-slate-900">{formatDateTime(row.time)}</td>
+              <td className="px-4 py-3">
+                <div className="font-semibold text-slate-900">{row.organizationName || "-"}</div>
+                <div className="mt-1 text-xs font-semibold text-slate-500">Org ID: {row.organizationId ?? "-"}</div>
+              </td>
+              <td className="px-4 py-3 font-semibold">{row.plan || "-"}</td>
               <td className="px-4 py-3 font-black text-slate-950">{money.format(Number(row.amount ?? 0))}</td>
               <td className="px-4 py-3">
                 <Badge className={paymentStatusClass(row.status)}>{row.status}</Badge>
@@ -314,11 +330,42 @@ function SubscriptionAuditTable({ rows, hasRequested }: { rows: SubscriptionAudi
                 <div>Order: {row.orderId || "-"}</div>
                 <div className="mt-1">Payment: {row.paymentId || "-"}</div>
               </td>
-              <td className="px-4 py-3">{row.failureReason || "Subscription payment record"}</td>
+              <td className="px-4 py-3">
+                <div className="font-semibold text-slate-700">
+                  {row.failureReason || "Subscription payment record"}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {row.status === "PAID" ? "Successful charge captured for this organization." : row.status === "PENDING" ? "Payment is still awaiting completion or retry." : "Payment attempt failed and needs attention."}
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function AuditMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string | number;
+  tone: "emerald" | "amber" | "rose" | "slate";
+}) {
+  const toneClass = {
+    emerald: "border-emerald-100 bg-emerald-50 text-emerald-900",
+    amber: "border-amber-100 bg-amber-50 text-amber-900",
+    rose: "border-rose-100 bg-rose-50 text-rose-900",
+    slate: "border-slate-200 bg-white text-slate-900",
+  }[tone];
+
+  return (
+    <div className={`rounded-[1.2rem] border p-4 shadow-sm ${toneClass}`}>
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">{label}</div>
+      <div className="mt-2 text-2xl font-black tracking-tight">{value}</div>
     </div>
   );
 }

@@ -24,9 +24,18 @@ public class ReportDtos {
         MemberDirectorySummary memberSummary,
         List<MonthlyMemberJoinResponse> monthlyMemberJoins,
         PlanAccessResponse planAccess,
+        SubscriptionValiditySummary subscriptionValidity,
         List<MemberDirectoryItem> expiringSoon,
         List<MemberDirectoryItem> overdue,
         List<NotificationResponse> recentReminderLogs
+    ) {
+    }
+
+    public record SubscriptionValiditySummary(
+        String label,
+        long daysRemaining,
+        String tooltipLabel,
+        java.time.LocalDate tooltipDate
     ) {
     }
 

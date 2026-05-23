@@ -79,6 +79,12 @@ type DashboardReport = {
     canExportReports?: boolean;
     canUsePremiumFeatures?: boolean;
   };
+  subscriptionValidity?: {
+    label?: string;
+    daysRemaining?: number;
+    tooltipLabel?: string;
+    tooltipDate?: string;
+  };
   expiringSoon?: MembershipSnapshot[];
   overdue?: MembershipSnapshot[];
   recentReminderLogs?: ReminderLog[];
@@ -128,6 +134,7 @@ export default function Dashboard() {
   const monthlyMemberJoins = report?.monthlyMemberJoins ?? [];
   const joinedThisMonth = monthlyMemberJoins.at(-1)?.joinedMembers ?? 0;
   const canViewAdvancedAnalytics = report?.planAccess?.canViewAdvancedAnalytics ?? true;
+  const subscriptionValidity = report?.subscriptionValidity;
 
   const membershipCollectedRevenue = Math.max(
     0,
@@ -146,7 +153,14 @@ export default function Dashboard() {
       ? Math.round((membershipCollectedRevenue / Number(revenue.expectedRevenue ?? 0)) * 100)
       : 0;
   const atRiskMembers = Number(summary.expiringSoonMemberships ?? 0) + Number(summary.overdueMemberships ?? 0);
-  const operationsSignal = recentReminderLogs[0]?.status ?? "QUIET";
+  const subscriptionDaysRemaining = Number(subscriptionValidity?.daysRemaining ?? 0);
+  const subscriptionDaysText =
+    subscriptionDaysRemaining === 1
+      ? "1 day"
+      : `${subscriptionDaysRemaining} days`;
+  const subscriptionTooltipLabel = subscriptionValidity?.tooltipLabel;
+  const subscriptionTooltipDate = subscriptionValidity?.tooltipDate;
+  const subscriptionTooltipText = buildSubscriptionTooltip(subscriptionTooltipLabel, subscriptionTooltipDate);
 
   const statCards = [
     {
@@ -172,14 +186,6 @@ export default function Dashboard() {
       icon: Wallet,
       panel: "from-amber-500/20 via-amber-300/8 to-transparent",
       badge: "bg-amber-100 text-amber-800 border-amber-200",
-    },
-    {
-      title: "Collection",
-      value: `${collectionRate}%`,
-      eyebrow: `${summary.expiringSoonMemberships ?? 0} expiring soon`,
-      icon: Clock3,
-      panel: "from-sky-500/18 via-sky-300/8 to-transparent",
-      badge: "bg-sky-100 text-sky-800 border-sky-200",
     },
     {
       title: "Overdue Exposure",
@@ -304,16 +310,16 @@ export default function Dashboard() {
               detail="Members currently generating activity"
             />
             <HeroMetric
-              label="Ops Signal"
-              value={operationsSignal}
+              label={subscriptionValidity?.label ?? "Subscription valid"}
+              value={subscriptionDaysText}
               tone="blue"
-              detail="Latest reminder workflow status"
+              infoTooltip={subscriptionTooltipText ?? undefined}
             />
           </div>
         </div>
       </section>
 
-      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
@@ -350,7 +356,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid gap-4 p-7 md:grid-cols-2">
+          <div className="grid gap-4 p-7 md:grid-cols-3">
             <RevenueBand
               label="Current Revenue"
               value={money(revenueSegmentation.totalRevenue)}
@@ -366,12 +372,6 @@ export default function Dashboard() {
               value={money(revenue.expectedRevenue)}
               accent="slate"
               helper="What the cycle should close at"
-            />
-            <RevenueBand
-              label="Pending Revenue"
-              value={money(revenue.pendingRevenue)}
-              accent="amber"
-              helper="Awaiting collection from live memberships"
             />
             <RevenueBand
               label="Overdue Revenue"
@@ -400,7 +400,7 @@ export default function Dashboard() {
                         {activeMembersCollected} / {activeMembersTotal}
                       </h3>
                       <p className="mt-2 max-w-md text-sm font-medium leading-6 text-slate-600">
-                        Active members fully covered for the current billing cycle, out of your total active member base.
+                        Members with fully covered active memberships, out of your total active member base including overdue members.
                       </p>
                     </div>
                     <div className="rounded-[1.3rem] border border-white/90 bg-white/80 px-4 py-3 text-right shadow-sm">
@@ -418,15 +418,15 @@ export default function Dashboard() {
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-slate-600">
                       <span>{activeMembersCollected} members covered</span>
-                      <span>{activeMembersPendingCollection} still need collection</span>
+                      <span>{activeMembersPendingCollection} still need collection or renewal</span>
                     </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-[1.4rem] border border-white/85 bg-white/78 p-4 shadow-sm">
-                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Need Collection</div>
+                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Need Attention</div>
                       <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{activeMembersPendingCollection}</div>
-                      <div className="mt-1 text-sm font-medium text-slate-500">Active members still waiting for collection</div>
+                      <div className="mt-1 text-sm font-medium text-slate-500">Active members still waiting for collection or renewal</div>
                     </div>
                     <div className="rounded-[1.4rem] border border-white/85 bg-white/78 p-4 shadow-sm">
                       <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Active members</div>
@@ -518,11 +518,13 @@ function HeroMetric({
   value,
   tone,
   detail,
+  infoTooltip,
 }: {
   label: string;
   value: string | number;
   tone: "emerald" | "amber" | "slate" | "blue";
-  detail: string;
+  detail?: string;
+  infoTooltip?: string;
 }) {
   const toneClass = {
     emerald: "border-emerald-100 bg-emerald-50/72 text-emerald-900",
@@ -533,11 +535,48 @@ function HeroMetric({
 
   return (
     <div className={cn("rounded-[1.6rem] border p-5 shadow-sm", toneClass)}>
-      <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">{label}</div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">{label}</div>
+        {infoTooltip && (
+          <div className="group relative">
+            <button
+              type="button"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/80 bg-white/75 text-slate-600 shadow-sm transition-colors hover:bg-white hover:text-slate-900"
+              aria-label="Subscription info"
+            >
+              <Info className="h-4 w-4" />
+            </button>
+            <div className="pointer-events-none absolute bottom-full right-0 z-20 mb-3 w-[240px] translate-y-1 rounded-2xl border border-slate-200 bg-white/95 p-4 text-left text-[11px] font-semibold leading-5 text-slate-700 opacity-0 shadow-xl backdrop-blur transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Subscription Date</div>
+              <div className="mt-2 text-sm font-black text-slate-900">{infoTooltip}</div>
+            </div>
+          </div>
+        )}
+      </div>
       <div className="mt-2 text-3xl font-black tracking-tight">{value}</div>
-      <div className="mt-1 text-sm font-semibold opacity-70">{detail}</div>
+      {detail ? <div className="mt-1 text-sm font-semibold opacity-70">{detail}</div> : null}
     </div>
   );
+}
+
+function buildSubscriptionTooltip(label?: string, isoDate?: string) {
+  if (!label || !isoDate) return null;
+  const date = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  return `${label} ${formatMonthDayOrdinal(date)}`;
+}
+
+function formatMonthDayOrdinal(date: Date) {
+  const month = new Intl.DateTimeFormat("en-IN", { month: "short" }).format(date);
+  const day = date.getDate();
+  const suffix = ordinalSuffix(day);
+  return `${month} ${day}${suffix}`;
+}
+
+function ordinalSuffix(day: number) {
+  const modulo100 = day % 100;
+  if (modulo100 >= 11 && modulo100 <= 13) return "th";
+  return { 1: "st", 2: "nd", 3: "rd" }[day % 10] ?? "th";
 }
 
 function RevenueBand({

@@ -102,8 +102,8 @@ SELECT
     END,
     FALSE,
     NULL,
-    CASE WHEN slot_id = 5 THEN CURRENT_TIMESTAMP - INTERVAL '3 days' ELSE NULL END,
-    CASE WHEN slot_id = 5 THEN 'Temporarily inactive member' ELSE NULL END,
+    CASE WHEN slot_id = 5 THEN CURRENT_TIMESTAMP - INTERVAL '16 days' ELSE NULL END,
+    CASE WHEN slot_id = 5 THEN 'Automatically deactivated after membership stayed overdue for 30 days' ELSE NULL END,
     CURRENT_TIMESTAMP - (((30 - org_id) + slot_id) || ' days')::interval,
     CURRENT_TIMESTAMP - (((10 - org_id) + (slot_id % 4)) || ' days')::interval,
     0
@@ -133,7 +133,7 @@ SELECT
     CASE
         WHEN slot_id IN (3, 9) THEN CURRENT_DATE - 35
         WHEN slot_id = 4 THEN CURRENT_DATE - 31
-        WHEN slot_id = 5 THEN CURRENT_DATE - 95
+        WHEN slot_id = 5 THEN CURRENT_DATE - 135
         WHEN slot_id = 8 THEN CURRENT_DATE - 120
         ELSE CURRENT_DATE - (8 + (slot_id % 4))
     END,
@@ -141,7 +141,7 @@ SELECT
         WHEN slot_id IN (1, 2, 6, 7, 10) THEN CURRENT_DATE + (10 + slot_id)
         WHEN slot_id = 3 THEN CURRENT_DATE - 4
         WHEN slot_id = 4 THEN CURRENT_DATE
-        WHEN slot_id = 5 THEN CURRENT_DATE - 6
+        WHEN slot_id = 5 THEN CURRENT_DATE - 46
         WHEN slot_id = 8 THEN CURRENT_DATE - 20
         WHEN slot_id = 9 THEN CURRENT_DATE - 2
         ELSE CURRENT_DATE + 15
@@ -276,7 +276,28 @@ INSERT INTO organization_subscription_payments (
         FALSE, CURRENT_TIMESTAMP - INTERVAL '12 days', CURRENT_TIMESTAMP - INTERVAL '2 days', 0),
     (5, 5, 0.00, 'PILOT', CURRENT_DATE - 12, CURRENT_DATE - 12, CURRENT_DATE + 45, 'PAID',
         0, NULL, NULL, 'evt_sub_005', 'pay_sub_005', 'order_sub_005', 'pay_sub_005', 'sub_org_005',
-        FALSE, CURRENT_TIMESTAMP - INTERVAL '12 days', CURRENT_TIMESTAMP - INTERVAL '2 days', 0);
+        FALSE, CURRENT_TIMESTAMP - INTERVAL '12 days', CURRENT_TIMESTAMP - INTERVAL '2 days', 0),
+    (6, 1, 299.00, 'STARTER', CURRENT_DATE - 150, CURRENT_DATE - 150, CURRENT_DATE - 121, 'PAID',
+        0, NULL, NULL, 'evt_sub_006', 'pay_sub_006', 'order_sub_006', 'pay_sub_006', 'sub_org_001',
+        FALSE, CURRENT_TIMESTAMP - INTERVAL '150 days', CURRENT_TIMESTAMP - INTERVAL '150 days', 0),
+    (7, 2, 699.00, 'GROWTH', NULL, CURRENT_DATE - 120, CURRENT_DATE - 91, 'FAILED',
+        1, CURRENT_DATE - 88, 'Insufficient balance', 'evt_sub_007', NULL, 'order_sub_007', NULL, 'sub_org_002',
+        FALSE, CURRENT_TIMESTAMP - INTERVAL '120 days', CURRENT_TIMESTAMP - INTERVAL '119 days', 0),
+    (8, 4, 1499.00, 'PRO', CURRENT_DATE - 92, CURRENT_DATE - 92, CURRENT_DATE - 63, 'PAID',
+        0, NULL, NULL, 'evt_sub_008', 'pay_sub_008', 'order_sub_008', 'pay_sub_008', 'sub_org_004',
+        FALSE, CURRENT_TIMESTAMP - INTERVAL '92 days', CURRENT_TIMESTAMP - INTERVAL '92 days', 0),
+    (9, 1, 299.00, 'STARTER', CURRENT_DATE - 61, CURRENT_DATE - 61, CURRENT_DATE - 32, 'PAID',
+        0, NULL, NULL, 'evt_sub_009', 'pay_sub_009', 'order_sub_009', 'pay_sub_009', 'sub_org_001',
+        FALSE, CURRENT_TIMESTAMP - INTERVAL '61 days', CURRENT_TIMESTAMP - INTERVAL '61 days', 0),
+    (10, 3, 299.00, 'STARTER', NULL, CURRENT_DATE - 31, CURRENT_DATE - 2, 'PENDING',
+        1, CURRENT_DATE + 3, NULL, 'evt_sub_010', NULL, 'order_sub_010', NULL, 'sub_org_003',
+        FALSE, CURRENT_TIMESTAMP - INTERVAL '31 days', CURRENT_TIMESTAMP - INTERVAL '30 days', 0),
+    (11, 2, 699.00, 'GROWTH', CURRENT_DATE - 28, CURRENT_DATE - 28, CURRENT_DATE + 1, 'PAID',
+        0, NULL, NULL, 'evt_sub_011', 'pay_sub_011', 'order_sub_011', 'pay_sub_011', 'sub_org_002',
+        FALSE, CURRENT_TIMESTAMP - INTERVAL '28 days', CURRENT_TIMESTAMP - INTERVAL '27 days', 0),
+    (12, 4, 1499.00, 'PRO', CURRENT_DATE - 3, CURRENT_DATE - 3, CURRENT_DATE + 26, 'FAILED',
+        2, CURRENT_DATE + 1, 'Bank mandate rejected', 'evt_sub_012', NULL, 'order_sub_012', NULL, 'sub_org_004',
+        FALSE, CURRENT_TIMESTAMP - INTERVAL '3 days', CURRENT_TIMESTAMP - INTERVAL '2 days', 0);
 
 INSERT INTO notifications (
     id, organization_id, member_id, member_count, type, channel, recipient, status, attempt_count, failure_reason,

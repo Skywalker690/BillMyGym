@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   Building2,
   CalendarClock,
+  CheckCircle2,
   CreditCard,
   Eye,
   EyeOff,
@@ -48,6 +49,7 @@ type PlatformAnalytics = {
   trialOrganizations: number;
   pilotOrganizations: number;
   pausedOrganizations: number;
+  overdueOrganizations: number;
   deactivatedOrganizations: number;
   expiredOrganizations: number;
   activeSubscriptionRecords: number;
@@ -79,6 +81,7 @@ type MetricCard = {
   detail: string;
   icon: LucideIcon;
   tone: string;
+  borderTone: string;
 };
 
 const money = new Intl.NumberFormat("en-IN", {
@@ -123,7 +126,7 @@ function BreakdownBar({ item, amount = false }: { item: PlatformBreakdown; amoun
         <div className="min-w-0">
           <div className="truncate text-sm font-black text-slate-950">{item.label}</div>
           <div className="mt-1 text-xs font-bold text-slate-500">
-            {item.count} orgs{amount ? ` · ${planMeta[item.key] ?? "Custom plan"}` : ""}
+            {item.count} orgs{amount ? ` - ${planMeta[item.key] ?? "Custom plan"}` : ""}
           </div>
         </div>
         <Badge className={statusTone[item.key] ?? "border-slate-200 bg-slate-100 text-slate-700"}>{item.percentage}%</Badge>
@@ -165,6 +168,30 @@ function SubscriptionActivityChart({ items }: { items: PlatformSubscriptionMonth
   );
 }
 
+function SnapshotCard({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: number;
+  detail: string;
+  tone: "emerald" | "amber";
+}) {
+  const toneClass = tone === "emerald"
+    ? "border-emerald-100 bg-emerald-50/90 text-emerald-950"
+    : "border-amber-100 bg-amber-50/90 text-amber-950";
+
+  return (
+    <div className={`rounded-[1.5rem] border p-4 shadow-sm ${toneClass}`}>
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">{label}</div>
+      <div className="mt-2 text-3xl font-black tracking-tight">{value}</div>
+      <div className="mt-2 text-sm font-bold opacity-80">{detail}</div>
+    </div>
+  );
+}
+
 export default function PlatformOverview() {
   const [showLifetimeRevenue, setShowLifetimeRevenue] = useState(false);
   const { data: analytics, isLoading } = useQuery<PlatformAnalytics>({
@@ -186,6 +213,7 @@ export default function PlatformOverview() {
     trialOrganizations: 0,
     pilotOrganizations: 0,
     pausedOrganizations: 0,
+    overdueOrganizations: 0,
     deactivatedOrganizations: 0,
     expiredOrganizations: 0,
     activeSubscriptionRecords: 0,
@@ -218,27 +246,31 @@ export default function PlatformOverview() {
       detail: `${data.currentMonthNewOrganizations} new this month`,
       icon: Building2,
       tone: "from-slate-950 to-slate-800 text-white",
+      borderTone: "border-slate-800/70",
     },
     {
-      label: "Paid active orgs",
+      label: "Active organizations",
       value: data.activeOrganizations,
       detail: `${data.activeSubscriptionRecords} active billing periods`,
-      icon: Activity,
+      icon: CheckCircle2,
       tone: "from-emerald-600 to-teal-500 text-white",
+      borderTone: "border-emerald-500/60",
     },
     {
-      label: "Renewal required",
-      value: data.pausedOrganizations,
+      label: "Overdue organizations",
+      value: data.overdueOrganizations,
       detail: `${data.renewalsDueInSevenDays} renewals due in 7 days`,
       icon: AlertTriangle,
       tone: "from-orange-500 to-rose-500 text-white",
+      borderTone: "border-orange-400/60",
     },
     {
-      label: "Overdue access",
-      value: data.expiredOrganizations,
-      detail: `${data.deactivatedOrganizations} inactive accounts`,
+      label: "Inactive accounts",
+      value: data.deactivatedOrganizations,
+      detail: `${data.pausedOrganizations} renewal-required accounts`,
       icon: PauseCircle,
-      tone: "from-amber-600 to-orange-500 text-white",
+      tone: "from-rose-700 to-slate-700 text-white",
+      borderTone: "border-rose-500/60",
     },
     {
       label: "Projected MRR",
@@ -246,8 +278,10 @@ export default function PlatformOverview() {
       detail: `${percentText(data.revenueGrowthPercent)} vs previous month`,
       icon: WalletCards,
       tone: "from-indigo-700 to-sky-500 text-white",
+      borderTone: "border-sky-500/60",
     },
   ];
+  const latestMonth = data.monthlySubscriptionActivity.at(-1);
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
       <div className="relative overflow-hidden rounded-[2.25rem] border border-white/75 bg-slate-950 p-6 text-white shadow-[0_30px_90px_rgba(15,23,42,0.28)] sm:p-8 lg:p-10">
@@ -317,7 +351,7 @@ export default function PlatformOverview() {
         {metricCards.map((card) => {
           const Icon = card.icon;
           return (
-            <div key={card.label} className={`relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br p-5 shadow-sm ${card.tone}`}>
+            <div key={card.label} className={`relative overflow-hidden rounded-[1.75rem] border bg-gradient-to-br p-5 shadow-sm ${card.tone} ${card.borderTone}`}>
               <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
               <div className="relative z-10">
                 <Icon className="h-7 w-7 opacity-90" />
@@ -330,7 +364,7 @@ export default function PlatformOverview() {
         })}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_0.78fr]">
+      <div className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
         <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -345,16 +379,32 @@ export default function PlatformOverview() {
         </div>
 
         <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
-          <CreditCard className="h-7 w-7 text-emerald-700" />
-          <div className="mt-5 text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Current Month</div>
-          <div className="mt-2 text-3xl font-black text-slate-950">
-            {data.monthlySubscriptionActivity.at(-1)?.paidSubscriptions ?? 0} paid
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Current Month</div>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Subscription snapshot</h2>
+            </div>
+            <CreditCard className="h-7 w-7 text-emerald-700" />
           </div>
-          <p className="mt-2 text-sm font-bold text-slate-500">
-            {data.monthlySubscriptionActivity.at(-1)?.pendingSubscriptions ?? 0} pending subscriptions this month.
-          </p>
-          <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-black text-emerald-800">
-            {money.format(data.monthlySubscriptionActivity.at(-1)?.paidAmount ?? 0)} received
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <SnapshotCard
+              label="Paid"
+              value={latestMonth?.paidSubscriptions ?? 0}
+              detail={money.format(latestMonth?.paidAmount ?? 0)}
+              tone="emerald"
+            />
+            <SnapshotCard
+              label="Pending"
+              value={latestMonth?.pendingSubscriptions ?? 0}
+              detail={money.format(latestMonth?.pendingAmount ?? 0)}
+              tone="amber"
+            />
+          </div>
+          <div className="mt-5 rounded-[1.6rem] border border-slate-100 bg-slate-50/90 p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">What this means</div>
+            <p className="mt-2 text-sm font-bold leading-6 text-slate-600">
+              Super admins can read current collection momentum at a glance: completed subscriptions, pending subscriptions, and the rupee value attached to both.
+            </p>
           </div>
         </div>
       </div>
@@ -411,7 +461,7 @@ export default function PlatformOverview() {
           <div className="mt-5 text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Communication Load</div>
           <div className="mt-2 text-3xl font-black text-slate-950">{compact.format(data.totalCommunicationUsage)}</div>
           <p className="mt-2 text-sm font-bold text-slate-500">
-            {compact.format(data.whatsappUsage)} WhatsApp · {compact.format(data.emailUsage)} email this month.
+            {compact.format(data.whatsappUsage)} WhatsApp and {compact.format(data.emailUsage)} email this month.
           </p>
         </div>
         <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
@@ -419,7 +469,7 @@ export default function PlatformOverview() {
           <div className="mt-5 text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Billing Risk</div>
           <div className="mt-2 text-3xl font-black text-slate-950">{data.paymentFailures + data.pendingPayments}</div>
           <p className="mt-2 text-sm font-bold text-slate-500">
-            {data.paymentFailures} failed payments · {data.pendingPayments} pending payments.
+            {data.paymentFailures} failed payments and {data.pendingPayments} pending payments.
           </p>
         </div>
       </div>

@@ -278,7 +278,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
           </div>
 
           {(isCreate || isRenew) && (
-            <div className={`grid gap-3 sm:grid-cols-2 ${isCreate && existingMember ? "xl:grid-cols-3" : "xl:grid-cols-4"}`}>
+            <div className={`grid gap-3 ${isCreate && existingMember ? "sm:grid-cols-2 xl:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
               <HeroChip label="Monthly Fee" value={`INR ${organizationMonthlyFee.toLocaleString("en-IN")}`} />
               {(!isCreate || !existingMember) && (
                 <HeroChip
@@ -287,7 +287,6 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                 />
               )}
               <HeroChip label="Total Amount" value={`INR ${watchedPlanAmount.toLocaleString("en-IN")}`} />
-              <HeroChip label="Payment Collected" value={`INR ${watchedInitialPaymentAmount.toLocaleString("en-IN")}`} />
             </div>
           )}
         </div>

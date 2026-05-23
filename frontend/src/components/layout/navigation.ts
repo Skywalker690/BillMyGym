@@ -117,12 +117,6 @@ export const getProfileNavItems = (role: AppRole | null | undefined): NavItemCon
       section: "Account",
     },
     {
-      label: "Subscription",
-      href: "/app/subscription",
-      icon: CreditCard,
-      section: "Account",
-    },
-    {
       label: "Settings",
       href: "/app/settings",
       icon: Settings,

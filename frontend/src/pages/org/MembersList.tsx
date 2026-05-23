@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, ChevronDown, Clock3, Info, Pencil, Plus, RefreshCw, Search, ShieldAlert, Sparkles, Trash2, XCircle, Zap } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, Info, Pencil, Plus, RefreshCw, Search, ShieldAlert, Sparkles, Trash2, XCircle, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ export default function MembersList() {
   const [memberTab, setMemberTab] = useState<"ALL" | "ACTIVE" | "DEACTIVATED">("ACTIVE");
   const [page, setPage] = useState(0);
   const [quickRenewMember, setQuickRenewMember] = useState<any | null>(null);
+  const [deactivateMember, setDeactivateMember] = useState<any | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -57,6 +58,7 @@ export default function MembersList() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardReport"] });
+      setDeactivateMember(null);
       toast.success("Member deactivated successfully");
     },
     onError: () => toast.error("Failed to deactivate member"),
@@ -333,11 +335,7 @@ export default function MembersList() {
                                 <DropdownMenuItem
                                   variant="destructive"
                                   className="rounded-xl px-3 py-2 font-semibold"
-                                  onClick={() => {
-                                    if (confirm("Deactivate this member?")) {
-                                      deleteMutation.mutate(member.id);
-                                    }
-                                  }}
+                                  onClick={() => setDeactivateMember(member)}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                   Deactivate
@@ -389,6 +387,19 @@ export default function MembersList() {
             }
           }}
           onConfirm={() => quickRenewMutation.mutate(quickRenewMember)}
+        />
+      )}
+
+      {deactivateMember && (
+        <DeactivateMemberModal
+          member={deactivateMember}
+          isSubmitting={deleteMutation.isPending}
+          onCancel={() => {
+            if (!deleteMutation.isPending) {
+              setDeactivateMember(null);
+            }
+          }}
+          onConfirm={() => deleteMutation.mutate(deactivateMember.id)}
         />
       )}
     </div>
@@ -514,6 +525,84 @@ function QuickRenewModal({
               disabled={isSubmitting || monthlyMembershipFee <= 0}
             >
               {isSubmitting ? "Renewing..." : "Yes, Quick Renew"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeactivateMemberModal({
+  member,
+  isSubmitting,
+  onCancel,
+  onConfirm,
+}: {
+  member: any;
+  isSubmitting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const membership = member.currentMembership;
+  const status = membership?.expiringSoon ? "Expiring Soon" : membership?.status?.replace("_", " ") ?? "No Membership";
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-950/55 backdrop-blur-md"
+        aria-label="Close deactivate member dialog"
+        onClick={onCancel}
+      />
+      <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(255,241,242,0.94))] shadow-[0_30px_90px_-30px_rgba(15,23,42,0.45)]">
+        <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-rose-300/35 blur-3xl" />
+        <div className="absolute bottom-0 left-8 h-36 w-36 rounded-full bg-amber-200/35 blur-3xl" />
+        <div className="relative z-10 p-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-rose-700">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Member Deactivation
+          </div>
+          <h2 className="mt-5 text-3xl font-black tracking-tight text-slate-950">Deactivate {member.fullName}?</h2>
+          <p className="mt-3 max-w-xl text-sm font-semibold leading-6 text-slate-600">
+            This removes the member from the active directory and renewal workflow while preserving their history and payment records.
+          </p>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <RenewMetric label="Member" value={member.fullName} tone="slate" />
+            <RenewMetric label="Phone" value={member.phone ?? "-"} tone="amber" />
+            <RenewMetric label="Membership" value={status} tone="emerald" />
+          </div>
+
+          <div className="mt-5 rounded-[1.6rem] border border-rose-100 bg-white/85 p-5 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">What Changes</div>
+                <div className="mt-2 text-lg font-black tracking-tight text-slate-950">Status becomes deactivated</div>
+              </div>
+              <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800">
+                History and payments stay intact
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 rounded-full border-white/80 bg-white/80 px-6 font-bold"
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
+              Keep Active
+            </Button>
+            <Button
+              type="button"
+              className="h-11 rounded-full bg-rose-600 px-6 font-bold text-white hover:bg-rose-700"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Deactivating..." : "Deactivate Member"}
             </Button>
           </div>
         </div>
