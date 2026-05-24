@@ -21,6 +21,7 @@ public class ReportDtos {
     }
 
     public record DashboardReportResponse(
+        String planName,
         RevenueSummaryResponse revenue,
         RevenueSegmentationResponse revenueSegmentation,
         MemberDirectorySummary memberSummary,

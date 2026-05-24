@@ -132,40 +132,40 @@ const checkoutPlans: PlanCard[] = [
     name: "Starter",
     price: 299,
     limit: "100 members",
-    tagline: "Clean gym operations",
-    description: "Everything needed to run memberships, reminders, WhatsApp digest, email digest, and payment tracking.",
+    tagline: "Essential front-desk control",
+    description: "A clean operating system for memberships, reminders, payment tracking, and the day-to-day member desk.",
     icon: Users,
     accent: "from-slate-900 to-slate-700",
     glow: "bg-slate-200",
     features: ["Member management", "Membership renewals", "Reminders", "WhatsApp and email digest", "Payment tracking"],
-    demos: ["Active members", "New members this month", "Total members"],
+    demos: ["Member desk", "Daily follow-up", "Core operations"],
   },
   {
     key: "GROWTH",
     name: "Growth",
     price: 699,
     limit: "300 members",
-    tagline: "Reports and revenue clarity",
-    description: "Adds monthly analytics, revenue dashboards, pending revenue, exports, usage insights, and report delivery.",
+    tagline: "Revenue visibility built in",
+    description: "Adds dashboards, monthly analytics, usage insights, report delivery, and a rolling 6-month financial reporting window.",
     icon: BarChart3,
     accent: "from-emerald-600 to-teal-500",
     glow: "bg-emerald-200",
     badge: "Most Popular",
-    features: ["Revenue dashboard", "Pending revenue", "Monthly analytics", "WhatsApp monthly reports", "Email monthly reports"],
-    demos: ["Revenue trends", "Monthly report cards", "Export-ready data"],
+    features: ["Revenue dashboard", "Pending revenue", "Monthly analytics", "Last 6 months of reports", "WhatsApp monthly reports", "Email monthly reports"],
+    demos: ["Revenue trends", "6-month reports", "Growth insights"],
   },
   {
     key: "PRO",
     name: "Pro",
     price: 1499,
     limit: "Unlimited members",
-    tagline: "Scale without ceiling",
-    description: "Unlocks the full platform with premium support, custom branding, Reports with export option, and Member messaging.",
+    tagline: "Operator-grade command center",
+    description: "Unlocks the full workspace with unlimited scale, custom-range reports, exports, member messaging, and premium support.",
     icon: Crown,
     accent: "from-indigo-700 to-sky-500",
     glow: "bg-indigo-200",
-    features: ["Everything in Growth", "Unlimited members", "Multi-admin support", "Custom branding", "Reports with export option","Member messaging", "Premium support", "Future integrations"],
-    demos: ["Unlimited capacity", "Premium workspace", "Integration-ready","Reports with export option"],
+    features: ["Everything in Growth", "Unlimited members", "Multi-admin support", "Custom date range reports", "Report exports", "Member messaging", "Premium support", "Future integrations"],
+    demos: ["Unlimited scale", "Custom-range reporting", "Priority workflow"],
   },
 ];
 
@@ -183,7 +183,7 @@ const implementedDemos = [
   {
     icon: MessageCircle,
     title: "Monthly reports",
-    body: "Growth and Pro workspaces can receive WhatsApp and email summaries for the previous month.",
+    body: "Growth gets a rolling 6-month report view, while Pro adds custom date ranges and exports.",
   },
 ];
 
@@ -577,10 +577,10 @@ export default function Subscription({ immersive = false, showPlans = false }: {
               </h1>
               <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-slate-600">
                 {showPlans
-                  ? `${subscription.organizationName} can continue with Starter, unlock reports with Growth, or scale on Pro. Compare the plans below and continue when you're ready.`
+                  ? `${subscription.organizationName} can continue with Starter, unlock rolling 6-month reports with Growth, or move to Pro for custom-range reporting and exports. Compare the plans below and continue when you're ready.`
                   : isPilot
                     ? `${subscription.organizationName} is currently running under founding partner access. Use this page to review access status, usage, and subscription guidance.`
-                    : `${subscription.organizationName} can continue with Starter, unlock reports with Growth, or scale on Pro. Use this page to review your billing status, usage, and renewal guidance.`}
+                    : `${subscription.organizationName} can continue with Starter, unlock rolling 6-month reports with Growth, or move to Pro for custom-range reporting and exports. Use this page to review your billing status, usage, and renewal guidance.`}
               </p>
 
               <div className={`mt-6 grid gap-3 ${lifecycleCards.length === 1 ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
@@ -714,15 +714,43 @@ export default function Subscription({ immersive = false, showPlans = false }: {
               const Icon = plan.icon;
               const isSelected = selectedPlan === plan.key;
               const isCurrent = subscription.subscriptionPlan === plan.key;
+              const isPro = plan.key === "PRO";
+              const isGrowth = plan.key === "GROWTH";
+              const isStarter = plan.key === "STARTER";
               return (
                 <div
                   key={plan.key}
-                  className={`relative flex min-h-full flex-col overflow-hidden rounded-[2rem] border bg-white/90 p-6 shadow-sm backdrop-blur transition ${
-                    isSelected ? "border-emerald-400 ring-4 ring-emerald-100" : "border-white/80 hover:-translate-y-1 hover:shadow-xl"
+                  className={`group relative flex min-h-full flex-col overflow-hidden rounded-[2.2rem] border p-6 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur transition duration-500 ${
+                    isPro
+                      ? "bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.2),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.98),rgba(30,41,59,0.94))] text-white border-indigo-200/30"
+                      : isGrowth
+                        ? "bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.14),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.96),rgba(236,253,245,0.96))] text-slate-950 border-emerald-100/80"
+                        : "bg-[radial-gradient(circle_at_top,rgba(148,163,184,0.12),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,250,252,0.98))] text-slate-950 border-slate-200/80"
+                  } ${
+                    isSelected
+                      ? isPro
+                        ? "border-sky-300/60 ring-4 ring-sky-200/30 -translate-y-1"
+                        : isGrowth
+                          ? "border-emerald-400 ring-4 ring-emerald-100 -translate-y-1"
+                          : "border-slate-400 ring-4 ring-slate-200 -translate-y-1"
+                      : isPro
+                        ? "border-white/10 hover:-translate-y-2 hover:shadow-[0_26px_70px_rgba(30,41,59,0.28)]"
+                        : isGrowth
+                          ? "hover:-translate-y-2 hover:shadow-[0_26px_60px_rgba(5,150,105,0.16)]"
+                          : "hover:-translate-y-2 hover:shadow-[0_26px_60px_rgba(51,65,85,0.14)]"
                   }`}
                 >
                   <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${plan.accent}`} />
-                  <div className="flex items-start justify-between gap-4">
+                  <div
+                    className={`pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100 ${
+                      isPro
+                        ? "bg-[radial-gradient(circle_at_top_right,rgba(125,211,252,0.18),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(129,140,248,0.18),transparent_26%)]"
+                        : isGrowth
+                          ? "bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.12),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(20,184,166,0.12),transparent_26%)]"
+                          : "bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.12),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(71,85,105,0.08),transparent_26%)]"
+                    }`}
+                  />
+                  <div className="relative z-10 flex items-start justify-between gap-4">
                     <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${plan.accent} text-white shadow-lg`}>
                       <Icon className="h-7 w-7" />
                     </div>
@@ -732,21 +760,63 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                     </div>
                   </div>
 
-                  <div className="mt-6">
-                    <div className="text-sm font-black uppercase tracking-[0.24em] text-slate-500">{plan.tagline}</div>
-                    <h2 className="mt-2 text-3xl font-black text-slate-950">{plan.name}</h2>
-                    <p className="mt-3 min-h-[4.5rem] text-sm font-semibold leading-6 text-slate-600">{plan.description}</p>
-                    <div className="mt-5 flex items-end gap-2">
-                      <span className="text-4xl font-black text-slate-950">{money.format(plan.price)}</span>
-                      <span className="pb-1 text-sm font-bold text-slate-500">/ month</span>
+                  <div className="relative z-10 mt-6">
+                    <div className={`text-sm font-black uppercase tracking-[0.24em] ${isPro ? "text-sky-200" : "text-slate-500"}`}>{plan.tagline}</div>
+                    <div className="mt-3 flex items-center justify-between gap-4">
+                      <h2 className={`text-3xl font-black ${isPro ? "text-white" : "text-slate-950"}`}>{plan.name}</h2>
+                      <div className="group/limit relative">
+                        <div className={`flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] ${isPro ? "bg-white/10 text-sky-100 ring-1 ring-white/10" : "bg-slate-100 text-slate-700"}`}>
+                          <span>{plan.limit}</span>
+                          {isPro && (
+                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/12 bg-white/10 text-sky-100">
+                              <Info className="h-3.5 w-3.5" />
+                            </span>
+                          )}
+                        </div>
+                        {isPro && (
+                          <div className="pointer-events-none absolute bottom-full right-0 z-20 mb-3 w-72 translate-y-1 rounded-2xl border border-sky-200/20 bg-slate-950/96 p-4 text-left opacity-0 shadow-2xl backdrop-blur transition-all duration-200 group-hover/limit:translate-y-0 group-hover/limit:opacity-100">
+                            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-200">Member Capacity</div>
+                            <div className="mt-2 text-sm font-black text-white">Unlimited members</div>
+                            <div className="mt-2 text-xs font-semibold leading-5 text-slate-300">
+                              Base pricing covers up to 600 active members. After that, each additional active member is charged at INR 3 per month.
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-2 text-sm font-black text-emerald-700">{plan.limit}</div>
+                    <p className={`mt-3 min-h-[4.5rem] text-sm font-semibold leading-6 ${isPro ? "text-slate-200" : "text-slate-600"}`}>{plan.description}</p>
+                    <div className={`mt-5 overflow-hidden rounded-[1.6rem] border p-4 ${
+                      isPro
+                        ? "border-white/10 bg-white/6"
+                        : isGrowth
+                          ? "border-emerald-100 bg-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+                          : "border-slate-200 bg-white/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]"
+                    }`}>
+                      <div className={`text-[10px] font-black uppercase tracking-[0.24em] ${
+                        isPro ? "text-sky-200" : isGrowth ? "text-emerald-700" : "text-slate-500"
+                      }`}>Monthly Price</div>
+                      <div className="mt-2 flex items-end gap-2">
+                        <span className={`text-4xl font-black tracking-tight ${isPro ? "text-white" : "text-slate-950"}`}>{money.format(plan.price)}</span>
+                        <span className={`pb-1 text-sm font-bold ${isPro ? "text-slate-300" : "text-slate-500"}`}>/ month</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="mt-6 space-y-3">
+                  <div className="relative z-10 mt-6 grid gap-3">
                     {plan.features.map((feature) => (
-                      <div key={feature} className="flex items-start gap-3 text-sm font-semibold text-slate-700">
-                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                      <div
+                        key={feature}
+                        className={`flex items-start gap-3 rounded-[1.1rem] border px-3 py-3 text-sm font-semibold transition duration-300 ${
+                          isPro
+                            ? "border-white/8 bg-white/[0.04] text-slate-100 group-hover:bg-white/[0.06]"
+                            : isGrowth
+                              ? "border-emerald-100 bg-white/72 text-slate-700 group-hover:bg-white"
+                              : "border-slate-200 bg-white/80 text-slate-700 group-hover:bg-white"
+                        }`}
+                      >
+                        <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
+                          isPro ? "bg-sky-400/15 text-sky-200" : isGrowth ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-700"
+                        }`}>
                           <Check className="h-3.5 w-3.5" />
                         </span>
                         {feature}
@@ -754,27 +824,65 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                     ))}
                   </div>
 
-                  <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                    <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Included Demo</div>
+                  <div className={`relative z-10 mt-6 rounded-[1.6rem] border p-4 ${
+                    isPro
+                      ? "border-white/10 bg-white/[0.05]"
+                      : isGrowth
+                        ? "border-emerald-100 bg-emerald-50/60"
+                        : "border-slate-200 bg-slate-50/90"
+                  }`}>
+                    <div className={`text-[10px] font-black uppercase tracking-[0.22em] ${
+                      isPro ? "text-sky-200" : isGrowth ? "text-emerald-700" : "text-slate-500"
+                    }`}>Best For</div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {plan.demos.map((demo) => (
-                        <span key={demo} className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700 shadow-sm">
+                        <span
+                          key={demo}
+                          className={`rounded-full px-3 py-1 text-xs font-black shadow-sm transition duration-300 ${
+                            isPro
+                              ? "bg-white/10 text-sky-50 ring-1 ring-white/10"
+                              : isGrowth
+                                ? "bg-white text-emerald-800"
+                                : "bg-white text-slate-700"
+                          }`}
+                        >
                           {demo}
                         </span>
                       ))}
                     </div>
                   </div>
 
-                  <Button
-                    onClick={() => handlePlanCheckout(plan.key)}
-                    disabled={!canCheckout || createOrderMutation.isPending || verifyMutation.isPending}
-                    className={`mt-6 h-12 w-full rounded-full font-black text-white ${
-                      isSelected ? "bg-emerald-600 hover:bg-emerald-700" : "bg-slate-950 hover:bg-slate-800"
-                    }`}
-                  >
-                    {buttonText(plan)}
-                    {canCheckout && <ArrowRight className="ml-2 h-4 w-4" />}
-                  </Button>
+                  <div className="relative z-10 mt-6">
+                    <Button
+                      onClick={() => handlePlanCheckout(plan.key)}
+                      disabled={!canCheckout || createOrderMutation.isPending || verifyMutation.isPending}
+                      className={`h-12 w-full rounded-full font-black transition duration-300 ${
+                        isPro
+                          ? "bg-white text-slate-950 hover:bg-sky-50"
+                          : isSelected
+                            ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                            : "bg-slate-950 text-white hover:bg-slate-800"
+                      }`}
+                    >
+                      {buttonText(plan)}
+                      {canCheckout && <ArrowRight className="ml-2 h-4 w-4" />}
+                    </Button>
+                    {isPro && (
+                      <div className="mt-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-300">
+                        Premium reporting, exports, and priority workflows
+                      </div>
+                    )}
+                    {!isPro && isGrowth && (
+                      <div className="mt-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
+                        Best value for report-driven gyms
+                      </div>
+                    )}
+                    {isStarter && (
+                      <div className="mt-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-600">
+                        Lean setup for focused gym operations
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -943,7 +1051,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
               </div>
               <div className="flex items-center gap-2">
                 <FileDown className="h-4 w-4" />
-                Exports gated by Growth or Pro
+                Custom-range exports gated by Pro
               </div>
               <div className="flex items-center gap-2">
                 <LifeBuoy className="h-4 w-4" />

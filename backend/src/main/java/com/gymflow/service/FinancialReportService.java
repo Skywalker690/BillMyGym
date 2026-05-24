@@ -13,6 +13,7 @@ import com.gymflow.domain.Organization;
 import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.PaymentStatus;
 import com.gymflow.domain.enums.PaymentType;
+import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.repository.AuditLogRepository;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberPaymentRepository;
@@ -46,6 +47,7 @@ public class FinancialReportService {
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
     private static final DateTimeFormatter MONTH_LABEL = DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH);
     private static final int MAX_REPORT_MONTHS = 36;
+    private static final int GROWTH_REPORT_MONTHS = 6;
 
     private final OrganizationRepository organizationRepository;
     private final MemberPaymentRepository memberPaymentRepository;
@@ -60,7 +62,7 @@ public class FinancialReportService {
             throw new ForbiddenException("Upgrade to Pro to unlock this feature");
         }
 
-        ReportWindow window = resolveWindow(period, range, from, to);
+        ReportWindow window = resolveWindow(organization, period, range, from, to);
         List<MemberPayment> payments = memberPaymentRepository
             .findByOrganizationIdAndDeletedFalseOrderByPaymentDateDescCreatedAtDesc(organization.getId());
         List<MemberMembership> memberships = memberMembershipRepository
@@ -242,7 +244,12 @@ public class FinancialReportService {
         return member.getDeactivatedAt() == null || member.getDeactivatedAt().toLocalDate().isAfter(snapshotDate);
     }
 
-    private ReportWindow resolveWindow(String period, String range, LocalDate from, LocalDate to) {
+    private ReportWindow resolveWindow(Organization organization, String period, String range, LocalDate from, LocalDate to) {
+        SubscriptionPlan plan = planAccessService.resolvePlan(organization);
+        if (plan == SubscriptionPlan.GROWTH) {
+            return growthWindow();
+        }
+
         String normalizedPeriod = normalizePeriod(period);
         String normalizedRange = normalizeRange(range, normalizedPeriod);
         LocalDate today = LocalDate.now(APP_ZONE);
@@ -284,6 +291,13 @@ public class FinancialReportService {
         }
 
         return new ReportWindow(normalizedPeriod, normalizedRange, startDate, endDate);
+    }
+
+    private ReportWindow growthWindow() {
+        LocalDate today = LocalDate.now(APP_ZONE);
+        YearMonth currentMonth = YearMonth.from(today);
+        LocalDate startDate = currentMonth.minusMonths(GROWTH_REPORT_MONTHS - 1L).atDay(1);
+        return new ReportWindow("MONTHLY", "LAST_SIX_MONTHS", startDate, today);
     }
 
     private List<YearMonth> monthsBetween(LocalDate startDate, LocalDate endDate) {

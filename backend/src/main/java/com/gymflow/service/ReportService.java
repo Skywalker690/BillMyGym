@@ -83,8 +83,10 @@ public class ReportService {
             ? revenueService.revenueSegmentationSummary()
             : null;
         MemberDirectorySummary memberSummary = memberService.memberDirectorySummary(organizationId, reminderDays);
+        String planName = planAccessService.resolvePlan(organization).name();
 
         return new DashboardReportResponse(
+            planName,
             revenueSummary,
             revenueSegmentation,
             memberSummary,

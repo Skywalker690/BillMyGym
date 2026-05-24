@@ -45,6 +45,7 @@ type MonthlyMemberJoin = {
 };
 
 type DashboardReport = {
+  planName?: string;
   revenue?: {
     currentRevenue?: number;
     pendingRevenue?: number;
@@ -141,6 +142,7 @@ export default function Dashboard() {
   const monthlyMemberJoins = report?.monthlyMemberJoins ?? [];
   const joinedThisMonth = monthlyMemberJoins.at(-1)?.joinedMembers ?? 0;
   const canViewAdvancedAnalytics = report?.planAccess?.canViewAdvancedAnalytics ?? true;
+  const isStarterPlan = report?.planName === "STARTER";
   const subscriptionValidity = report?.subscriptionValidity;
 
   const activeMembersTotal = Number(revenue.activeMembers ?? summary.activeMembers ?? 0);
@@ -200,7 +202,7 @@ export default function Dashboard() {
     },
   ];
 
-  if (!canViewAdvancedAnalytics) {
+  if (isStarterPlan) {
     const starterSignals = [
       { label: "Total Members", value: summary.totalMembers ?? 0 },
       { label: "Active Members", value: summary.activeMembers ?? 0 },

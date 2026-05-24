@@ -110,6 +110,34 @@ function isoDateInIndia(date: Date) {
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
+function monthYearLabel(value?: string | null) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("en-IN", {
+    month: "long",
+    year: "numeric",
+    timeZone: INDIAN_TIME_ZONE,
+  }).format(new Date(`${value}T00:00:00+05:30`));
+}
+
+function fullDateLabel(value?: string | null) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: INDIAN_TIME_ZONE,
+  }).format(new Date(`${value}T00:00:00+05:30`));
+}
+
+function reportWindowLabel(startDate?: string | null, endDate?: string | null) {
+  if (!startDate || !endDate) return "-";
+  const sameMonth = startDate.slice(0, 7) === endDate.slice(0, 7);
+  if (sameMonth) {
+    return monthYearLabel(startDate);
+  }
+  return `${monthYearLabel(startDate)} to ${monthYearLabel(endDate)}`;
+}
+
 export default function Reports() {
   const [period, setPeriod] = useState<ReportPeriod>("monthly");
   const [range, setRange] = useState<ReportRange>("current_year");
@@ -126,14 +154,19 @@ export default function Reports() {
     staleTime: 60_000,
   });
 
+  const isGrowthPlan = subscription?.subscriptionPlan === "GROWTH";
+
   const params = useMemo(() => {
+    if (isGrowthPlan) {
+      return { period: "monthly", range: "last_six_months" };
+    }
     const next: Record<string, string> = { period, range };
     if (range === "custom") {
       next.from = customFrom;
       next.to = customTo;
     }
     return next;
-  }, [period, range, customFrom, customTo]);
+  }, [period, range, customFrom, customTo, isGrowthPlan]);
 
   const canViewReports = Boolean(subscription?.planAccess?.canReceiveMonthlyReports);
   const canExportReports = Boolean(subscription?.planAccess?.canExportReports);
@@ -154,6 +187,10 @@ export default function Reports() {
     },
     enabled: canViewReports && !customRangeInvalid,
   });
+  const visibleWindowLabel = reportWindowLabel(report?.startDate ?? customFrom, report?.endDate ?? customTo);
+  const visibleWindowDetail = report?.startDate && report?.endDate
+    ? `${fullDateLabel(report.startDate)} to ${fullDateLabel(report.endDate)}`
+    : `${fullDateLabel(customFrom)} to ${fullDateLabel(customTo)}`;
 
   function updateCustomFrom(value: string) {
     const next = value > todayIso ? todayIso : value;
@@ -266,7 +303,9 @@ export default function Reports() {
               Month-wise revenue clarity for the gym.
             </h1>
             <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">
-              Track admissions, membership collections, due payments, and member health in one export-ready workspace.
+              {isGrowthPlan
+                ? "Track admissions, membership collections, due payments, and member health across the last 6 months."
+                : "Track admissions, membership collections, due payments, and member health in one export-ready workspace."}
             </p>
           </div>
 
@@ -295,8 +334,11 @@ export default function Reports() {
               <CalendarRange className="h-3.5 w-3.5" />
               Report Filters
             </div>
+            <div className="mt-1 text-base font-black text-slate-900">
+              {visibleWindowLabel}
+            </div>
             <div className="mt-1 text-sm font-semibold text-slate-500">
-              {report?.startDate ?? customFrom} to {report?.endDate ?? customTo} in Indian Standard Time
+              {visibleWindowDetail} in Indian Standard Time
             </div>
           </div>
 
@@ -345,56 +387,76 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="grid gap-5 p-5 xl:grid-cols-[0.72fr_1.28fr]">
-          <div>
-            <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Period</div>
-            <div className="grid grid-cols-2 gap-2 rounded-[1.2rem] border border-white/80 bg-white/80 p-1.5">
-              {(["monthly", "yearly"] as ReportPeriod[]).map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => {
-                    setPeriod(item);
-                    if (range !== "custom") {
-                      setRange("current_year");
-                    }
-                  }}
-                  className={cn(
-                    "h-11 rounded-[1rem] text-sm font-black capitalize transition-all",
-                    period === item
-                      ? "bg-slate-950 text-white shadow-[0_12px_26px_-16px_rgba(15,23,42,0.8)]"
-                      : "text-slate-600 hover:bg-slate-50",
-                  )}
-                >
-                  {item}
-                </button>
-              ))}
+        {isGrowthPlan ? (
+          <div className="grid gap-5 p-5 xl:grid-cols-[0.72fr_1.28fr]">
+            <div className="rounded-[1.2rem] border border-emerald-100 bg-emerald-50/80 p-4">
+              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">Growth Access</div>
+              <div className="mt-2 text-lg font-black text-slate-950">Last 6 months only</div>
+              <div className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+                Growth workspaces can review a rolling 6-month financial report window. Custom date ranges and exports are available on Pro.
+              </div>
+            </div>
+            <div className="rounded-[1.2rem] border border-white/80 bg-white/80 p-4">
+              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Report Window</div>
+              <div className="mt-2 text-lg font-black text-slate-950">{reportWindowLabel(report?.startDate, report?.endDate)}</div>
+              <div className="mt-1 text-sm font-semibold text-slate-500">{fullDateLabel(report?.startDate)} to {fullDateLabel(report?.endDate)}</div>
+              <div className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+                This always includes the current month plus the previous 5 months.
+              </div>
             </div>
           </div>
+        ) : (
+          <div className="grid gap-5 p-5 xl:grid-cols-[0.72fr_1.28fr]">
+            <div>
+              <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Period</div>
+              <div className="grid grid-cols-2 gap-2 rounded-[1.2rem] border border-white/80 bg-white/80 p-1.5">
+                {(["monthly", "yearly"] as ReportPeriod[]).map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => {
+                      setPeriod(item);
+                      if (range !== "custom") {
+                        setRange("current_year");
+                      }
+                    }}
+                    className={cn(
+                      "h-11 rounded-[1rem] text-sm font-black capitalize transition-all",
+                      period === item
+                        ? "bg-slate-950 text-white shadow-[0_12px_26px_-16px_rgba(15,23,42,0.8)]"
+                        : "text-slate-600 hover:bg-slate-50",
+                    )}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          <div>
-            <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Date Range</div>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              {rangeOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setRange(option.value)}
-                  className={cn(
-                    "h-11 rounded-[1rem] border px-3 text-xs font-black transition-all",
-                    range === option.value
-                      ? "border-slate-950 bg-slate-950 text-white shadow-[0_12px_26px_-16px_rgba(15,23,42,0.8)]"
-                      : "border-white/80 bg-white/80 text-slate-600 hover:bg-slate-50",
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
+            <div>
+              <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Date Range</div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {rangeOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setRange(option.value)}
+                    className={cn(
+                      "h-11 rounded-[1rem] border px-3 text-xs font-black transition-all",
+                      range === option.value
+                        ? "border-slate-950 bg-slate-950 text-white shadow-[0_12px_26px_-16px_rgba(15,23,42,0.8)]"
+                        : "border-white/80 bg-white/80 text-slate-600 hover:bg-slate-50",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {range === "custom" && (
+        {!isGrowthPlan && range === "custom" && (
           <div className="border-t border-white/70 p-5">
             <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
               <label className="space-y-2">
@@ -432,7 +494,7 @@ export default function Reports() {
 
         {!canExportReports && (
           <div className="border-t border-white/70 px-5 py-4 text-sm font-bold text-amber-900">
-            Upgrade to Pro to unlock this feature
+            {isGrowthPlan ? "Upgrade to Pro to unlock custom date ranges and exports" : "Upgrade to Pro to unlock this feature"}
           </div>
         )}
       </section>
