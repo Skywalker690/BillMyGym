@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -18,7 +19,11 @@ import java.time.LocalDate;
 @Entity
 @Getter
 @Setter
-@Table(name = "organization_subscriptions")
+@Table(name = "organization_subscriptions", indexes = {
+    @Index(name = "idx_org_sub_org_deleted", columnList = "organization_id, deleted"),
+    @Index(name = "idx_org_sub_org_end_deleted", columnList = "organization_id, end_date DESC, deleted"),
+    @Index(name = "idx_org_sub_status_end_deleted", columnList = "status, end_date DESC, deleted")
+})
 public class OrganizationSubscription extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

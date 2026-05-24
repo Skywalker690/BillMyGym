@@ -68,7 +68,20 @@ public class MembershipLifecycleService {
         BigDecimal appliedCreditAmount,
         int reminderDaysBeforeExpiry
     ) {
-        BigDecimal paidAmount = successfulPaymentTotal(payments);
+        return buildCoverageSummary(
+            membership,
+            successfulPaymentTotal(payments),
+            appliedCreditAmount,
+            reminderDaysBeforeExpiry
+        );
+    }
+
+    public PaymentCoverageSummary buildCoverageSummary(
+        MemberMembership membership,
+        BigDecimal paidAmount,
+        BigDecimal appliedCreditAmount,
+        int reminderDaysBeforeExpiry
+    ) {
         BigDecimal normalizedAppliedCredit = appliedCreditAmount == null ? BigDecimal.ZERO : appliedCreditAmount;
         BigDecimal coveredAmount = paidAmount.add(normalizedAppliedCredit);
         BigDecimal pendingAmount = membership.getPlanAmount().subtract(coveredAmount).max(BigDecimal.ZERO);

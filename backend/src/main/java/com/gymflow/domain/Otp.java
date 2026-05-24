@@ -9,7 +9,11 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 
 @Entity
-@Table(name = "otps")
+@Table(name = "otps", indexes = {
+    @Index(name = "idx_otps_email_code_verified", columnList = "email, otp_code, verified"),
+    @Index(name = "idx_otps_email_created", columnList = "email, created_at DESC"),
+    @Index(name = "idx_otps_expires", columnList = "expires_at")
+})
 @Data
 @Builder
 @NoArgsConstructor

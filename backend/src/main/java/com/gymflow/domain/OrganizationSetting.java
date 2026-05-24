@@ -3,6 +3,7 @@ package com.gymflow.domain;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
@@ -12,7 +13,9 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
-@Table(name = "organization_settings")
+@Table(name = "organization_settings", indexes = {
+    @Index(name = "idx_org_settings_org_deleted", columnList = "organization_id, deleted")
+})
 public class OrganizationSetting extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY)

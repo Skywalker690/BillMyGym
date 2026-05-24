@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -16,7 +17,11 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
-@Table(name = "whatsapp_reminder_logs")
+@Table(name = "whatsapp_reminder_logs", indexes = {
+    @Index(name = "idx_whatsapp_reminder_logs_org_sent", columnList = "organization_id, sent_at DESC, deleted"),
+    @Index(name = "idx_whatsapp_reminder_logs_org_status_sent", columnList = "organization_id, status, sent_at DESC, deleted"),
+    @Index(name = "idx_whatsapp_reminder_logs_member_created", columnList = "member_id, created_at DESC, deleted")
+})
 public class WhatsappReminderLog extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

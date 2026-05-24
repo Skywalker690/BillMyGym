@@ -119,7 +119,7 @@ function percentText(value: number) {
   return `${value > 0 ? "+" : ""}${Math.round(value)}%`;
 }
 
-function BreakdownBar({ item, amount = false }: { item: PlatformBreakdown; amount?: boolean }) {
+function BreakdownBar({ item, amount = false }: { key?: string; item: PlatformBreakdown; amount?: boolean }) {
   return (
     <div className="rounded-2xl border border-white/75 bg-white/70 p-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">

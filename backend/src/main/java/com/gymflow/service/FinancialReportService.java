@@ -64,12 +64,19 @@ public class FinancialReportService {
 
         ReportWindow window = resolveWindow(organization, period, range, from, to);
         List<MemberPayment> payments = memberPaymentRepository
-            .findByOrganizationIdAndDeletedFalseOrderByPaymentDateDescCreatedAtDesc(organization.getId());
+            .findByOrganizationIdAndDeletedFalseAndPaymentDateBetweenOrderByPaymentDateAscCreatedAtAsc(
+                organization.getId(),
+                window.startDate(),
+                window.endDate()
+            );
+        Map<YearMonth, List<MemberPayment>> paymentsByMonth = payments.stream()
+            .filter(payment -> payment.getPaymentDate() != null)
+            .collect(Collectors.groupingBy(payment -> YearMonth.from(payment.getPaymentDate())));
         List<MemberMembership> memberships = memberMembershipRepository
-            .findByOrganizationIdAndDeletedFalse(organization.getId());
+            .findReportSnapshotMemberships(organization.getId(), window.endDate());
 
         List<FinancialReportMonthResponse> months = monthsBetween(window.startDate(), window.endDate()).stream()
-            .map(month -> monthResponse(organization, payments, memberships, month))
+            .map(month -> monthResponse(organization, paymentsByMonth.getOrDefault(month, List.of()), memberships, month))
             .toList();
 
         return new FinancialReportResponse(

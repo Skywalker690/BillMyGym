@@ -6,6 +6,7 @@ import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationSetting;
 import com.gymflow.domain.enums.NotificationType;
+import com.gymflow.domain.enums.NotificationStatus;
 import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.NotificationLogRepository;
@@ -53,14 +54,23 @@ public class ReminderService {
         OffsetDateTime dayStart = LocalDate.now(APP_ZONE)
             .atStartOfDay(APP_ZONE)
             .toOffsetDateTime();
-        List<MemberMembership> candidates = memberMembershipRepository.findReminderCandidatesForDay(organizationId, dayStart).stream()
+        OrganizationSetting setting = organizationSettingService.getOrCreateSettings(organizationId);
+        LocalDate today = LocalDate.now(APP_ZONE);
+        List<MemberMembership> candidates = memberMembershipRepository.findReminderCandidatesForDay(
+                organizationId,
+                dayStart,
+                today,
+                today.plusDays(Math.max(setting.getReminderDaysBeforeExpiry(), 0))
+            )
+            .stream()
             .filter(membership -> membership.getOrganization().getStatus() == OrganizationStatus.ACTIVE
                 || membership.getOrganization().getStatus() == OrganizationStatus.TRIAL)
             .toList();
-        if (notificationLogRepository.existsByOrganizationIdAndNotificationDateAndTypeAndDeletedFalse(
+        if (notificationLogRepository.existsByOrganizationIdAndNotificationDateAndTypeAndStatusAndDeletedFalse(
             organizationId,
             LocalDate.now(APP_ZONE),
-            NotificationType.ORGANIZATION_RENEWAL_DIGEST
+            NotificationType.ORGANIZATION_RENEWAL_DIGEST,
+            NotificationStatus.SENT
         )) {
             return new ReminderRunResponse(candidates.size(), 0, 0);
         }
@@ -72,7 +82,6 @@ public class ReminderService {
         for (Map.Entry<Organization, List<MemberMembership>> entry : membershipsByOrganization.entrySet()) {
             Organization organization = entry.getKey();
             List<MemberMembership> memberships = entry.getValue();
-            OrganizationSetting setting = organizationSettingService.getOrCreateSettings(organization.getId());
             OrganizationDigestBuilderService.DigestContent digestContent =
                 organizationDigestBuilderService.buildDigest(organization, setting, memberships);
 

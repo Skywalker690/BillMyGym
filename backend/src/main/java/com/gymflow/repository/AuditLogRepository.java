@@ -91,6 +91,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSp
         String pattern
     ) {
         return (root, query, cb) -> {
+            fetchOrganizationForPage(root, query);
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
             predicates.add(cb.isNotNull(root.get("organization")));
             predicates.add(
@@ -134,6 +135,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSp
         Collection<AuditActivityScope> scopes
     ) {
         return (root, query, cb) -> {
+            fetchOrganizationForPage(root, query);
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("organization").get("id"), organizationId));
             predicates.add(root.get("activityScope").in(scopes));
@@ -158,5 +160,17 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSp
             }
             return cb.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
         };
+    }
+
+    private static void fetchOrganizationForPage(
+        jakarta.persistence.criteria.Root<AuditLog> root,
+        jakarta.persistence.criteria.CriteriaQuery<?> query
+    ) {
+        Class<?> resultType = query.getResultType();
+        if (Long.class.equals(resultType) || long.class.equals(resultType)) {
+            return;
+        }
+        root.fetch("organization", jakarta.persistence.criteria.JoinType.LEFT);
+        query.distinct(true);
     }
 }

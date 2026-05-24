@@ -6,6 +6,7 @@ import com.gymflow.api.dto.SubscriptionDtos.CreateSubscriptionOrderResponse;
 import com.gymflow.api.dto.SubscriptionDtos.MemberLimitResponse;
 import com.gymflow.api.dto.SubscriptionDtos.PaymentHistoryPageResponse;
 import com.gymflow.api.dto.SubscriptionDtos.PlanAccessResponse;
+import com.gymflow.api.dto.SubscriptionDtos.SubscriptionPricingResponse;
 import com.gymflow.api.dto.SubscriptionDtos.SubscriptionPaymentResponse;
 import com.gymflow.api.dto.SubscriptionDtos.SubscriptionStatusResponse;
 import com.gymflow.api.dto.SubscriptionDtos.VerifySubscriptionPaymentRequest;
@@ -68,6 +69,7 @@ public class SubscriptionService {
     private final MemberRepository memberRepository;
     private final PlanAccessService planAccessService;
     private final MemberLimitService memberLimitService;
+    private final SubscriptionPricingService subscriptionPricingService;
     private final AuditLogService auditLogService;
     private final OrganizationPaymentWebhookService organizationPaymentWebhookService;
     private final BillingLifecycleService billingLifecycleService;
@@ -97,7 +99,8 @@ public class SubscriptionService {
             throw new BadRequestException("Subscription is already active through " + organization.getSubscriptionDueDate().minusDays(1));
         }
         SubscriptionPlan selectedPlan = resolveCheckoutPlan(request, organization);
-        BigDecimal monthlyAmount = MoneyUtils.normalize(selectedPlan.monthlyAmount());
+        SubscriptionPricingService.SubscriptionPriceBreakdown pricing = subscriptionPricingService.priceFor(organization, selectedPlan);
+        BigDecimal monthlyAmount = MoneyUtils.normalize(pricing.totalAmount());
         LocalDate start = resolveNextSubscriptionStart(organization);
         LocalDate end = billingLifecycleService.billingPeriodEnd(start);
         OrganizationSubscriptionPayment existingPending = subscriptionPaymentRepository
@@ -117,6 +120,7 @@ public class SubscriptionService {
                 paymentsEnabled,
                 selectedPlan,
                 existingPending.getAmount(),
+                toPricingResponse(pricing),
                 MoneyUtils.toMinorUnits(existingPending.getAmount()),
                 CURRENCY,
                 existingPending.getSubscriptionStart(),
@@ -156,6 +160,7 @@ public class SubscriptionService {
             paymentsEnabled,
             selectedPlan,
             monthlyAmount,
+            toPricingResponse(pricing),
             amountInPaise,
             CURRENCY,
             start,
@@ -215,12 +220,14 @@ public class SubscriptionService {
         OrganizationSubscriptionPayment payment = subscriptionPaymentRepository.findById(paymentId)
             .filter(existing -> existing.getOrganization().getId().equals(organization.getId()))
             .orElseThrow(() -> new NotFoundException("Subscription payment not found"));
+        SubscriptionPlan paymentPlan = resolvePaymentPlan(payment, organization);
         return new CreateSubscriptionOrderResponse(
             payment.getRazorpayOrderId(),
             razorpayKeyId,
             paymentsEnabled,
-            resolvePaymentPlan(payment, organization),
+            paymentPlan,
             payment.getAmount(),
+            toPricingResponse(subscriptionPricingService.priceFor(organization, paymentPlan)),
             MoneyUtils.toMinorUnits(payment.getAmount()),
             CURRENCY,
             payment.getSubscriptionStart(),
@@ -246,9 +253,10 @@ public class SubscriptionService {
             DEFAULT_PAYMENT_HISTORY_SIZE
         );
         SubscriptionPlan resolvedPlan = planAccessService.resolvePlan(organization);
+        SubscriptionPricingService.SubscriptionPriceBreakdown pricing = subscriptionPricingService.priceFor(organization, resolvedPlan);
         BigDecimal monthlyAmount = organization.getOrganizationType() == OrganizationType.DEMO
             ? BigDecimal.ZERO
-            : resolvedPlan.monthlyAmount();
+            : pricing.totalAmount();
         BigDecimal lifetimeSubscriptionRevenue = organization.getOrganizationType() == OrganizationType.DEMO
             ? BigDecimal.ZERO
             : subscriptionPaymentRepository.sumPaidForOrganization(organization.getId());
@@ -273,11 +281,9 @@ public class SubscriptionService {
             usage.getMonthlyEmailCount(),
             customReminderUsage,
             customReminderLimit,
-            memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(
-                organization.getId(),
-                com.gymflow.domain.enums.MemberStatus.ACTIVE
-            ),
+            pricing.activeMembers(),
             toMemberLimitResponse(organization, memberLimitService.usage(organization)),
+            toPricingResponse(pricing),
             toPlanAccessResponse(planAccessService.summary(organization)),
             paymentHistoryPage.items(),
             paymentHistoryPage
@@ -324,6 +330,18 @@ public class SubscriptionService {
             summary.canReceiveMonthlyReports(),
             summary.canExportReports(),
             summary.canUsePremiumFeatures()
+        );
+    }
+
+    private SubscriptionPricingResponse toPricingResponse(SubscriptionPricingService.SubscriptionPriceBreakdown pricing) {
+        return new SubscriptionPricingResponse(
+            pricing.baseAmount(),
+            pricing.totalAmount(),
+            pricing.activeMembers(),
+            pricing.includedMembers(),
+            pricing.overageMembers(),
+            pricing.overageRate(),
+            pricing.overageAmount()
         );
     }
 

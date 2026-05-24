@@ -3,6 +3,7 @@ package com.gymflow.domain;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -16,6 +17,10 @@ import lombok.Setter;
 @Setter
 @Table(
     name = "organization_usage_stats",
+    indexes = {
+        @Index(name = "idx_org_usage_stats_month", columnList = "year, month, deleted"),
+        @Index(name = "idx_org_usage_stats_org_month", columnList = "organization_id, year, month, deleted")
+    },
     uniqueConstraints = @UniqueConstraint(
         name = "uk_org_usage_stats_org_year_month",
         columnNames = {"organization_id", "year", "month"}

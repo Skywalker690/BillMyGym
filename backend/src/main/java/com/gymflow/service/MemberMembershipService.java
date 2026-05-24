@@ -112,9 +112,9 @@ public class MemberMembershipService {
 
     @Transactional(readOnly = true)
     public MemberMembership findLatestMembership(Long memberId, Long organizationId) {
-        List<MemberMembership> memberships = memberMembershipRepository
-            .findByMemberIdAndOrganizationIdAndDeletedFalseOrderByStartDateDescCreatedAtDesc(memberId, organizationId);
-        return memberships.isEmpty() ? null : memberships.get(0);
+        return memberMembershipRepository
+            .findTopByMemberIdAndOrganizationIdAndDeletedFalseOrderByEndDateDescStartDateDescCreatedAtDesc(memberId, organizationId)
+            .orElse(null);
     }
 
     @Transactional
@@ -227,8 +227,6 @@ public class MemberMembershipService {
         Map<Long, List<MemberMembership>> membershipsByMemberId = memberships.stream()
             .filter(membership -> !membership.getMember().isDeleted())
             .collect(Collectors.groupingBy(membership -> membership.getMember().getId()));
-        Map<Long, List<MemberPayment>> paymentsByMembershipId = loadPaymentsByMembershipId(memberships);
-
         for (List<MemberMembership> memberMemberships : membershipsByMemberId.values()) {
             Member member = memberMemberships.getFirst().getMember();
             MemberMembership latestMembership = latestMembership(memberMemberships);
@@ -236,11 +234,6 @@ public class MemberMembershipService {
                 continue;
             }
 
-            PaymentCoverageSummary coverage = membershipLifecycleService.buildCoverageSummary(
-                latestMembership,
-                paymentsByMembershipId.getOrDefault(latestMembership.getId(), List.of()),
-                reminderDays
-            );
             boolean membershipExpiredWithoutRenewal =
                 latestMembership.getStatus() == MembershipStatus.OVERDUE;
             boolean isOverdueBy30Days = !latestMembership.getEndDate().plusDays(30).isAfter(LocalDate.now(APP_ZONE));

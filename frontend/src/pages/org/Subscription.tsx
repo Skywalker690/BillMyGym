@@ -66,6 +66,16 @@ type PaymentHistoryPage = {
   hasNext: boolean;
 };
 
+type SubscriptionPricing = {
+  baseAmount: number;
+  totalAmount: number;
+  activeMembers: number;
+  includedMembers?: number | null;
+  overageMembers: number;
+  overageRate: number;
+  overageAmount: number;
+};
+
 type SubscriptionStatus = {
   organizationId: number;
   organizationName: string;
@@ -89,6 +99,7 @@ type SubscriptionStatus = {
     remainingSlots: number;
     usagePercent: number;
   };
+  pricing?: SubscriptionPricing;
   paymentHistory: SubscriptionPayment[];
   paymentHistoryPage?: PaymentHistoryPage;
 };
@@ -99,6 +110,7 @@ type CreateOrderResponse = {
   paymentsEnabled: boolean;
   subscriptionPlan: CheckoutPlanKey;
   amount: number;
+  pricing?: SubscriptionPricing;
   amountInPaise: number;
   currency: string;
   subscriptionStart: string;
@@ -193,6 +205,9 @@ const money = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
+const PRO_INCLUDED_MEMBERS = 600;
+const PRO_OVERAGE_RATE = 3;
+
 const dateText = (value?: string | null) => {
   if (!value) return "Not set";
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
@@ -231,6 +246,27 @@ function preferredCheckoutPlan(subscription?: SubscriptionStatus): CheckoutPlanK
     return "GROWTH";
   }
   return subscription.subscriptionPlan;
+}
+
+function estimatedPlanPrice(plan: PlanCard, subscription?: SubscriptionStatus) {
+  if (plan.key !== "PRO") {
+    return plan.price;
+  }
+  const activeMembers = subscription?.pricing?.activeMembers ?? subscription?.activeMembers ?? 0;
+  return plan.price + Math.max(activeMembers - PRO_INCLUDED_MEMBERS, 0) * PRO_OVERAGE_RATE;
+}
+
+function proPricingPreview(subscription?: SubscriptionStatus) {
+  const activeMembers = subscription?.pricing?.activeMembers ?? subscription?.activeMembers ?? 0;
+  const overageMembers = Math.max(activeMembers - PRO_INCLUDED_MEMBERS, 0);
+  return {
+    activeMembers,
+    includedMembers: PRO_INCLUDED_MEMBERS,
+    overageMembers,
+    overageRate: PRO_OVERAGE_RATE,
+    overageAmount: overageMembers * PRO_OVERAGE_RATE,
+    totalAmount: 1499 + overageMembers * PRO_OVERAGE_RATE,
+  };
 }
 
 export default function Subscription({ immersive = false, showPlans = false }: { immersive?: boolean; showPlans?: boolean }) {
@@ -486,6 +522,9 @@ export default function Subscription({ immersive = false, showPlans = false }: {
   const hasInactiveSubscription = isPaused || isDeactivated;
   const canCheckout = !isPilot && !isActive;
   const selectedPlanDetails = checkoutPlans.find((plan) => plan.key === selectedPlan) ?? checkoutPlans[1];
+  const selectedPlanEstimatedPrice = estimatedPlanPrice(selectedPlanDetails, subscription);
+  const proPreview = proPricingPreview(subscription);
+  const isCurrentPro = subscription.subscriptionPlan === "PRO";
   const currentPlanStudioName = subscription.subscriptionPlan === "PILOT"
     ? "Founding Partner Access"
     : subscriptionPlanLabel(subscription.subscriptionPlan);
@@ -607,9 +646,23 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                   <span className="pb-1 text-sm font-bold text-slate-300">{selectedPlanDetails.limit}</span>
                 </div>
                 <div className="mt-3 flex items-end gap-1">
-                  <span className="text-3xl font-black">{money.format(selectedPlanDetails.price)}</span>
+                  <span className="text-3xl font-black">{money.format(selectedPlanEstimatedPrice)}</span>
                   <span className="pb-1 text-sm font-bold text-slate-300">/ month</span>
                 </div>
+                {selectedPlanDetails.key === "PRO" && (
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-sm font-semibold text-slate-200">
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Included active members</span>
+                      <span className="font-black text-white">{proPreview.includedMembers}</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <span>Billable overage</span>
+                      <span className="font-black text-white">
+                        {proPreview.overageMembers} x {money.format(proPreview.overageRate)}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 <p className="mt-6 text-sm font-semibold leading-6 text-slate-200">
                   Pick the plan that fits your gym now. Once payment is verified, access is restored and the workspace is updated automatically.
                 </p>
@@ -645,9 +698,27 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                   <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
                     {subscription.subscriptionPlan === "PILOT"
                       ? "This workspace is currently running under founding partner access."
-                      : `${money.format(subscription.monthlyAmount)} per month is currently applied to this workspace.`}
+                      : `${money.format(subscription.pricing?.totalAmount ?? subscription.monthlyAmount)} per month is currently applied to this workspace.`}
                   </p>
                 </div>
+                {isCurrentPro && (
+                  <div className="mt-4 rounded-[1.5rem] border border-sky-100 bg-white/80 p-4 shadow-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-[0.22em] text-sky-700">Pro Overage</div>
+                        <div className="mt-1 text-sm font-semibold text-slate-600">
+                          {proPreview.includedMembers} active members included, then {money.format(proPreview.overageRate)} per extra member.
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-black text-slate-950">{money.format(subscription.pricing?.overageAmount ?? proPreview.overageAmount)}</div>
+                        <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                          {subscription.pricing?.overageMembers ?? proPreview.overageMembers} extra
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <Button
                   onClick={() => navigate(planRoute)}
                   className="mt-6 h-12 rounded-full bg-emerald-600 px-6 font-black text-white shadow-[0_16px_35px_rgba(5,150,105,0.24)] hover:bg-emerald-700"
@@ -717,6 +788,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
               const isPro = plan.key === "PRO";
               const isGrowth = plan.key === "GROWTH";
               const isStarter = plan.key === "STARTER";
+              const planMonthlyPrice = estimatedPlanPrice(plan, subscription);
               return (
                 <div
                   key={plan.key}
@@ -796,9 +868,20 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                         isPro ? "text-sky-200" : isGrowth ? "text-emerald-700" : "text-slate-500"
                       }`}>Monthly Price</div>
                       <div className="mt-2 flex items-end gap-2">
-                        <span className={`text-4xl font-black tracking-tight ${isPro ? "text-white" : "text-slate-950"}`}>{money.format(plan.price)}</span>
+                        <span className={`text-4xl font-black tracking-tight ${isPro ? "text-white" : "text-slate-950"}`}>{money.format(planMonthlyPrice)}</span>
                         <span className={`pb-1 text-sm font-bold ${isPro ? "text-slate-300" : "text-slate-500"}`}>/ month</span>
                       </div>
+                      {isPro && (
+                        <div className={`mt-3 rounded-2xl border px-3 py-2 text-xs font-bold leading-5 ${
+                          proPreview.overageMembers > 0
+                            ? "border-sky-300/20 bg-sky-300/10 text-sky-50"
+                            : "border-white/10 bg-white/[0.04] text-slate-300"
+                        }`}>
+                          {proPreview.overageMembers > 0
+                            ? `${proPreview.overageMembers} extra active members adds ${money.format(proPreview.overageAmount)} this month.`
+                            : `Base price includes your first ${proPreview.includedMembers} active members.`}
+                        </div>
+                      )}
                     </div>
                   </div>
 

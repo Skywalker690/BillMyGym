@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -16,7 +17,11 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
-@Table(name = "users")
+@Table(name = "users", indexes = {
+    @Index(name = "idx_users_org_deleted", columnList = "organization_id, deleted"),
+    @Index(name = "idx_users_org_role_deleted", columnList = "organization_id, role, deleted"),
+    @Index(name = "idx_users_status_deleted", columnList = "status, deleted")
+})
 public class User extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

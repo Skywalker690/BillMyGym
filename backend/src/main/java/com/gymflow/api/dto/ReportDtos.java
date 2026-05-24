@@ -6,6 +6,7 @@ import com.gymflow.api.dto.MemberDtos.MemberDirectoryItem;
 import com.gymflow.api.dto.MemberDtos.MemberDirectorySummary;
 import com.gymflow.api.dto.NotificationDtos.NotificationResponse;
 import com.gymflow.api.dto.SubscriptionDtos.PlanAccessResponse;
+import com.gymflow.api.dto.SubscriptionDtos.SubscriptionPricingResponse;
 import com.gymflow.api.dto.SettingDtos.SettingsResponse;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -27,6 +28,7 @@ public class ReportDtos {
         MemberDirectorySummary memberSummary,
         List<MonthlyMemberJoinResponse> monthlyMemberJoins,
         PlanAccessResponse planAccess,
+        SubscriptionPricingResponse subscriptionPricing,
         SubscriptionValiditySummary subscriptionValidity,
         List<MemberDirectoryItem> expiringSoon,
         List<MemberDirectoryItem> overdue,

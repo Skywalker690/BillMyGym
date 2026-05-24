@@ -24,6 +24,7 @@ public class SubscriptionDtos {
         boolean paymentsEnabled,
         SubscriptionPlan subscriptionPlan,
         BigDecimal amount,
+        SubscriptionPricingResponse pricing,
         long amountInPaise,
         String currency,
         LocalDate subscriptionStart,
@@ -59,9 +60,21 @@ public class SubscriptionDtos {
         Integer customReminderLimit,
         long activeMembers,
         MemberLimitResponse memberLimit,
+        SubscriptionPricingResponse pricing,
         PlanAccessResponse planAccess,
         List<SubscriptionPaymentResponse> paymentHistory,
         PaymentHistoryPageResponse paymentHistoryPage
+    ) {
+    }
+
+    public record SubscriptionPricingResponse(
+        BigDecimal baseAmount,
+        BigDecimal totalAmount,
+        long activeMembers,
+        Integer includedMembers,
+        long overageMembers,
+        BigDecimal overageRate,
+        BigDecimal overageAmount
     ) {
     }
 

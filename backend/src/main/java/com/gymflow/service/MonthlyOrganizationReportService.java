@@ -52,8 +52,10 @@ public class MonthlyOrganizationReportService {
             monthEnd
         );
 
-        List<MemberPayment> payments = memberPaymentRepository.findByOrganizationIdAndDeletedFalseOrderByPaymentDateDescCreatedAtDesc(
-            organization.getId()
+        List<MemberPayment> payments = memberPaymentRepository.findByOrganizationIdAndDeletedFalseAndPaymentDateBetweenOrderByPaymentDateAscCreatedAtAsc(
+            organization.getId(),
+            monthStart,
+            monthEnd
         );
         BigDecimal collectedRevenue = payments.stream()
             .filter(payment -> payment.getPaymentDate() != null)
@@ -64,7 +66,7 @@ public class MonthlyOrganizationReportService {
 
         LocalDate snapshotDate = monthEnd;
         var latestMemberships = latestMembershipsAsOf(
-            memberMembershipRepository.findByOrganizationIdAndDeletedFalse(organization.getId()),
+            memberMembershipRepository.findReportSnapshotMemberships(organization.getId(), snapshotDate),
             snapshotDate
         );
         long activeMembers = latestMemberships.values().stream()

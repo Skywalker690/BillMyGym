@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -17,7 +18,12 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
-@Table(name = "notification_delivery_logs")
+@Table(name = "notification_delivery_logs", indexes = {
+    @Index(name = "idx_notification_delivery_org_type_attempt", columnList = "organization_id, type, last_attempt, status"),
+    @Index(name = "idx_notification_delivery_provider_retry", columnList = "provider, status, next_retry_at"),
+    @Index(name = "idx_notification_delivery_provider_message", columnList = "provider_message_id, deleted"),
+    @Index(name = "idx_notification_delivery_notification", columnList = "notification_id")
+})
 public class NotificationDeliveryLog extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

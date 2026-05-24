@@ -9,6 +9,7 @@ import com.gymflow.api.dto.ReportDtos.MonthlyMemberJoinResponse;
 import com.gymflow.api.dto.ReportDtos.ReminderReportResponse;
 import com.gymflow.api.dto.ReportDtos.SubscriptionValiditySummary;
 import com.gymflow.api.dto.SubscriptionDtos.PlanAccessResponse;
+import com.gymflow.api.dto.SubscriptionDtos.SubscriptionPricingResponse;
 import com.gymflow.api.error.BadRequestException;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
@@ -22,6 +23,7 @@ import com.gymflow.repository.MemberPaymentRepository;
 import com.gymflow.security.SecurityUtils;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -52,6 +54,7 @@ public class ReportService {
     private final NotificationQueryService notificationQueryService;
     private final com.gymflow.repository.OrganizationRepository organizationRepository;
     private final PlanAccessService planAccessService;
+    private final SubscriptionPricingService subscriptionPricingService;
     private final MemberCreditLedgerService memberCreditLedgerService;
 
     @Transactional
@@ -92,6 +95,7 @@ public class ReportService {
             memberSummary,
             monthlyMemberJoins(organizationId),
             toPlanAccessResponse(planAccessService.summary(organization)),
+            toPricingResponse(subscriptionPricingService.currentPrice(organization)),
             buildSubscriptionValidity(organization),
             expiringItems,
             overdueItems,
@@ -143,6 +147,18 @@ public class ReportService {
             summary.canReceiveMonthlyReports(),
             summary.canExportReports(),
             summary.canUsePremiumFeatures()
+        );
+    }
+
+    private SubscriptionPricingResponse toPricingResponse(SubscriptionPricingService.SubscriptionPriceBreakdown pricing) {
+        return new SubscriptionPricingResponse(
+            pricing.baseAmount(),
+            pricing.totalAmount(),
+            pricing.activeMembers(),
+            pricing.includedMembers(),
+            pricing.overageMembers(),
+            pricing.overageRate(),
+            pricing.overageAmount()
         );
     }
 
@@ -212,12 +228,18 @@ public class ReportService {
         YearMonth startMonth = currentMonth.minusMonths(5);
         DateTimeFormatter labelFormatter = DateTimeFormatter.ofPattern("MMM");
 
-        Map<YearMonth, Long> joinedMembersByMonth = memberRepository.findByOrganizationIdAndDeletedFalse(organizationId).stream()
-            .map(Member::getCreatedAt)
-            .filter(createdAt -> createdAt != null)
-            .map(YearMonth::from)
-            .filter(month -> !month.isBefore(startMonth) && !month.isAfter(currentMonth))
-            .collect(Collectors.groupingBy(month -> month, Collectors.counting()));
+        OffsetDateTime startAt = startMonth.atDay(1).atStartOfDay(APP_ZONE).toOffsetDateTime();
+        OffsetDateTime endAt = currentMonth.plusMonths(1).atDay(1).atStartOfDay(APP_ZONE).toOffsetDateTime();
+        Map<YearMonth, Long> joinedMembersByMonth = memberRepository.countJoinedMembersByMonth(
+                organizationId,
+                startAt,
+                endAt
+            )
+            .stream()
+            .collect(Collectors.toMap(
+                row -> YearMonth.of(row.getYear(), row.getMonth()),
+                row -> row.getTotal() == null ? 0L : row.getTotal()
+            ));
 
         return IntStream.rangeClosed(0, 5)
             .mapToObj(offset -> {

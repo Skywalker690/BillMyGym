@@ -118,8 +118,6 @@ function planLabel(plan?: Organization["subscriptionPlan"]) {
       return "Pro";
     case "PILOT":
       return "Pilot";
-    case "DEMO":
-      return "Demo";
     default:
       return "Starter";
   }

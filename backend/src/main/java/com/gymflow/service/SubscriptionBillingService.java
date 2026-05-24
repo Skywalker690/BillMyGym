@@ -33,7 +33,7 @@ public class SubscriptionBillingService {
     private final NotificationDeliveryLogService notificationDeliveryLogService;
     private final BillingLifecycleService billingLifecycleService;
     private final WhatsAppDeliveryService whatsAppDeliveryService;
-    private final PlanAccessService planAccessService;
+    private final SubscriptionPricingService subscriptionPricingService;
     private final PilotConversionService pilotConversionService;
 
     @Transactional
@@ -64,7 +64,7 @@ public class SubscriptionBillingService {
                 }
                 UsageMetric usage = usageMetricService.refreshMonthlySnapshot(organization);
                 String summary = billingSummary(usage);
-                BigDecimal monthlyAmount = planAccessService.resolvePlan(organization).monthlyAmount();
+                BigDecimal monthlyAmount = subscriptionPricingService.currentPrice(organization).totalAmount();
                 if (organization.getStatus() == OrganizationStatus.TRIAL) {
                     emailService.sendTrialEndingEmail(
                         organization,
@@ -126,7 +126,7 @@ public class SubscriptionBillingService {
         UsageMetric usage = usageMetricService.refreshMonthlySnapshot(organization);
         emailService.sendPausedNotificationEmail(
             organization,
-            planAccessService.resolvePlan(organization).monthlyAmount(),
+            subscriptionPricingService.currentPrice(organization).totalAmount(),
             organization.getSubscriptionDueDate() == null ? today : organization.getSubscriptionDueDate(),
             PAYMENT_LINK,
             usage.getMonthlyWhatsappCount(),
@@ -157,7 +157,7 @@ public class SubscriptionBillingService {
             UsageMetric usage = usageMetricService.refreshMonthlySnapshot(organization);
             emailService.sendDeactivatedNotificationEmail(
                 organization,
-                planAccessService.resolvePlan(organization).monthlyAmount(),
+                subscriptionPricingService.currentPrice(organization).totalAmount(),
                 organization.getSubscriptionDueDate() == null ? today : organization.getSubscriptionDueDate(),
                 PAYMENT_LINK,
                 usage.getMonthlyWhatsappCount(),

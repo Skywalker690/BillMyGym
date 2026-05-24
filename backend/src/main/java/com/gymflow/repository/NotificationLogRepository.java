@@ -96,9 +96,10 @@ public interface NotificationLogRepository extends JpaRepository<NotificationLog
         OffsetDateTime toDate
     );
 
-    boolean existsByOrganizationIdAndNotificationDateAndTypeAndDeletedFalse(
+    boolean existsByOrganizationIdAndNotificationDateAndTypeAndStatusAndDeletedFalse(
         Long organizationId,
         LocalDate notificationDate,
-        NotificationType type
+        NotificationType type,
+        NotificationStatus status
     );
 }

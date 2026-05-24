@@ -47,7 +47,8 @@ const schema = z.object({
   description: z.string().optional(),
 });
 
-type Values = z.infer<typeof schema>;
+type FormInput = z.input<typeof schema>;
+type Values = z.output<typeof schema>;
 type Step = 0 | 1 | 2;
 
 const stepMeta = [
@@ -68,7 +69,7 @@ export default function OrganizationForm() {
     trigger,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<Values>({
+  } = useForm<FormInput, any, Values>({
     resolver: zodResolver(schema),
     defaultValues: {
       organizationType: "REGULAR",

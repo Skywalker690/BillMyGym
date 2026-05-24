@@ -10,6 +10,7 @@ import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationSetting;
 import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.MembershipStatus;
+import com.gymflow.domain.enums.NotificationStatus;
 import com.gymflow.domain.enums.NotificationType;
 import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.repository.MemberMembershipRepository;
@@ -78,12 +79,18 @@ class ReminderServiceTest {
         setId(membership, 13L);
 
         OrganizationSetting setting = new OrganizationSetting();
-        when(memberMembershipRepository.findReminderCandidatesForDay(org.mockito.ArgumentMatchers.eq(11L), org.mockito.ArgumentMatchers.any()))
-            .thenReturn(List.of(membership));
-        when(notificationLogRepository.existsByOrganizationIdAndNotificationDateAndTypeAndDeletedFalse(
+        when(memberMembershipRepository.findReminderCandidatesForDay(
             org.mockito.ArgumentMatchers.eq(11L),
             org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.eq(NotificationType.ORGANIZATION_RENEWAL_DIGEST)
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any()
+        ))
+            .thenReturn(List.of(membership));
+        when(notificationLogRepository.existsByOrganizationIdAndNotificationDateAndTypeAndStatusAndDeletedFalse(
+            org.mockito.ArgumentMatchers.eq(11L),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.eq(NotificationType.ORGANIZATION_RENEWAL_DIGEST),
+            org.mockito.ArgumentMatchers.eq(NotificationStatus.SENT)
         )).thenReturn(false);
         when(organizationSettingService.getOrCreateSettings(11L)).thenReturn(setting);
         when(organizationDigestBuilderService.buildDigest(org.mockito.ArgumentMatchers.eq(organization), org.mockito.ArgumentMatchers.eq(setting), org.mockito.ArgumentMatchers.anyList()))

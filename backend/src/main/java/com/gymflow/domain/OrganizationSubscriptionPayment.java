@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -19,7 +20,15 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
-@Table(name = "organization_subscription_payments")
+@Table(name = "organization_subscription_payments", indexes = {
+    @Index(name = "idx_org_subscription_payments_org_status", columnList = "organization_id, payment_status, deleted"),
+    @Index(name = "idx_org_subscription_payments_org_created", columnList = "organization_id, created_at DESC, deleted"),
+    @Index(name = "idx_org_subscription_payment_retry", columnList = "payment_status, next_retry_date, deleted"),
+    @Index(name = "idx_org_subscription_payment_subscription", columnList = "razorpay_subscription_id, created_at DESC, deleted"),
+    @Index(name = "idx_org_subscription_payment_order", columnList = "razorpay_order_id, deleted"),
+    @Index(name = "idx_org_subscription_payment_gateway", columnList = "gateway_transaction_id, deleted"),
+    @Index(name = "idx_org_subscription_payment_paid_date", columnList = "payment_status, payment_date, deleted")
+})
 public class OrganizationSubscriptionPayment extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -22,6 +22,12 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
     List<MemberMembership> findByMemberIdAndOrganizationIdAndDeletedFalseOrderByStartDateDescCreatedAtDesc(Long memberId, Long organizationId);
 
     @EntityGraph(attributePaths = {"member", "organization"})
+    Optional<MemberMembership> findTopByMemberIdAndOrganizationIdAndDeletedFalseOrderByEndDateDescStartDateDescCreatedAtDesc(
+        Long memberId,
+        Long organizationId
+    );
+
+    @EntityGraph(attributePaths = {"member", "organization"})
     Optional<MemberMembership> findByIdAndOrganizationIdAndDeletedFalse(Long id, Long organizationId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -40,6 +46,19 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
 
     @EntityGraph(attributePaths = {"member", "organization"})
     List<MemberMembership> findByOrganizationIdAndMemberIdInAndDeletedFalseOrderByMemberIdAscStartDateDescCreatedAtDesc(Long organizationId, Collection<Long> memberIds);
+
+    @EntityGraph(attributePaths = {"member", "organization"})
+    @Query("""
+        select membership
+        from MemberMembership membership
+        where membership.deleted = false
+          and membership.organization.id = :organizationId
+          and membership.startDate <= :snapshotThrough
+        """)
+    List<MemberMembership> findReportSnapshotMemberships(
+        @Param("organizationId") Long organizationId,
+        @Param("snapshotThrough") java.time.LocalDate snapshotThrough
+    );
 
     @EntityGraph(attributePaths = {"member", "organization"})
     Optional<MemberMembership> findByMemberIdAndOrganizationIdAndStatusAndDeletedFalse(Long memberId, Long organizationId, MembershipStatus status);
@@ -110,7 +129,13 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
           and membership.organization.deleted = false
           and membership.organization.status in ('ACTIVE', 'TRIAL')
           and membership.organization.id = :organizationId
-          and membership.status = 'OVERDUE'
+          and (
+              membership.status = 'OVERDUE'
+              or (
+                  membership.status = 'ACTIVE'
+                  and membership.endDate between :today and :expiringThrough
+              )
+          )
           and (membership.lastSentAt is null or membership.lastSentAt < :dayStart)
           and not exists (
               select newer.id
@@ -126,7 +151,9 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
         """)
     List<MemberMembership> findReminderCandidatesForDay(
         @Param("organizationId") Long organizationId,
-        @Param("dayStart") java.time.OffsetDateTime dayStart
+        @Param("dayStart") java.time.OffsetDateTime dayStart,
+        @Param("today") java.time.LocalDate today,
+        @Param("expiringThrough") java.time.LocalDate expiringThrough
     );
 
     @EntityGraph(attributePaths = {"member", "organization"})

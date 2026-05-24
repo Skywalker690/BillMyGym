@@ -16,7 +16,10 @@ import java.time.Instant;
         @Index(name = "idx_audit_ts", columnList = "timestamp DESC"),
         @Index(name = "idx_audit_zone", columnList = "zone"),
         @Index(name = "idx_audit_category", columnList = "category"),
-        @Index(name = "idx_audit_org_scope_ts", columnList = "organization_id, activity_scope, timestamp DESC")
+        @Index(name = "idx_audit_org_scope_ts", columnList = "organization_id, activity_scope, timestamp DESC"),
+        @Index(name = "idx_audit_org_event_ts", columnList = "organization_id, event, timestamp DESC"),
+        @Index(name = "idx_audit_org_scope_status_ts", columnList = "organization_id, activity_scope, event_status, timestamp DESC"),
+        @Index(name = "idx_audit_login_status_ts", columnList = "activity_scope, event_status, timestamp DESC")
 })
 @Data
 @Builder

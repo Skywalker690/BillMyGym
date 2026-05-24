@@ -24,7 +24,7 @@ public class OrganizationDigestBuilderService {
     }
 
     private String buildWhatsappDigest(String memberList, int memberCount) {
-        StringBuilder builder = new StringBuilder("BillMyGym Alert\n\nOverdue memberships:\n\n");
+        StringBuilder builder = new StringBuilder("BillMyGym Alert\n\nRenewal follow-ups:\n\n");
         builder.append(memberList);
         builder.append("\n\nTotal overdue: ").append(memberCount);
         return builder.toString();
@@ -59,15 +59,23 @@ public class OrganizationDigestBuilderService {
         return """
             <html><body>
             <h2>%s</h2>
-            <p>Overdue memberships needing follow-up:</p>
+            <p>Membership renewals needing follow-up:</p>
             <ul>%s</ul>
             </body></html>
             """.formatted(brandingName, listBuilder);
     }
 
     private String membershipStatusSummary(MemberMembership membership) {
-        long overdueDays = Math.max(1, ChronoUnit.DAYS.between(membership.getEndDate(), LocalDate.now(APP_ZONE)));
-        return "overdue by " + overdueDays + " day" + (overdueDays == 1 ? "" : "s");
+        LocalDate today = LocalDate.now(APP_ZONE);
+        if (membership.getEndDate().isBefore(today)) {
+            long overdueDays = Math.max(1, ChronoUnit.DAYS.between(membership.getEndDate(), today));
+            return "overdue by " + overdueDays + " day" + (overdueDays == 1 ? "" : "s");
+        }
+        long daysUntilDue = ChronoUnit.DAYS.between(today, membership.getEndDate());
+        if (daysUntilDue == 0) {
+            return "ends today";
+        }
+        return "ends in " + daysUntilDue + " day" + (daysUntilDue == 1 ? "" : "s");
     }
 
     private boolean hasText(String value) {

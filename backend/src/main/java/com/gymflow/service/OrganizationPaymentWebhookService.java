@@ -44,6 +44,7 @@ public class OrganizationPaymentWebhookService {
     private final AuditLogService auditLogService;
     private final BillingLifecycleService billingLifecycleService;
     private final PlanAccessService planAccessService;
+    private final SubscriptionPricingService subscriptionPricingService;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher applicationEventPublisher;
 
@@ -242,7 +243,7 @@ public class OrganizationPaymentWebhookService {
         LocalDate today = LocalDate.now(APP_ZONE);
         OrganizationSubscriptionPayment payment = new OrganizationSubscriptionPayment();
         payment.setOrganization(organization);
-        payment.setAmount(selectedPlan.monthlyAmount());
+        payment.setAmount(subscriptionPricingService.priceFor(organization, selectedPlan).totalAmount());
         payment.setSubscriptionPlan(selectedPlan);
         payment.setSubscriptionStart(today);
         payment.setSubscriptionEnd(billingLifecycleService.billingPeriodEnd(today));

@@ -7,6 +7,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.Getter;
@@ -19,7 +20,15 @@ import java.time.OffsetDateTime;
 @Entity
 @Getter
 @Setter
-@Table(name = "organizations")
+@Table(name = "organizations", indexes = {
+    @Index(name = "idx_org_deleted", columnList = "deleted"),
+    @Index(name = "idx_org_status_deleted", columnList = "status, deleted"),
+    @Index(name = "idx_org_type_status_due", columnList = "organization_type, status, subscription_due_date, deleted"),
+    @Index(name = "idx_org_subscription_plan", columnList = "subscription_plan, deleted"),
+    @Index(name = "idx_org_created_deleted", columnList = "created_at DESC, deleted"),
+    @Index(name = "idx_org_admin_email_deleted", columnList = "admin_email, deleted"),
+    @Index(name = "idx_org_admin_phone_deleted", columnList = "admin_phone_number, deleted")
+})
 public class Organization extends BaseEntity {
 
     @Column(nullable = false, unique = true)

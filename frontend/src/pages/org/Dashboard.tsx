@@ -5,6 +5,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock3,
+  Crown,
   Info,
   MessageCircleMore,
   Plus,
@@ -85,6 +86,15 @@ type DashboardReport = {
     tooltipLabel?: string;
     tooltipDate?: string;
   };
+  subscriptionPricing?: {
+    baseAmount?: number;
+    totalAmount?: number;
+    activeMembers?: number;
+    includedMembers?: number | null;
+    overageMembers?: number;
+    overageRate?: number;
+    overageAmount?: number;
+  };
   expiringSoon?: MembershipSnapshot[];
   overdue?: MembershipSnapshot[];
   recentReminderLogs?: ReminderLog[];
@@ -143,7 +153,9 @@ export default function Dashboard() {
   const joinedThisMonth = monthlyMemberJoins.at(-1)?.joinedMembers ?? 0;
   const canViewAdvancedAnalytics = report?.planAccess?.canViewAdvancedAnalytics ?? true;
   const isStarterPlan = report?.planName === "STARTER";
+  const isProPlan = report?.planName === "PRO";
   const subscriptionValidity = report?.subscriptionValidity;
+  const subscriptionPricing = report?.subscriptionPricing;
 
   const activeMembersTotal = Number(revenue.activeMembers ?? summary.activeMembers ?? 0);
   const activeMembersPendingCollection = Number(revenue.activeMembersPendingCollection ?? 0);
@@ -323,6 +335,10 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
+
+      {isProPlan && subscriptionPricing && (
+        <ProBillingPanel pricing={subscriptionPricing} />
+      )}
 
       <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {statCards.map((card) => {
@@ -561,6 +577,83 @@ function HeroMetric({
       <div className="mt-2 text-3xl font-black tracking-tight">{value}</div>
       {detail ? <div className="mt-1 text-sm font-semibold opacity-70">{detail}</div> : null}
     </div>
+  );
+}
+
+function ProBillingPanel({
+  pricing,
+}: {
+  pricing: {
+    baseAmount?: number;
+    totalAmount?: number;
+    activeMembers?: number;
+    includedMembers?: number | null;
+    overageMembers?: number;
+    overageRate?: number;
+    overageAmount?: number;
+  };
+}) {
+  const includedMembers = pricing.includedMembers ?? 600;
+  const activeMembers = pricing.activeMembers ?? 0;
+  const overageMembers = pricing.overageMembers ?? Math.max(activeMembers - includedMembers, 0);
+  const overageRate = pricing.overageRate ?? 3;
+  const overageAmount = pricing.overageAmount ?? overageMembers * overageRate;
+  const totalAmount = pricing.totalAmount ?? (pricing.baseAmount ?? 0) + overageAmount;
+  const includedPercent = activeMembers > 0
+    ? Math.min(Math.round((Math.min(activeMembers, includedMembers) / includedMembers) * 100), 100)
+    : 0;
+
+  return (
+    <section className="relative overflow-hidden rounded-[1.9rem] border border-slate-900 bg-[linear-gradient(135deg,#020617,#0f172a_48%,#075985)] p-6 text-white shadow-[0_28px_80px_rgba(2,6,23,0.22)]">
+      <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#38bdf8,#22c55e,#f59e0b)]" />
+      <div className="relative z-10 grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="border-sky-300/30 bg-sky-300/10 text-sky-100">Pro Billing</Badge>
+            <Badge className="border-white/10 bg-white/10 text-slate-100">Live member responsive</Badge>
+          </div>
+          <div className="mt-5 flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-sky-100 ring-1 ring-white/10">
+              <Crown className="h-7 w-7" />
+            </div>
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-sky-200">Monthly subscription total</div>
+              <div className="mt-1 text-4xl font-black tracking-tight">{money(totalAmount)}</div>
+            </div>
+          </div>
+          <p className="mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-300">
+            Pro includes {includedMembers} active members. Every active member above that adds {money(overageRate)} to the next monthly subscription payment.
+          </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.06] p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Active</div>
+            <div className="mt-2 text-3xl font-black">{activeMembers}</div>
+          </div>
+          <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.06] p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Included</div>
+            <div className="mt-2 text-3xl font-black">{includedMembers}</div>
+          </div>
+          <div className="rounded-[1.3rem] border border-sky-300/20 bg-sky-300/10 p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-100">Overage</div>
+            <div className="mt-2 text-3xl font-black">{money(overageAmount)}</div>
+          </div>
+          <div className="sm:col-span-3">
+            <div className="h-3 overflow-hidden rounded-full bg-white/10 ring-1 ring-inset ring-white/10">
+              <div
+                className="h-full rounded-full bg-[linear-gradient(90deg,#38bdf8,#22c55e)] shadow-[0_10px_30px_-12px_rgba(56,189,248,0.9)]"
+                style={{ width: `${Math.max(includedPercent, activeMembers > 0 ? 6 : 0)}%` }}
+              />
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-300">
+              <span>{Math.min(activeMembers, includedMembers)} included members used</span>
+              <span>{overageMembers} extra members billed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

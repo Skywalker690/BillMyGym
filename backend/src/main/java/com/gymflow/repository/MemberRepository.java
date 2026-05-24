@@ -45,6 +45,26 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
         OffsetDateTime end
     );
 
+    @Query(
+        value = """
+            select extract(year from created_at)::int as year,
+                   extract(month from created_at)::int as month,
+                   count(*) as total
+            from members
+            where organization_id = :organizationId
+              and deleted = false
+              and created_at >= :start
+              and created_at < :end
+            group by extract(year from created_at), extract(month from created_at)
+            """,
+        nativeQuery = true
+    )
+    List<MonthlyMemberJoinProjection> countJoinedMembersByMonth(
+        @Param("organizationId") Long organizationId,
+        @Param("start") OffsetDateTime start,
+        @Param("end") OffsetDateTime end
+    );
+
     @EntityGraph(attributePaths = "organization")
     @Query("""
     select member
@@ -160,4 +180,12 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     );
 
     long countByOrganizationIdAndDeletedFalse(Long organizationId);
+
+    interface MonthlyMemberJoinProjection {
+        Integer getYear();
+
+        Integer getMonth();
+
+        Long getTotal();
+    }
 }

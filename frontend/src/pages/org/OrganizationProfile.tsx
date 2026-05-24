@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -137,7 +137,7 @@ export default function OrganizationProfile() {
     },
     onSuccess: () => {
       setPasswordOtpVerified(true);
-      clearErrors("otp");
+      clearPasswordErrors("otp");
       toast.success("Code verified. You can now update your password.");
     },
     onError: (error: any) => {
@@ -317,7 +317,7 @@ export default function OrganizationProfile() {
   );
 }
 
-function Field({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
+function Field({ label, icon, children }: { label: string; icon?: ReactNode; children: ReactNode }) {
   return (
     <div className="space-y-2">
       <Label className="font-semibold text-slate-700">{label}</Label>
@@ -329,7 +329,7 @@ function Field({ label, icon, children }: { label: string; icon?: React.ReactNod
   );
 }
 
-function SecureField({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+function SecureField({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
   return (
     <div className="space-y-2">
       <Label className="font-semibold text-slate-700">{label}</Label>

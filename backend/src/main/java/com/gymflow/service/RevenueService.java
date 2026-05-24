@@ -26,7 +26,6 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
@@ -36,6 +35,17 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class RevenueService {
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
+    private static final List<PaymentType> COLLECTED_REVENUE_TYPES = List.of(
+        PaymentType.ADMISSION,
+        PaymentType.MEMBERSHIP,
+        PaymentType.NEW_MEMBERSHIP,
+        PaymentType.RENEWAL
+    );
+    private static final List<PaymentType> MEMBERSHIP_COVERAGE_TYPES = List.of(
+        PaymentType.MEMBERSHIP,
+        PaymentType.NEW_MEMBERSHIP,
+        PaymentType.RENEWAL
+    );
 
     private final OrganizationRepository organizationRepository;
     private final MemberRepository memberRepository;
@@ -56,19 +66,21 @@ public class RevenueService {
             .filter(membership -> !membership.getMember().isDeleted())
             .peek(membership -> membershipLifecycleService.refreshMembership(membership, reminderDays))
             .toList();
-        List<MemberPayment> payments = memberPaymentRepository.findByOrganizationIdAndDeletedFalseOrderByPaymentDateDescCreatedAtDesc(
-            organization.getId()
-        );
-        Map<Long, List<MemberPayment>> paymentsByMembershipId = payments.stream()
-            .collect(Collectors.groupingBy(payment -> payment.getMembership().getId()));
+        Map<Long, BigDecimal> paidAmountByMembershipId = memberPaymentRepository
+            .sumSuccessfulAmountsByMembershipForOrganization(organization.getId(), MEMBERSHIP_COVERAGE_TYPES)
+            .stream()
+            .collect(Collectors.toMap(
+                MemberPaymentRepository.MembershipAmountProjection::getMembershipId,
+                MemberPaymentRepository.MembershipAmountProjection::getAmount
+            ));
 
-        BigDecimal currentRevenue = payments.stream()
-            .filter(payment -> payment.getPaymentDate() != null)
-            .filter(payment -> !payment.getPaymentDate().isBefore(monthStart) && !payment.getPaymentDate().isAfter(monthEnd))
-            .filter(payment -> payment.getPaymentStatus() == PaymentStatus.PAID)
-            .filter(this::isCollectedRevenuePayment)
-            .map(MemberPayment::getAmount)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal currentRevenue = memberPaymentRepository.sumAmountByOrganizationAndStatusAndTypesBetween(
+            organization.getId(),
+            PaymentStatus.PAID,
+            COLLECTED_REVENUE_TYPES,
+            monthStart,
+            monthEnd
+        );
 
         BigDecimal pendingRevenue = BigDecimal.ZERO;
         BigDecimal overdueRevenue = BigDecimal.ZERO;
@@ -84,7 +96,8 @@ public class RevenueService {
             }
             PaymentCoverageSummary coverage = membershipLifecycleService.buildCoverageSummary(
                 membership,
-                paymentsByMembershipId.getOrDefault(membership.getId(), List.of()),
+                paidAmountByMembershipId.getOrDefault(membership.getId(), BigDecimal.ZERO),
+                BigDecimal.ZERO,
                 reminderDays
             );
             boolean isCurrentObligation = membership.getStatus() == MembershipStatus.ACTIVE
@@ -150,33 +163,30 @@ public class RevenueService {
 
         BigDecimal admissionRevenue = BigDecimal.ZERO;
         BigDecimal recurringRevenue = BigDecimal.ZERO;
-        Set<Long> admittedMemberIds = new java.util.HashSet<>();
-        List<MemberPayment> payments = memberPaymentRepository.findByOrganizationIdAndDeletedFalseOrderByPaymentDateDescCreatedAtDesc(
-            organization.getId()
+        admissionRevenue = memberPaymentRepository.sumAmountByOrganizationAndStatusAndTypesBetween(
+            organization.getId(),
+            PaymentStatus.PAID,
+            List.of(PaymentType.ADMISSION),
+            monthStart,
+            monthEnd
+        );
+        recurringRevenue = memberPaymentRepository.sumAmountByOrganizationAndStatusAndTypesBetween(
+            organization.getId(),
+            PaymentStatus.PAID,
+            MEMBERSHIP_COVERAGE_TYPES,
+            monthStart,
+            monthEnd
+        );
+        long admittedMembers = memberPaymentRepository.countDistinctMembersByOrganizationAndStatusAndTypeBetween(
+            organization.getId(),
+            PaymentStatus.PAID,
+            PaymentType.ADMISSION,
+            monthStart,
+            monthEnd
         );
 
-        for (MemberPayment payment : payments) {
-            if (payment.getPaymentStatus() != PaymentStatus.PAID || payment.getPaymentDate() == null) {
-                continue;
-            }
-            LocalDate paymentDate = payment.getPaymentDate();
-            if (paymentDate.isBefore(monthStart) || paymentDate.isAfter(monthEnd)) {
-                continue;
-            }
-            if (payment.getPaymentType() == PaymentType.ADMISSION) {
-                admissionRevenue = admissionRevenue.add(payment.getAmount());
-                if (payment.getAmount().compareTo(BigDecimal.ZERO) > 0) {
-                    admittedMemberIds.add(payment.getMember().getId());
-                }
-            } else if (payment.getPaymentType() == PaymentType.MEMBERSHIP
-                || payment.getPaymentType() == PaymentType.NEW_MEMBERSHIP
-                || payment.getPaymentType() == PaymentType.RENEWAL) {
-                recurringRevenue = recurringRevenue.add(payment.getAmount());
-            }
-        }
-
         return new RevenueSegmentationResponse(
-            admittedMemberIds.size(),
+            admittedMembers,
             admissionRevenue,
             recurringRevenue,
             admissionRevenue.add(recurringRevenue)
@@ -190,13 +200,6 @@ public class RevenueService {
         }
         return organizationRepository.findByIdAndDeletedFalse(organizationId)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
-    }
-
-    private boolean isCollectedRevenuePayment(MemberPayment payment) {
-        return payment.getPaymentType() == PaymentType.ADMISSION
-            || payment.getPaymentType() == PaymentType.MEMBERSHIP
-            || payment.getPaymentType() == PaymentType.NEW_MEMBERSHIP
-            || payment.getPaymentType() == PaymentType.RENEWAL;
     }
 
 }
