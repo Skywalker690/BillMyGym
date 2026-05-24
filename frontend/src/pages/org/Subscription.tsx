@@ -102,6 +102,7 @@ type SubscriptionStatus = {
   pricing?: SubscriptionPricing;
   paymentHistory: SubscriptionPayment[];
   paymentHistoryPage?: PaymentHistoryPage;
+  gymCoinBalance?: number;
 };
 
 type CreateOrderResponse = {
@@ -280,6 +281,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
   const [purchaseSuccess, setPurchaseSuccess] = useState<PurchaseSuccessState | null>(null);
   const [paymentHistory, setPaymentHistory] = useState<SubscriptionPayment[]>([]);
   const [paymentHistoryPage, setPaymentHistoryPage] = useState<PaymentHistoryPage | null>(null);
+  const [useGymCoins, setUseGymCoins] = useState(false);
 
   const { data: subscription, isLoading } = useQuery<SubscriptionStatus>({
     queryKey: ["subscriptionStatus"],
@@ -372,7 +374,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
     mutationFn: async (plan: CheckoutPlanKey) => {
       const res = await api.post(
         "/subscription/create",
-        { subscriptionPlan: plan },
+        { subscriptionPlan: plan, useGymCoins },
         {
           headers: {
             "X-Idempotency-Key": crypto.randomUUID(),
@@ -963,6 +965,23 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                     {isStarter && (
                       <div className="mt-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-600">
                         Lean setup for focused gym operations
+                      </div>
+                    )}
+                    {(subscription?.gymCoinBalance || 0) > 0 && (
+                      <div className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm">
+                        <input
+                          type="checkbox"
+                          id={`useGymCoins-${plan.key}`}
+                          checked={useGymCoins}
+                          onChange={(e) => setUseGymCoins(e.target.checked)}
+                          className="h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-600"
+                        />
+                        <Label htmlFor={`useGymCoins-${plan.key}`} className="font-bold text-emerald-800 cursor-pointer">
+                          Use {subscription?.gymCoinBalance} GymCoins
+                          <span className="block text-xs font-semibold text-emerald-600">
+                            1 GymCoin = ₹1. Reduces the checkout amount.
+                          </span>
+                        </Label>
                       </div>
                     )}
                   </div>

@@ -7,6 +7,7 @@ import {
   Clock3,
   CreditCard,
   LayoutDashboard,
+  Gift,
   type LucideIcon,
   Settings,
   Users,
@@ -48,6 +49,12 @@ export const getSidebarNavItems = (role: AppRole | null | undefined): NavItemCon
         icon: ClipboardList,
         section: "Platform",
       },
+      {
+        label: "Referrals",
+        href: "/app/referrals/analytics",
+        icon: Gift,
+        section: "Platform",
+      },
     ];
   }
 
@@ -83,10 +90,10 @@ export const getSidebarNavItems = (role: AppRole | null | undefined): NavItemCon
       section: "Operations",
     },
     {
-      label: "Subscription",
-      href: "/app/subscription",
-      icon: CreditCard,
-      section: "Billing",
+      label: "Referrals",
+      href: "/app/referrals",
+      icon: Gift,
+      section: "Operations",
     },
   ];
 };
@@ -126,6 +133,12 @@ export const getProfileNavItems = (role: AppRole | null | undefined): NavItemCon
       label: "Settings",
       href: "/app/settings",
       icon: Settings,
+      section: "Account",
+    },
+    {
+      label: "Billing",
+      href: "/app/subscription",
+      icon: CreditCard,
       section: "Account",
     },
   ];
@@ -232,6 +245,18 @@ export const getPageContext = (pathname: string, role: AppRole | null | undefine
       eyebrow: "Workspace Identity",
       title: "Organization Profile",
       description: "Maintain the business details, contacts, and visible org profile data.",
+    },
+    {
+      match: "/app/referrals/analytics",
+      eyebrow: "Platform Command",
+      title: "Referral Analytics",
+      description: "Monitor platform-wide referral signups and distributed rewards.",
+    },
+    {
+      match: "/app/referrals",
+      eyebrow: "Growth",
+      title: "Referrals",
+      description: "Refer new organizations to GymFlow and earn subscription rewards.",
     },
   ];
 

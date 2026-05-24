@@ -16,6 +16,10 @@ import com.gymflow.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import com.gymflow.service.AuthService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,6 +38,13 @@ public class AuthController {
         authService.registerOrganizationAdmin(request);
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(ApiResponse.success("Organization admin registered successfully and welcome email queued"));
+    }
+
+    @PostMapping("/signup")
+    public ResponseEntity<?> signupOrgAdmin(@Valid @RequestBody RegisterOrganizationAdminRequest request) {
+        authService.publicRegisterOrganizationAdmin(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ApiResponse.success("Signed up successfully and welcome email queued"));
     }
 
     @PostMapping("/login")

@@ -100,7 +100,14 @@ public class SubscriptionService {
         }
         SubscriptionPlan selectedPlan = resolveCheckoutPlan(request, organization);
         SubscriptionPricingService.SubscriptionPriceBreakdown pricing = subscriptionPricingService.priceFor(organization, selectedPlan);
-        BigDecimal monthlyAmount = MoneyUtils.normalize(pricing.totalAmount());
+        BigDecimal baseAmount = MoneyUtils.normalize(pricing.totalAmount());
+        
+        BigDecimal gymCoinsUsed = BigDecimal.ZERO;
+        if (Boolean.TRUE.equals(request.useGymCoins()) && organization.getGymCoinBalance() != null) {
+            gymCoinsUsed = organization.getGymCoinBalance().min(baseAmount);
+        }
+        BigDecimal monthlyAmount = baseAmount.subtract(gymCoinsUsed);
+
         LocalDate start = resolveNextSubscriptionStart(organization);
         LocalDate end = billingLifecycleService.billingPeriodEnd(start);
         OrganizationSubscriptionPayment existingPending = subscriptionPaymentRepository
@@ -135,6 +142,7 @@ public class SubscriptionService {
         OrganizationSubscriptionPayment payment = new OrganizationSubscriptionPayment();
         payment.setOrganization(organization);
         payment.setAmount(monthlyAmount);
+        payment.setGymCoinsUsed(gymCoinsUsed);
         payment.setSubscriptionPlan(selectedPlan);
         payment.setSubscriptionStart(start);
         payment.setSubscriptionEnd(end);
@@ -286,7 +294,8 @@ public class SubscriptionService {
             toPricingResponse(pricing),
             toPlanAccessResponse(planAccessService.summary(organization)),
             paymentHistoryPage.items(),
-            paymentHistoryPage
+            paymentHistoryPage,
+            organization.getGymCoinBalance()
         );
     }
 

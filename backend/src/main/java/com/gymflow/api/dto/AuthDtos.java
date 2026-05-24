@@ -37,7 +37,8 @@ public class AuthDtos {
         @PositiveOrZero BigDecimal admissionFee,
         OrganizationType organizationType,
         SubscriptionPlan subscriptionPlan,
-        @NotBlank @Size(min = 8) String password
+        @NotBlank @Size(min = 8) String password,
+        String referralCodeUsed
     ) {
     }
 }

@@ -36,6 +36,14 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.LocalDate;
@@ -60,6 +68,7 @@ public class AuthService {
     private final EmailService emailService;
     private final BillingLifecycleService billingLifecycleService;
     private final WhatsAppDeliveryService whatsAppDeliveryService;
+    private final ReferralService referralService;
 
     @Value("${google.client.id}")
     private String googleClientId;
@@ -96,6 +105,9 @@ public class AuthService {
         setting.setBrandingName(savedOrganization.getName());
         settingRepository.save(setting);
 
+        referralService.generateReferralCodeForOrganization(savedOrganization);
+        referralService.processReferralSignup(savedOrganization, request.referralCodeUsed());
+
         User admin = new User();
         admin.setOrganization(savedOrganization);
         admin.setEmail(request.adminEmail());
@@ -125,6 +137,67 @@ public class AuthService {
             "Registered organization " + savedOrganization.getName() + " with admin " + admin.getEmail(),
             AuditCategory.ORGANIZATION,
             "AUTH"
+        );
+    }
+
+    @Transactional
+    public void publicRegisterOrganizationAdmin(RegisterOrganizationAdminRequest request) {
+        if (organizationRepository.existsByNameAndDeletedFalse(request.organizationName())) {
+            throw new BadRequestException("Organization already exists");
+        }
+        if (userRepository.findByEmailAndDeletedFalse(request.adminEmail()).isPresent()
+            || organizationRepository.existsByAdminEmailAndDeletedFalse(request.adminEmail())) {
+            throw new BadRequestException("Admin email already exists");
+        }
+        if (organizationRepository.existsByAdminPhoneNumberAndDeletedFalse(request.adminPhoneNumber())) {
+            throw new BadRequestException("Admin phone number already exists");
+        }
+
+        LocalDate today = LocalDate.now(APP_ZONE);
+        Organization organization = organizationMapper.toNewOrganization(request);
+        organization.setOrganizationType(OrganizationType.REGULAR); // Force REGULAR for public signups
+        
+        billingLifecycleService.startRegularTrial(organization, today);
+        Organization savedOrganization = organizationRepository.save(organization);
+
+        OrganizationSetting setting = new OrganizationSetting();
+        setting.setOrganization(savedOrganization);
+        setting.setBrandingName(savedOrganization.getName());
+        settingRepository.save(setting);
+
+        referralService.generateReferralCodeForOrganization(savedOrganization);
+        
+        if (request.referralCodeUsed() != null && !request.referralCodeUsed().trim().isEmpty()) {
+            referralService.processReferralSignup(savedOrganization, request.referralCodeUsed());
+        }
+
+        User admin = new User();
+        admin.setOrganization(savedOrganization);
+        admin.setEmail(request.adminEmail());
+        admin.setPasswordHash(passwordEncoder.encode(request.password()));
+        admin.setRole(Role.ORG_ADMIN);
+        admin.setStatus(UserStatus.ACTIVE);
+        userRepository.save(admin);
+
+        emailService.sendOrganizationAdminWelcomeEmail(
+            savedOrganization,
+            request.adminEmail(),
+            request.adminFullName(),
+            request.password(),
+            savedOrganization.getTrialEndDate()
+        );
+        whatsAppDeliveryService.sendOrganizationWelcome(
+            savedOrganization,
+            request.adminFullName(),
+            "https://gymmax.com/login"
+        );
+
+        auditLogService.logActor(
+            "ORG_ADMIN_PUBLIC_REGISTERED",
+            "Publicly registered organization " + savedOrganization.getName() + " with admin " + admin.getEmail(),
+            AuditCategory.ORGANIZATION,
+            "AUTH",
+            admin.getEmail()
         );
     }
 

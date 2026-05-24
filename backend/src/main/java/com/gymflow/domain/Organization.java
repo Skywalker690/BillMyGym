@@ -82,6 +82,21 @@ public class Organization extends BaseEntity {
     private OffsetDateTime deactivatedAt;
     private OffsetDateTime deletedAt;
 
+    @Column(unique = true, length = 50)
+    private String referralCode;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal gymCoinBalance = BigDecimal.ZERO;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal totalCoinsEarned = BigDecimal.ZERO;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal totalCoinsUsed = BigDecimal.ZERO;
+
+    @Column(nullable = false)
+    private boolean sixMonthRewardClaimed = false;
+
     @Version
     @Column(nullable = false)
     private Long version = 0L;

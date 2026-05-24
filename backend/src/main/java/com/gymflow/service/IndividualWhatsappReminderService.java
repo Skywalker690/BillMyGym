@@ -35,7 +35,6 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -59,7 +58,6 @@ public class IndividualWhatsappReminderService {
     private final PlanAccessService planAccessService;
     private final WhatsAppTemplateService whatsAppTemplateService;
     private final WhatsAppDeliveryService whatsAppDeliveryService;
-    private final UsageMetricService usageMetricService;
     private final AuditLogService auditLogService;
 
     @Transactional

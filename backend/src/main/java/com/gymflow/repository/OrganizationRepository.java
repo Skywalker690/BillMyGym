@@ -19,6 +19,8 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
 
     Optional<Organization> findByIdAndDeletedFalse(Long id);
 
+    Optional<Organization> findByReferralCode(String referralCode);
+
     List<Organization> findAllByDeletedFalse();
 
     List<Organization> findAllByDeletedFalseAndStatus(OrganizationStatus status);

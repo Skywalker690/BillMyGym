@@ -5,7 +5,8 @@ INSERT INTO organizations (
     id, name, district, place, logo_url, map_location_link, address, admin_full_name, admin_phone_number, admin_email,
     description, monthly_membership_fee, admission_fee, organization_type, subscription_plan, status,
     trial_start_date, trial_end_date, pilot_start_date, pilot_end_date, subscription_due_date,
-    paused_at, deactivated_at, deleted, deleted_at, created_at, updated_at, version
+    paused_at, deactivated_at, deleted, deleted_at, created_at, updated_at, version,
+    referral_code, gym_coin_balance, total_coins_earned, total_coins_used, six_month_reward_claimed
 )
 SELECT
     org_id,
@@ -68,7 +69,12 @@ SELECT
     NULL,
     TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((45 + org_id) || ' days')::interval,
     TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((org_id % 5 + 1) || ' days')::interval,
-    0
+    0,
+    'ORG' || LPAD(org_id::text, 3, '0'),
+    CASE WHEN org_id = 1 THEN 300.00 WHEN org_id = 4 THEN 600.00 ELSE 0.00 END::numeric(12, 2),
+    CASE WHEN org_id = 1 THEN 300.00 WHEN org_id = 4 THEN 600.00 ELSE 0.00 END::numeric(12, 2),
+    0.00::numeric(12, 2),
+    FALSE
 FROM generate_series(1, 10) AS org_id;
 
 INSERT INTO users (
@@ -338,6 +344,20 @@ SELECT
     0
 FROM generate_series(1, 10) AS org_id;
 
+INSERT INTO referrals (
+    id, referrer_org_id, referred_org_id, referral_code_used, status, reward_type, deleted, created_at, updated_at
+) VALUES
+    (1, 1, 2, 'ORG001', 'COMPLETED', 'GYM_COINS', FALSE, TIMESTAMPTZ '2026-05-20 09:00:00+05:30', TIMESTAMPTZ '2026-05-20 09:00:00+05:30'),
+    (2, 4, 3, 'ORG004', 'COMPLETED', 'GYM_COINS', FALSE, TIMESTAMPTZ '2026-05-18 09:00:00+05:30', TIMESTAMPTZ '2026-05-18 09:00:00+05:30'),
+    (3, 4, 6, 'ORG004', 'COMPLETED', 'GYM_COINS', FALSE, TIMESTAMPTZ '2026-05-19 09:00:00+05:30', TIMESTAMPTZ '2026-05-19 09:00:00+05:30');
+
+INSERT INTO referral_rewards (
+    id, org_id, reward_type, amount, months_rewarded, reward_used, deleted, created_at, updated_at
+) VALUES
+    (1, 1, 'GYM_COINS', 300.00, 0, FALSE, FALSE, TIMESTAMPTZ '2026-05-20 09:00:00+05:30', TIMESTAMPTZ '2026-05-20 09:00:00+05:30'),
+    (2, 4, 'GYM_COINS', 300.00, 0, FALSE, FALSE, TIMESTAMPTZ '2026-05-18 09:00:00+05:30', TIMESTAMPTZ '2026-05-18 09:00:00+05:30'),
+    (3, 4, 'GYM_COINS', 300.00, 0, FALSE, FALSE, TIMESTAMPTZ '2026-05-19 09:00:00+05:30', TIMESTAMPTZ '2026-05-19 09:00:00+05:30');
+
 INSERT INTO notifications (
     id, organization_id, member_id, member_count, type, channel, recipient, status, attempt_count, failure_reason,
     notification_date, sent_at, message, deleted, created_at, updated_at
@@ -552,6 +572,8 @@ SELECT setval('membership_operation_idempotency_id_seq', COALESCE((SELECT MAX(id
 SELECT setval('processed_webhook_events_id_seq', COALESCE((SELECT MAX(id) FROM processed_webhook_events), 1), TRUE);
 SELECT setval('api_request_log_id_seq', COALESCE((SELECT MAX(id) FROM api_request_log), 1), TRUE);
 SELECT setval('audit_logs_id_seq', COALESCE((SELECT MAX(id) FROM audit_logs), 1), TRUE);
+SELECT setval('referrals_id_seq', COALESCE((SELECT MAX(id) FROM referrals), 1), TRUE);
+SELECT setval('referral_rewards_id_seq', COALESCE((SELECT MAX(id) FROM referral_rewards), 1), TRUE);
 DO $$
 BEGIN
     IF EXISTS (

@@ -22,6 +22,7 @@ import com.gymflow.repository.ProcessedWebhookEventRepository;
 import com.gymflow.security.SecurityUtils;
 import com.gymflow.shared.money.MoneyUtils;
 import jakarta.transaction.Transactional;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -47,6 +48,7 @@ public class OrganizationPaymentWebhookService {
     private final SubscriptionPricingService subscriptionPricingService;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final ReferralService referralService;
 
     @Value("${razorpay.key-secret:}")
     private String razorpayKeySecret;
@@ -170,6 +172,14 @@ public class OrganizationPaymentWebhookService {
         if (payment.getSubscriptionPlan() != null) {
             organization.setSubscriptionPlan(payment.getSubscriptionPlan());
         }
+
+        if (payment.getGymCoinsUsed() != null && payment.getGymCoinsUsed().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal currentBalance = organization.getGymCoinBalance() != null ? organization.getGymCoinBalance() : BigDecimal.ZERO;
+            BigDecimal usedBalance = organization.getTotalCoinsUsed() != null ? organization.getTotalCoinsUsed() : BigDecimal.ZERO;
+            organization.setGymCoinBalance(currentBalance.subtract(payment.getGymCoinsUsed()));
+            organization.setTotalCoinsUsed(usedBalance.add(payment.getGymCoinsUsed()));
+        }
+
         billingLifecycleService.activatePaidPeriod(organization, periodStart, periodEnd);
 
         OrganizationSubscription subscription = subscriptionRepository
@@ -200,6 +210,9 @@ public class OrganizationPaymentWebhookService {
             AuditCategory.ORGANIZATION,
             "SUBSCRIPTION"
         );
+
+        // Fulfill referral rewards if this is their first payment
+        referralService.fulfillReferralRewards(organization);
     }
 
     private OrganizationSubscriptionPayment resolvePayment(

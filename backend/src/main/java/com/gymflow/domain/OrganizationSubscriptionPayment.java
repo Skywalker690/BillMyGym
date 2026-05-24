@@ -42,6 +42,9 @@ public class OrganizationSubscriptionPayment extends BaseEntity {
     @Column(name = "subscription_plan")
     private SubscriptionPlan subscriptionPlan;
 
+    @Column(precision = 12, scale = 2)
+    private BigDecimal gymCoinsUsed = BigDecimal.ZERO;
+
     private LocalDate paymentDate;
 
     @Column(nullable = false)

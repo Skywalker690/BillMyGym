@@ -14,7 +14,8 @@ import java.util.List;
 public class SubscriptionDtos {
 
     public record CreateSubscriptionOrderRequest(
-        SubscriptionPlan subscriptionPlan
+        SubscriptionPlan subscriptionPlan,
+        Boolean useGymCoins
     ) {
     }
 
@@ -63,7 +64,8 @@ public class SubscriptionDtos {
         SubscriptionPricingResponse pricing,
         PlanAccessResponse planAccess,
         List<SubscriptionPaymentResponse> paymentHistory,
-        PaymentHistoryPageResponse paymentHistoryPage
+        PaymentHistoryPageResponse paymentHistoryPage,
+        BigDecimal gymCoinBalance
     ) {
     }
 
