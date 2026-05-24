@@ -9,6 +9,7 @@ import com.gymflow.repository.MemberRepository;
 import com.gymflow.repository.OrganizationUsageStatsRepository;
 import com.gymflow.repository.UsageMetricRepository;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class UsageMetricService {
+
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final UsageMetricRepository usageMetricRepository;
     private final MemberRepository memberRepository;
@@ -56,7 +59,7 @@ public class UsageMetricService {
     }
 
     public UsageMetric resolveMetric(Organization organization) {
-        YearMonth currentMonth = YearMonth.now();
+        YearMonth currentMonth = YearMonth.now(APP_ZONE);
         return usageMetricRepository.findByOrganizationIdAndYearAndMonthAndDeletedFalse(
             organization.getId(),
             currentMonth.getYear(),
@@ -78,7 +81,7 @@ public class UsageMetricService {
     }
 
     private void recordOrganizationUsage(Organization organization, boolean whatsappSent, boolean emailSent) {
-        YearMonth currentMonth = YearMonth.now();
+        YearMonth currentMonth = YearMonth.now(APP_ZONE);
         OrganizationUsageStats stats = organizationUsageStatsRepository.findByOrganizationIdAndYearAndMonthAndDeletedFalse(
             organization.getId(),
             currentMonth.getYear(),

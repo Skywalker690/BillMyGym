@@ -9,6 +9,8 @@ import com.gymflow.api.error.NotFoundException;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
+import com.gymflow.domain.enums.AuditActivityScope;
+import com.gymflow.domain.enums.AuditEventStatus;
 import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.MembershipStatus;
 import java.math.BigDecimal;
@@ -18,6 +20,7 @@ import com.gymflow.repository.MemberRepository;
 import com.gymflow.security.SecurityUtils;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -32,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class MemberMembershipService {
 
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
     private static final String AUTO_DEACTIVATION_REASON =
         "Automatically deactivated after membership expired without renewal for 30 days";
 
@@ -41,6 +45,7 @@ public class MemberMembershipService {
     private final MembershipLifecycleService membershipLifecycleService;
     private final MemberCreditLedgerService memberCreditLedgerService;
     private final OrganizationSettingService organizationSettingService;
+    private final AuditLogService auditLogService;
 
     @Transactional
     @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
@@ -84,9 +89,14 @@ public class MemberMembershipService {
     }
 
     @Transactional
-    public Member requireActiveMember(Long memberId, Long organizationId) {
-        Member member = memberRepository.findByIdAndOrganizationIdAndDeletedFalseForUpdate(memberId, organizationId)
+    public Member requireMemberForWrite(Long memberId, Long organizationId) {
+        return memberRepository.findByIdAndOrganizationIdAndDeletedFalseForUpdate(memberId, organizationId)
             .orElseThrow(() -> new NotFoundException("Member not found"));
+    }
+
+    @Transactional
+    public Member requireActiveMember(Long memberId, Long organizationId) {
+        Member member = requireMemberForWrite(memberId, organizationId);
         if (member.getStatus() == MemberStatus.DEACTIVATED) {
             throw new BadRequestException("Re-activate the member before creating a new membership");
         }
@@ -116,6 +126,18 @@ public class MemberMembershipService {
     @Transactional
     public MemberMembership saveMembership(MemberMembership membership) {
         return memberMembershipRepository.save(membership);
+    }
+
+    @Transactional
+    public void deactivateLatestMembershipForMember(Member member) {
+        if (member == null || member.isDeleted() || member.getOrganization() == null || member.getId() == null) {
+            return;
+        }
+        MemberMembership latestMembership = findLatestMembership(member.getId(), member.getOrganization().getId());
+        if (latestMembership != null && latestMembership.getStatus() != MembershipStatus.DEACTIVATED) {
+            latestMembership.setStatus(MembershipStatus.DEACTIVATED);
+            latestMembership.setLastSentAt(null);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -221,24 +243,34 @@ public class MemberMembershipService {
             );
             boolean membershipExpiredWithoutRenewal =
                 latestMembership.getStatus() == MembershipStatus.OVERDUE;
-            boolean isOverdueBy30Days = !latestMembership.getEndDate().plusDays(30).isAfter(LocalDate.now());
+            boolean isOverdueBy30Days = !latestMembership.getEndDate().plusDays(30).isAfter(LocalDate.now(APP_ZONE));
 
             if (member.getStatus() == MemberStatus.ACTIVE && membershipExpiredWithoutRenewal && isOverdueBy30Days) {
                 member.setStatus(MemberStatus.DEACTIVATED);
-                if (member.getDeactivatedAt() == null) {
-                    member.setDeactivatedAt(OffsetDateTime.now());
-                }
+                member.setDeactivatedAt(OffsetDateTime.now(APP_ZONE));
                 member.setDeactivationReason(AUTO_DEACTIVATION_REASON);
+                latestMembership.setStatus(MembershipStatus.DEACTIVATED);
+                latestMembership.setLastSentAt(null);
+                auditLogService.logOrganizationActivity(
+                    "MEMBER_DEACTIVATED",
+                    "Member auto-deactivated after 30 days overdue: " + member.getFullName(),
+                    AuditActivityScope.MEMBER_STATUS_ACTIVITY,
+                    AuditEventStatus.INFO,
+                    "MEMBER",
+                    member.getOrganization().getId(),
+                    member.getFullName()
+                );
                 continue;
             }
 
-            if (member.getStatus() == MemberStatus.DEACTIVATED
-                && AUTO_DEACTIVATION_REASON.equals(member.getDeactivationReason())
-                && latestMembership.getStatus() == MembershipStatus.ACTIVE) {
-                member.setStatus(MemberStatus.ACTIVE);
-                member.setDeactivatedAt(null);
-                member.setDeactivationReason(null);
+            if (member.getStatus() == MemberStatus.DEACTIVATED) {
+                if (latestMembership.getStatus() != MembershipStatus.DEACTIVATED) {
+                    latestMembership.setStatus(MembershipStatus.DEACTIVATED);
+                    latestMembership.setLastSentAt(null);
+                }
+                continue;
             }
+
         }
     }
 

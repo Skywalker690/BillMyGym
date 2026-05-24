@@ -26,6 +26,7 @@ import com.gymflow.security.SecurityUtils;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -37,6 +38,8 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class OrganizationService {
+
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final OrganizationRepository organizationRepository;
     private final AppUserRepository appUserRepository;
@@ -108,7 +111,7 @@ public class OrganizationService {
         Organization organization = organizationRepository.findByIdAndDeletedFalse(id)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
         organization.setDeleted(true);
-        organization.setDeletedAt(OffsetDateTime.now());
+        organization.setDeletedAt(OffsetDateTime.now(APP_ZONE));
         organization.setStatus(OrganizationStatus.DEACTIVATED);
 
         auditLogService.log(
@@ -255,7 +258,7 @@ public class OrganizationService {
         OrganizationType previousType,
         OrganizationStatus previousStatus
     ) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(APP_ZONE);
         if (organization.getOrganizationType() == OrganizationType.PILOT) {
             if (previousType != OrganizationType.PILOT
                 || organization.getPilotStartDate() == null
@@ -304,7 +307,7 @@ public class OrganizationService {
         }
 
         if (organization.getStatus() == OrganizationStatus.DEACTIVATED && organization.getDeactivatedAt() == null) {
-            organization.setDeactivatedAt(OffsetDateTime.now());
+            organization.setDeactivatedAt(OffsetDateTime.now(APP_ZONE));
         }
     }
 }

@@ -23,7 +23,10 @@ public class ReminderDtos {
         String gymName,
         String message,
         boolean canSend,
-        String disabledReason
+        String disabledReason,
+        Integer monthlyCustomReminderLimit,
+        int monthlyCustomReminderUsed,
+        int monthlyCustomReminderRemaining
     ) {
     }
 

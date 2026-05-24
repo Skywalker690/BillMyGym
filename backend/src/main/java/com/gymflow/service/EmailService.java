@@ -9,6 +9,7 @@ import com.gymflow.repository.AppUserRepository;
 import jakarta.mail.internet.MimeMessage;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.text.NumberFormat;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class EmailService {
     private static final String SENDER_NAME = "BillMyGym";
     private static final String APP_URL = "https://gymmax.com";
     private static final String FONT_STACK = "Arial,Helvetica,sans-serif";
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final JavaMailSender mailSender;
     private final UsageMetricService usageMetricService;
@@ -683,7 +685,7 @@ public class EmailService {
               <div style="height:12px;background:#e2e8f0;border-radius:999px;overflow:hidden;">
                 <div style="height:12px;width:%d%%;background:#16a34a;border-radius:999px;"></div>
               </div>
-              <p style="margin:12px 0 0 0;color:#475569;line-height:1.7;">Collected revenue compared with open pending revenue for the month.</p>
+              <p style="margin:12px 0 0 0;color:#475569;line-height:1.7;">Collected revenue compared with overdue revenue exposure at month end.</p>
             </div>
             <p style="margin:0;">Keep growing, and keep your renewal follow-ups steady.</p>
             """.formatted(
@@ -691,10 +693,10 @@ public class EmailService {
             html(report.label()),
             summaryCard("New Members", String.valueOf(report.membersJoined()), "#e0f2fe", "#075985"),
             summaryCard("Active Members", String.valueOf(report.activeMembers()), "#dcfce7", "#166534"),
-            summaryCard("Expired Members", String.valueOf(report.expiredMembers()), "#fff7ed", "#c2410c"),
+            summaryCard("Deactivated Members", String.valueOf(report.deactivatedMembers()), "#fff7ed", "#c2410c"),
             summaryCard("Collected Revenue", currency(report.collectedRevenue()), "#ecfdf5", "#047857"),
-            summaryCard("Pending Revenue", currency(report.pendingRevenue()), "#fef3c7", "#92400e"),
-            summaryCard("Usage", report.whatsappSentCount() + " WhatsApp / " + report.emailSentCount() + " emails", "#f8fafc", "#334155"),
+            summaryCard("Overdue Revenue", currency(report.pendingRevenue()), "#fef3c7", "#92400e"),
+            summaryCard("Usage", report.whatsappSentCount() + " WhatsApp / " + report.emailSentCount() + " emails | " + report.overdueMembers() + " overdue", "#f8fafc", "#334155"),
             collectedPercent
         );
 
@@ -828,7 +830,7 @@ public class EmailService {
             html(appUrl(ctaPath)),
             html(ctaLabel),
             html(footerNote),
-            LocalDate.now().getYear()
+            LocalDate.now(APP_ZONE).getYear()
         );
     }
 

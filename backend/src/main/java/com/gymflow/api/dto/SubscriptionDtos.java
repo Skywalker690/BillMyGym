@@ -55,6 +55,8 @@ public class SubscriptionDtos {
         LocalDate currentPeriodEnd,
         long whatsappUsage,
         long emailUsage,
+        int customReminderUsage,
+        Integer customReminderLimit,
         long activeMembers,
         MemberLimitResponse memberLimit,
         PlanAccessResponse planAccess,

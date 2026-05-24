@@ -10,10 +10,10 @@ import com.gymflow.api.error.NotFoundException;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.Organization;
-import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.PaymentStatus;
 import com.gymflow.domain.enums.PaymentType;
+import com.gymflow.repository.AuditLogRepository;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberPaymentRepository;
 import com.gymflow.repository.OrganizationRepository;
@@ -50,6 +50,7 @@ public class FinancialReportService {
     private final OrganizationRepository organizationRepository;
     private final MemberPaymentRepository memberPaymentRepository;
     private final MemberMembershipRepository memberMembershipRepository;
+    private final AuditLogRepository auditLogRepository;
     private final PlanAccessService planAccessService;
 
     @Transactional(readOnly = true)
@@ -143,10 +144,18 @@ public class FinancialReportService {
         long overdueMembers = latestByMember.values().stream()
             .filter(membership -> membership.getEndDate().isBefore(snapshotDate))
             .count();
+        long deactivatedMembers = auditLogRepository.countByOrganizationIdAndEventBetween(
+            organization.getId(),
+            "MEMBER_DEACTIVATED",
+            monthStart.atStartOfDay(APP_ZONE).toInstant(),
+            month.plusMonths(1).atDay(1).atStartOfDay(APP_ZONE).toInstant()
+        );
         BigDecimal monthlyFee = organization.getMonthlyMembershipFee() == null
             ? BigDecimal.ZERO
             : organization.getMonthlyMembershipFee();
-        BigDecimal duePayments = monthlyFee.multiply(BigDecimal.valueOf(overdueMembers));
+        BigDecimal duePayments = month.equals(YearMonth.from(today))
+            ? monthlyFee.multiply(BigDecimal.valueOf(overdueMembers))
+            : BigDecimal.ZERO;
         BigDecimal expenses = BigDecimal.ZERO;
 
         return new FinancialReportMonthResponse(
@@ -161,6 +170,7 @@ public class FinancialReportService {
             admittedMemberIds.size(),
             activeMembers,
             overdueMembers,
+            deactivatedMembers,
             "%s plan, monthly member fee INR %s".formatted(
                 reportPlanName(organization),
                 monthlyFee.stripTrailingZeros().toPlainString()
@@ -171,7 +181,7 @@ public class FinancialReportService {
     private Map<Long, MemberMembership> latestMembershipsAsOf(List<MemberMembership> memberships, LocalDate snapshotDate) {
         Map<Long, MemberMembership> latestByMember = new HashMap<>();
         for (MemberMembership membership : memberships) {
-            if (membership.getMember().isDeleted() || membership.getMember().getStatus() != MemberStatus.ACTIVE) {
+            if (membership.getMember().isDeleted() || !isMemberActiveAtSnapshot(membership.getMember(), snapshotDate)) {
                 continue;
             }
             if (membership.getStartDate().isAfter(snapshotDate)) {
@@ -199,6 +209,7 @@ public class FinancialReportService {
         BigDecimal duePayments = BigDecimal.ZERO;
         BigDecimal expenses = BigDecimal.ZERO;
         long admissions = 0L;
+        long deactivatedMembers = 0L;
 
         for (FinancialReportMonthResponse month : months) {
             totalRevenue = totalRevenue.add(month.totalRevenue());
@@ -207,6 +218,7 @@ public class FinancialReportService {
             duePayments = duePayments.add(month.duePayments());
             expenses = expenses.add(month.expenses());
             admissions += month.admissions();
+            deactivatedMembers += month.deactivatedMembers();
         }
 
         FinancialReportMonthResponse latest = months.isEmpty() ? null : months.get(months.size() - 1);
@@ -218,8 +230,16 @@ public class FinancialReportService {
             expenses,
             admissions,
             latest == null ? 0 : latest.activeMembers(),
-            latest == null ? 0 : latest.overdueMembers()
+            latest == null ? 0 : latest.overdueMembers(),
+            deactivatedMembers
         );
+    }
+
+    private boolean isMemberActiveAtSnapshot(com.gymflow.domain.Member member, LocalDate snapshotDate) {
+        if (member.getCreatedAt() != null && member.getCreatedAt().toLocalDate().isAfter(snapshotDate)) {
+            return false;
+        }
+        return member.getDeactivatedAt() == null || member.getDeactivatedAt().toLocalDate().isAfter(snapshotDate);
     }
 
     private ReportWindow resolveWindow(String period, String range, LocalDate from, LocalDate to) {
@@ -249,13 +269,13 @@ public class FinancialReportService {
                     throw new BadRequestException("Custom reports require a start and end date");
                 }
                 startDate = from;
-                endDate = to;
+                endDate = to.isAfter(today) ? today : to;
             }
             default -> throw new BadRequestException("Unsupported report range");
         }
 
         if (startDate.isAfter(endDate)) {
-            throw new BadRequestException("Report start date must be before end date");
+            throw new BadRequestException("Report start date must be on or before end date");
         }
 
         List<YearMonth> months = monthsBetween(startDate, endDate);
@@ -344,7 +364,7 @@ public class FinancialReportService {
             "Expenses",
             "Active Members",
             "Overdue Members",
-            "Plan Details"
+            "Deactivated Members"
         );
         for (FinancialReportMonthResponse month : report.months()) {
             appendCsvRow(
@@ -358,7 +378,7 @@ public class FinancialReportService {
                 moneyValue(month.expenses()),
                 String.valueOf(month.activeMembers()),
                 String.valueOf(month.overdueMembers()),
-                month.planDetails()
+                String.valueOf(month.deactivatedMembers())
             );
         }
         out.writeBytes(csv.toString().getBytes(StandardCharsets.UTF_8));
@@ -401,7 +421,7 @@ public class FinancialReportService {
         for (String content : pageContents) {
             int contentId = objectId + 1;
             objects.add("""
-                << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> >> >> /Contents %d 0 R >>
+                << /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> >> >> /Contents %d 0 R >>
                 """.formatted(contentId).trim());
             byte[] contentBytes = content.getBytes(StandardCharsets.ISO_8859_1);
             objects.add("<< /Length " + contentBytes.length + " >>\nstream\n" + content + "\nendstream");
@@ -428,74 +448,96 @@ public class FinancialReportService {
     private List<String> buildPdfPages(FinancialReportResponse report) {
         List<String> pages = new ArrayList<>();
         List<FinancialReportMonthResponse> rows = report.months();
-        int rowsPerPage = 18;
-        int pageCount = Math.max(1, (int) Math.ceil(rows.size() / (double) rowsPerPage));
+        List<int[]> ranges = new ArrayList<>();
+        int cursor = 0;
+        while (cursor < rows.size() || ranges.isEmpty()) {
+            int rowsPerPage = ranges.isEmpty() ? 7 : 10;
+            int end = Math.min(cursor + rowsPerPage, rows.size());
+            ranges.add(new int[] {cursor, end});
+            cursor = end;
+            if (cursor >= rows.size()) {
+                break;
+            }
+        }
+
+        int pageCount = ranges.size();
         for (int page = 0; page < pageCount; page++) {
             StringBuilder content = new StringBuilder();
-            pdfText(content, "F2", 21, 42, 792, "Financial Report");
-            pdfText(content, "F1", 10, 42, 774, report.organizationName() + " | " + report.startDate() + " to " + report.endDate());
-            if (report.logoUrl() != null && !report.logoUrl().isBlank()) {
-                pdfText(content, "F1", 9, 42, 758, "Logo: " + report.logoUrl());
-            }
-            pdfText(content, "F1", 9, 420, 792, "Generated " + OffsetDateTime.now(APP_ZONE).toLocalDate());
+            drawPdfHeader(content, report, page + 1, pageCount);
 
             if (page == 0) {
-                drawSummaryCard(content, 42, 700, "Total Revenue", moneyLabel(report.summary().totalRevenue()));
-                drawSummaryCard(content, 182, 700, "Membership", moneyLabel(report.summary().membershipRevenue()));
-                drawSummaryCard(content, 322, 700, "Admissions", String.valueOf(report.summary().admissions()));
-                drawSummaryCard(content, 462, 700, "Due Payments", moneyLabel(report.summary().duePayments()));
-                pdfText(content, "F2", 12, 42, 660, "Monthly Breakdown");
-                drawTableHeader(content, 42, 635);
+                drawSummaryCard(content, 36, 458, "Total Revenue", moneyLabel(report.summary().totalRevenue()));
+                drawSummaryCard(content, 232, 458, "Membership Revenue", moneyLabel(report.summary().membershipRevenue()));
+                drawSummaryCard(content, 428, 458, "Admission Revenue", moneyLabel(report.summary().admissionRevenue()));
+                drawSummaryCard(content, 624, 458, "Current Due", moneyLabel(report.summary().duePayments()));
+                pdfText(content, "F2", 12, 36, 426, "Monthly Breakdown");
+                drawTableHeader(content, 36, 396);
             } else {
-                pdfText(content, "F2", 12, 42, 706, "Monthly Breakdown");
-                drawTableHeader(content, 42, 681);
+                pdfText(content, "F2", 12, 36, 496, "Monthly Breakdown");
+                drawTableHeader(content, 36, 466);
             }
 
-            int start = page * rowsPerPage;
-            int end = Math.min(start + rowsPerPage, rows.size());
-            int y = page == 0 ? 612 : 658;
-            for (int index = start; index < end; index++) {
+            int[] range = ranges.get(page);
+            int y = page == 0 ? 366 : 436;
+            for (int index = range[0]; index < range[1]; index++) {
                 FinancialReportMonthResponse row = rows.get(index);
-                drawTableRow(content, 42, y, row);
-                y -= 28;
+                drawMonthRow(content, 36, y, row, index % 2 == 0);
+                y -= 34;
             }
-            pdfText(content, "F1", 9, 42, 38, "Page " + (page + 1) + " of " + pageCount);
+            pdfText(content, "F1", 9, 36, 34, "All amounts are in INR. Due amount is shown only for the current Indian month.");
             pages.add(content.toString());
         }
         return pages;
     }
 
+    private void drawPdfHeader(StringBuilder content, FinancialReportResponse report, int page, int pageCount) {
+        content.append("0.97 0.99 0.98 rg 0 0 842 595 re f\n");
+        content.append("0.90 0.96 0.93 rg 0 535 842 60 re f\n");
+        pdfText(content, "F2", 20, 36, 560, "Financial Report");
+        pdfText(content, "F1", 10, 36, 542, safePdfText(report.organizationName(), 86) + " | " + report.startDate() + " to " + report.endDate());
+        pdfText(content, "F1", 9, 666, 560, "Generated " + OffsetDateTime.now(APP_ZONE).toLocalDate());
+        pdfText(content, "F1", 9, 742, 542, "Page " + page + " of " + pageCount);
+    }
+
     private void drawSummaryCard(StringBuilder content, int x, int y, String label, String value) {
-        content.append("0.94 0.98 0.96 rg ").append(x).append(' ').append(y).append(" 118 48 re f\n");
-        content.append("0.75 0.86 0.82 RG ").append(x).append(' ').append(y).append(" 118 48 re S\n");
-        pdfText(content, "F1", 8, x + 10, y + 31, label);
-        pdfText(content, "F2", 13, x + 10, y + 14, value);
+        content.append("1 1 1 rg ").append(x).append(' ').append(y).append(" 178 54 re f\n");
+        content.append("0.83 0.89 0.86 RG ").append(x).append(' ').append(y).append(" 178 54 re S\n");
+        pdfText(content, "F1", 8, x + 10, y + 33, label);
+        pdfText(content, "F2", 12, x + 10, y + 15, safePdfText(value, 24));
     }
 
     private void drawTableHeader(StringBuilder content, int x, int y) {
-        content.append("0.92 0.94 0.96 rg ").append(x).append(' ').append(y).append(" 510 22 re f\n");
-        pdfText(content, "F2", 8, x + 8, y + 8, "Month");
-        pdfText(content, "F2", 8, x + 86, y + 8, "Total");
-        pdfText(content, "F2", 8, x + 154, y + 8, "Admission");
-        pdfText(content, "F2", 8, x + 230, y + 8, "Membership");
-        pdfText(content, "F2", 8, x + 318, y + 8, "Due");
-        pdfText(content, "F2", 8, x + 382, y + 8, "Active");
-        pdfText(content, "F2", 8, x + 448, y + 8, "Overdue");
+        content.append("0.90 0.95 0.92 rg ").append(x).append(' ').append(y).append(" 770 24 re f\n");
+        content.append("0.74 0.82 0.78 RG ").append(x).append(' ').append(y).append(" 770 24 re S\n");
+        pdfText(content, "F2", 8, x + 10, y + 8, "Month");
+        pdfText(content, "F2", 8, x + 110, y + 8, "Total");
+        pdfText(content, "F2", 8, x + 210, y + 8, "Membership");
+        pdfText(content, "F2", 8, x + 330, y + 8, "Admission");
+        pdfText(content, "F2", 8, x + 450, y + 8, "Due");
+        pdfText(content, "F2", 8, x + 560, y + 8, "Admissions");
+        pdfText(content, "F2", 8, x + 642, y + 8, "Active");
+        pdfText(content, "F2", 8, x + 708, y + 8, "Overdue");
     }
 
-    private void drawTableRow(StringBuilder content, int x, int y, FinancialReportMonthResponse row) {
-        content.append("0.82 0.86 0.90 RG ").append(x).append(' ').append(y - 5).append(" 510 1 re f\n");
-        pdfText(content, "F1", 8, x + 8, y + 7, row.label());
-        pdfText(content, "F1", 8, x + 86, y + 7, moneyLabel(row.totalRevenue()));
-        pdfText(content, "F1", 8, x + 154, y + 7, moneyLabel(row.admissionRevenue()));
-        pdfText(content, "F1", 8, x + 230, y + 7, moneyLabel(row.membershipRevenue()));
-        pdfText(content, "F1", 8, x + 318, y + 7, moneyLabel(row.duePayments()));
-        pdfText(content, "F1", 8, x + 382, y + 7, String.valueOf(row.activeMembers()));
-        pdfText(content, "F1", 8, x + 448, y + 7, String.valueOf(row.overdueMembers()));
+    private void drawMonthRow(StringBuilder content, int x, int y, FinancialReportMonthResponse row, boolean shaded) {
+        content.append(shaded ? "1 1 1 rg " : "0.96 0.98 0.97 rg ")
+            .append(x)
+            .append(' ')
+            .append(y)
+            .append(" 770 30 re f\n");
+        content.append("0.88 0.91 0.89 RG ").append(x).append(' ').append(y).append(" 770 30 re S\n");
+        pdfText(content, "F2", 8, x + 10, y + 11, row.label());
+        pdfText(content, "F1", 8, x + 110, y + 11, safePdfText(moneyLabel(row.totalRevenue()), 16));
+        pdfText(content, "F1", 8, x + 210, y + 11, safePdfText(moneyLabel(row.membershipRevenue()), 16));
+        pdfText(content, "F1", 8, x + 330, y + 11, safePdfText(moneyLabel(row.admissionRevenue()), 16));
+        pdfText(content, "F1", 8, x + 450, y + 11, safePdfText(moneyLabel(row.duePayments()), 16));
+        pdfText(content, "F1", 8, x + 560, y + 11, String.valueOf(row.admissions()));
+        pdfText(content, "F1", 8, x + 642, y + 11, String.valueOf(row.activeMembers()));
+        pdfText(content, "F1", 8, x + 708, y + 11, String.valueOf(row.overdueMembers()));
     }
 
     private void pdfText(StringBuilder content, String font, int size, int x, int y, String text) {
-        content.append("BT /")
+        content.append("0.05 0.07 0.12 rg\nBT /")
             .append(font)
             .append(' ')
             .append(size)
@@ -513,6 +555,14 @@ public class FinancialReportService {
             .replace("\\", "\\\\")
             .replace("(", "\\(")
             .replace(")", "\\)");
+    }
+
+    private String safePdfText(String value, int maxLength) {
+        String normalized = value == null ? "" : value.replaceAll("[^\\x20-\\x7E]", " ");
+        if (normalized.length() <= maxLength) {
+            return normalized;
+        }
+        return normalized.substring(0, Math.max(0, maxLength - 3)) + "...";
     }
 
     private String moneyLabel(BigDecimal value) {

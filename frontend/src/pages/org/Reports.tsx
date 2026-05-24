@@ -7,9 +7,9 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  Info,
   Lock,
   RefreshCw,
-  SlidersHorizontal,
   TrendingUp,
   type LucideIcon,
   Users,
@@ -48,6 +48,7 @@ type FinancialReport = {
     admissions?: number;
     activeMembers?: number;
     overdueMembers?: number;
+    deactivatedMembers?: number;
   };
   months?: FinancialReportMonth[];
 };
@@ -64,7 +65,7 @@ type FinancialReportMonth = {
   admissions: number;
   activeMembers: number;
   overdueMembers: number;
-  planDetails: string;
+  deactivatedMembers: number;
 };
 
 const rangeOptions: Array<{ value: ReportRange; label: string }> = [
@@ -73,6 +74,8 @@ const rangeOptions: Array<{ value: ReportRange; label: string }> = [
   { value: "current_year", label: "Current year" },
   { value: "custom", label: "Custom range" },
 ];
+
+const INDIAN_TIME_ZONE = "Asia/Kolkata";
 
 const money = (value?: number | string | null) =>
   new Intl.NumberFormat("en-IN", {
@@ -83,11 +86,35 @@ const money = (value?: number | string | null) =>
 
 const compact = new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 });
 
+function todayInIndiaIso() {
+  return isoDateInIndia(new Date());
+}
+
+function currentYearStartInIndiaIso() {
+  const today = todayInIndiaIso();
+  return `${today.slice(0, 4)}-01-01`;
+}
+
+function currentYearMonthInIndia() {
+  return todayInIndiaIso().slice(0, 7);
+}
+
+function isoDateInIndia(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: INDIAN_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
 export default function Reports() {
   const [period, setPeriod] = useState<ReportPeriod>("monthly");
-  const [range, setRange] = useState<ReportRange>("current_month");
-  const [customFrom, setCustomFrom] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
-  const [customTo, setCustomTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [range, setRange] = useState<ReportRange>("current_year");
+  const [customFrom, setCustomFrom] = useState(() => currentYearStartInIndiaIso());
+  const [customTo, setCustomTo] = useState(() => todayInIndiaIso());
   const [exportingType, setExportingType] = useState<"csv" | "pdf" | null>(null);
 
   const { data: subscription, isLoading: subscriptionLoading } = useQuery({
@@ -110,6 +137,14 @@ export default function Reports() {
 
   const canViewReports = Boolean(subscription?.planAccess?.canReceiveMonthlyReports);
   const canExportReports = Boolean(subscription?.planAccess?.canExportReports);
+  const todayIso = todayInIndiaIso();
+  const currentMonthKey = currentYearMonthInIndia();
+  const customRangeInvalid = range === "custom" && (!customFrom || !customTo || customFrom > customTo || customFrom > todayIso);
+  const customRangeMessage = customFrom > customTo
+    ? "Start date must be on or before end date."
+    : customFrom > todayIso
+      ? "Start date cannot be in the future."
+      : "Choose both dates to generate a custom report.";
 
   const { data: report, isLoading, refetch, isFetching } = useQuery<FinancialReport>({
     queryKey: ["financialReport", params],
@@ -117,12 +152,32 @@ export default function Reports() {
       const res = await api.get("/reports/financial", { params });
       return res.data;
     },
-    enabled: canViewReports,
+    enabled: canViewReports && !customRangeInvalid,
   });
+
+  function updateCustomFrom(value: string) {
+    const next = value > todayIso ? todayIso : value;
+    setCustomFrom(next);
+    if (next > customTo) {
+      setCustomTo(next);
+    }
+  }
+
+  function updateCustomTo(value: string) {
+    const next = value > todayIso ? todayIso : value;
+    setCustomTo(next);
+    if (customFrom > next) {
+      setCustomFrom(next);
+    }
+  }
 
   async function exportReport(type: "csv" | "pdf") {
     if (!canExportReports) {
       toast.error("Upgrade to Pro to unlock this feature");
+      return;
+    }
+    if (customRangeInvalid) {
+      toast.error(customRangeMessage);
       return;
     }
     setExportingType(type);
@@ -216,82 +271,42 @@ export default function Reports() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <SummarySignal icon={Wallet} label="Total Revenue" value={money(summary.totalRevenue)} tone="emerald" />
+            <SummarySignal
+              icon={Wallet}
+              label="Total Revenue"
+              value={money(summary.totalRevenue)}
+              tone="emerald"
+              breakdown={[
+                { label: "Admission", value: money(summary.admissionRevenue) },
+                { label: "Membership", value: money(summary.membershipRevenue) },
+              ]}
+            />
             <SummarySignal icon={TrendingUp} label="Membership Revenue" value={money(summary.membershipRevenue)} tone="slate" />
             <SummarySignal icon={Users} label="Admissions" value={compact.format(Number(summary.admissions ?? 0))} tone="sky" />
-            <SummarySignal icon={AlertTriangle} label="Due Payments" value={money(summary.duePayments)} tone="rose" />
+            <SummarySignal icon={AlertTriangle} label="Current Due Amount" value={money(summary.duePayments)} tone="rose" />
           </div>
         </div>
       </section>
 
-      <section className="glass-panel rounded-[1.8rem] p-5">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-          <div className="grid flex-1 gap-4 md:grid-cols-[0.8fr_1.2fr] xl:max-w-3xl">
-            <div>
-              <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                Period
-              </div>
-              <div className="grid grid-cols-2 gap-2 rounded-2xl border border-white/80 bg-white/60 p-1">
-                {(["monthly", "yearly"] as ReportPeriod[]).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => {
-                      setPeriod(item);
-                      if (item === "yearly" && range !== "custom") {
-                        setRange("current_year");
-                      }
-                    }}
-                    className={cn(
-                      "h-10 rounded-xl text-sm font-black capitalize transition-colors",
-                      period === item ? "bg-slate-950 text-white shadow-sm" : "text-slate-600 hover:bg-white",
-                    )}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
+      <section className="glass-panel overflow-hidden rounded-[1.8rem]">
+        <div className="flex flex-col gap-4 border-b border-white/70 p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">
+              <CalendarRange className="h-3.5 w-3.5" />
+              Report Filters
             </div>
-
-            <div>
-              <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
-                <CalendarRange className="h-3.5 w-3.5" />
-                Date Range
-              </div>
-              <div className="grid gap-2 sm:grid-cols-4">
-                {rangeOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setRange(option.value)}
-                    className={cn(
-                      "h-10 rounded-xl border px-3 text-xs font-black transition-colors",
-                      range === option.value
-                        ? "border-emerald-200 bg-emerald-100 text-emerald-800"
-                        : "border-white/80 bg-white/60 text-slate-600 hover:bg-white",
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+            <div className="mt-1 text-sm font-semibold text-slate-500">
+              {report?.startDate ?? customFrom} to {report?.endDate ?? customTo} in Indian Standard Time
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            {range === "custom" && (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} className="h-11 rounded-xl bg-white/75" />
-                <Input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} className="h-11 rounded-xl bg-white/75" />
-              </div>
-            )}
+          <div className="flex flex-col gap-3 sm:flex-row">
             <Button
               type="button"
               variant="outline"
-              className="h-11 rounded-xl border-white/80 bg-white/75 px-4 font-bold"
+              className="h-11 rounded-xl border-white/80 bg-white/80 px-4 font-bold"
               onClick={() => refetch()}
-              disabled={isFetching}
+              disabled={isFetching || customRangeInvalid}
             >
               <RefreshCw className={cn("mr-2 h-4 w-4", isFetching && "animate-spin")} />
               Refresh
@@ -300,7 +315,7 @@ export default function Reports() {
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
-                    <Button className="h-11 rounded-xl bg-slate-950 px-5 font-bold text-white hover:bg-slate-800" disabled={Boolean(exportingType)}>
+                    <Button className="h-11 rounded-xl bg-slate-950 px-5 font-bold text-white hover:bg-slate-800" disabled={Boolean(exportingType) || customRangeInvalid}>
                       <Download className="mr-2 h-4 w-4" />
                       {exportingType ? "Exporting..." : "Export"}
                     </Button>
@@ -330,8 +345,93 @@ export default function Reports() {
           </div>
         </div>
 
+        <div className="grid gap-5 p-5 xl:grid-cols-[0.72fr_1.28fr]">
+          <div>
+            <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Period</div>
+            <div className="grid grid-cols-2 gap-2 rounded-[1.2rem] border border-white/80 bg-white/80 p-1.5">
+              {(["monthly", "yearly"] as ReportPeriod[]).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => {
+                    setPeriod(item);
+                    if (range !== "custom") {
+                      setRange("current_year");
+                    }
+                  }}
+                  className={cn(
+                    "h-11 rounded-[1rem] text-sm font-black capitalize transition-all",
+                    period === item
+                      ? "bg-slate-950 text-white shadow-[0_12px_26px_-16px_rgba(15,23,42,0.8)]"
+                      : "text-slate-600 hover:bg-slate-50",
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Date Range</div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {rangeOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setRange(option.value)}
+                  className={cn(
+                    "h-11 rounded-[1rem] border px-3 text-xs font-black transition-all",
+                    range === option.value
+                      ? "border-slate-950 bg-slate-950 text-white shadow-[0_12px_26px_-16px_rgba(15,23,42,0.8)]"
+                      : "border-white/80 bg-white/80 text-slate-600 hover:bg-slate-50",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {range === "custom" && (
+          <div className="border-t border-white/70 p-5">
+            <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+              <label className="space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">From</span>
+                <Input
+                  type="date"
+                  value={customFrom}
+                  max={customTo < todayIso ? customTo : todayIso}
+                  onChange={(event) => updateCustomFrom(event.target.value)}
+                  className="h-11 rounded-xl bg-white/85"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">To</span>
+                <Input
+                  type="date"
+                  value={customTo}
+                  min={customFrom}
+                  max={todayIso}
+                  onChange={(event) => updateCustomTo(event.target.value)}
+                  className="h-11 rounded-xl bg-white/85"
+                />
+              </label>
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
+                Max 36 months
+              </div>
+            </div>
+            {customRangeInvalid && (
+              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
+                {customRangeMessage}
+              </div>
+            )}
+          </div>
+        )}
+
         {!canExportReports && (
-          <div className="mt-4 rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
+          <div className="border-t border-white/70 px-5 py-4 text-sm font-bold text-amber-900">
             Upgrade to Pro to unlock this feature
           </div>
         )}
@@ -347,65 +447,106 @@ export default function Reports() {
             <MetricTile label="Admission Revenue" value={money(summary.admissionRevenue)} />
             <MetricTile label="Active Members" value={compact.format(Number(summary.activeMembers ?? 0))} />
             <MetricTile label="Overdue Members" value={compact.format(Number(summary.overdueMembers ?? 0))} />
-            <MetricTile label="Expenses" value={money(summary.expenses)} />
+            <MetricTile label="Deactivated Members" value={compact.format(Number(summary.deactivatedMembers ?? 0))} />
           </section>
 
-          <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-            <div className="glass-panel overflow-hidden rounded-[1.9rem]">
-              <div className="border-b border-white/70 p-6">
-                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Revenue Trend</div>
-                <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Month-wise performance</h2>
-              </div>
-              <div className="grid min-h-[310px] grid-cols-2 gap-3 p-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3">
-                {rows.map((row) => {
-                  const height = `${Math.max((Number(row.totalRevenue ?? 0) / maxRevenue) * 100, Number(row.totalRevenue ?? 0) > 0 ? 12 : 4)}%`;
-                  return (
-                    <div key={`${row.year}-${row.month}`} className="rounded-[1.35rem] border border-white/80 bg-white/72 p-4 shadow-sm">
-                      <div className="flex h-32 items-end rounded-[1.1rem] bg-slate-50 p-3">
-                        <div className="w-full rounded-full bg-gradient-to-t from-emerald-700 via-emerald-500 to-sky-300" style={{ height }} />
-                      </div>
-                      <div className="mt-3 text-center text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{row.label}</div>
-                      <div className="mt-1 text-center text-lg font-black text-slate-950">{money(row.totalRevenue)}</div>
-                    </div>
-                  );
-                })}
-              </div>
+          <section className="glass-panel overflow-hidden rounded-[1.9rem]">
+            <div className="border-b border-white/70 p-6">
+              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Revenue Trend</div>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Month-wise performance</h2>
             </div>
+            <div className="grid min-h-[340px] grid-cols-2 gap-3 p-6 sm:grid-cols-3 lg:grid-cols-6 xl:grid-cols-12">
+              {rows.map((row) => {
+                const height = `${Math.max((Number(row.totalRevenue ?? 0) / maxRevenue) * 100, Number(row.totalRevenue ?? 0) > 0 ? 12 : 4)}%`;
+                const isCurrentMonth = `${row.year}-${String(row.month).padStart(2, "0")}` === currentMonthKey;
+                return (
+                  <div
+                    key={`${row.year}-${row.month}`}
+                    className={cn(
+                      "rounded-[1.35rem] border bg-white/72 p-3 shadow-sm xl:col-span-1",
+                      isCurrentMonth
+                        ? "border-emerald-300 ring-4 ring-emerald-100 shadow-[0_18px_38px_-26px_rgba(5,150,105,0.9)]"
+                        : "border-white/80",
+                    )}
+                  >
+                    <div className="flex h-40 items-end rounded-[1.1rem] bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(255,255,255,0.95))] p-3">
+                      <div
+                        className={cn(
+                          "w-full rounded-full",
+                          isCurrentMonth
+                            ? "bg-gradient-to-t from-emerald-800 via-emerald-500 to-lime-300"
+                            : "bg-gradient-to-t from-emerald-700 via-emerald-500 to-sky-300",
+                        )}
+                        style={{ height }}
+                      />
+                    </div>
+                    <div className={cn("mt-3 text-center text-[10px] font-black uppercase tracking-[0.18em]", isCurrentMonth ? "text-emerald-700" : "text-slate-500")}>
+                      {row.label}
+                    </div>
+                    {isCurrentMonth && (
+                      <div className="mt-1 text-center text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">
+                        Current
+                      </div>
+                    )}
+                    <div className="mt-1 text-center text-sm font-black text-slate-950">{money(row.totalRevenue)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
 
+          <section className="space-y-5">
             <div className="glass-panel overflow-hidden rounded-[1.9rem]">
               <div className="border-b border-white/70 p-6">
                 <div className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Report Contents</div>
-                <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Financial details</h2>
+                <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Monthly detail cards</h2>
               </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-[920px] w-full text-left text-sm">
-                  <thead className="border-b border-black/5 bg-white/35 text-slate-500">
-                    <tr>
-                      <th className="px-5 py-4 text-xs font-black uppercase tracking-[0.18em]">Month</th>
-                      <th className="px-5 py-4 text-xs font-black uppercase tracking-[0.18em]">Total</th>
-                      <th className="px-5 py-4 text-xs font-black uppercase tracking-[0.18em]">Admission</th>
-                      <th className="px-5 py-4 text-xs font-black uppercase tracking-[0.18em]">Membership</th>
-                      <th className="px-5 py-4 text-xs font-black uppercase tracking-[0.18em]">Due</th>
-                      <th className="px-5 py-4 text-xs font-black uppercase tracking-[0.18em]">Admissions</th>
-                      <th className="px-5 py-4 text-xs font-black uppercase tracking-[0.18em]">Active</th>
-                      <th className="px-5 py-4 text-xs font-black uppercase tracking-[0.18em]">Overdue</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-black/5">
-                    {rows.map((row) => (
-                      <tr key={`${row.year}-${row.month}`} className="transition-colors hover:bg-white/50">
-                        <td className="px-5 py-4 font-black text-slate-950">{row.label}</td>
-                        <td className="px-5 py-4 font-bold text-slate-700">{money(row.totalRevenue)}</td>
-                        <td className="px-5 py-4 font-semibold text-slate-600">{money(row.admissionRevenue)}</td>
-                        <td className="px-5 py-4 font-semibold text-slate-600">{money(row.membershipRevenue)}</td>
-                        <td className="px-5 py-4 font-semibold text-rose-700">{money(row.duePayments)}</td>
-                        <td className="px-5 py-4 font-semibold text-slate-600">{row.admissions}</td>
-                        <td className="px-5 py-4 font-semibold text-slate-600">{row.activeMembers}</td>
-                        <td className="px-5 py-4 font-semibold text-slate-600">{row.overdueMembers}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="space-y-4 p-6">
+                {rows.map((row) => {
+                  const isCurrentMonth = `${row.year}-${String(row.month).padStart(2, "0")}` === currentMonthKey;
+                  return (
+                    <div
+                      key={`${row.year}-${row.month}`}
+                      className={cn(
+                        "rounded-[1.55rem] border bg-white/72 p-5 shadow-sm",
+                        isCurrentMonth
+                          ? "border-emerald-300 ring-4 ring-emerald-100 shadow-[0_18px_42px_-28px_rgba(5,150,105,0.85)]"
+                          : "border-white/80",
+                      )}
+                    >
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">{row.label}</div>
+                            {isCurrentMonth && (
+                              <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">Current month</Badge>
+                            )}
+                          </div>
+                          <div className="mt-2 flex items-center gap-2 text-3xl font-black tracking-tight text-slate-950">
+                            <span>{money(row.totalRevenue)}</span>
+                            <RevenueInfoButton
+                              admissionRevenue={money(row.admissionRevenue)}
+                              membershipRevenue={money(row.membershipRevenue)}
+                            />
+                          </div>
+                          <div className="mt-1 text-sm font-semibold text-slate-500">Admission plus membership collections for the selected month.</div>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                          <MonthDetailPill label="Admission" value={money(row.admissionRevenue)} tone="sky" />
+                          <MonthDetailPill label="Membership" value={money(row.membershipRevenue)} tone="emerald" />
+                          <MonthDetailPill label="Overdue" value={money(row.duePayments)} tone="rose" />
+                          <MonthDetailPill label="Active" value={String(row.activeMembers)} tone="slate" />
+                          <MonthDetailPill label="Deactivated" value={String(row.deactivatedMembers)} tone="amber" />
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-3 text-sm font-bold text-slate-600">
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">{row.admissions} admissions</span>
+                        <span className="rounded-full border border-rose-100 bg-rose-50 px-3 py-1.5 text-rose-700">{row.overdueMembers} overdue members</span>
+                        <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-amber-700">{row.deactivatedMembers} deactivated this month</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -420,11 +561,13 @@ function SummarySignal({
   label,
   value,
   tone,
+  breakdown,
 }: {
   icon: LucideIcon;
   label: string;
   value: string;
   tone: "emerald" | "slate" | "sky" | "rose";
+  breakdown?: Array<{ label: string; value: string }>;
 }) {
   const toneClass = {
     emerald: "border-emerald-100 bg-emerald-50/72 text-emerald-900",
@@ -436,8 +579,52 @@ function SummarySignal({
   return (
     <div className={cn("rounded-[1.5rem] border p-5 shadow-sm", toneClass)}>
       <Icon className="h-5 w-5" />
-      <div className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] opacity-70">{label}</div>
+      <div className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] opacity-70">
+        <span>{label}</span>
+        {breakdown && <RevenueInfoButton items={breakdown} compact />}
+      </div>
       <div className="mt-2 text-2xl font-black tracking-tight">{value}</div>
+    </div>
+  );
+}
+
+function RevenueInfoButton({
+  admissionRevenue,
+  membershipRevenue,
+  items,
+  compact = false,
+}: {
+  admissionRevenue?: string;
+  membershipRevenue?: string;
+  items?: Array<{ label: string; value: string }>;
+  compact?: boolean;
+}) {
+  const breakdown = items ?? [
+    { label: "Admission", value: admissionRevenue ?? money(0) },
+    { label: "Membership", value: membershipRevenue ?? money(0) },
+  ];
+
+  return (
+    <div className="group relative inline-flex">
+      <button
+        type="button"
+        className={cn(
+          "inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/85 text-slate-600 shadow-sm transition-colors hover:bg-white hover:text-slate-950",
+          compact ? "h-5 w-5" : "h-7 w-7",
+        )}
+        aria-label="Revenue split"
+      >
+        <Info className={compact ? "h-3 w-3" : "h-4 w-4"} />
+      </button>
+      <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-3 w-56 -translate-x-1/2 translate-y-1 rounded-2xl border border-slate-200 bg-white/95 p-4 text-left text-xs font-semibold text-slate-700 opacity-0 shadow-xl backdrop-blur transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Revenue Split</div>
+        {breakdown.map((item) => (
+          <div key={item.label} className="mt-2 flex items-center justify-between gap-4">
+            <span>{item.label}</span>
+            <span className="font-black text-slate-950">{item.value}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -447,6 +634,31 @@ function MetricTile({ label, value }: { label: string; value: string }) {
     <div className="glass-panel rounded-[1.5rem] p-5">
       <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{label}</div>
       <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{value}</div>
+    </div>
+  );
+}
+
+function MonthDetailPill({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "slate" | "emerald" | "sky" | "rose" | "amber";
+}) {
+  const toneClass = {
+    slate: "border-slate-200 bg-slate-50 text-slate-900",
+    emerald: "border-emerald-100 bg-emerald-50 text-emerald-900",
+    sky: "border-sky-100 bg-sky-50 text-sky-900",
+    rose: "border-rose-100 bg-rose-50 text-rose-900",
+    amber: "border-amber-100 bg-amber-50 text-amber-900",
+  }[tone];
+
+  return (
+    <div className={cn("rounded-[1.1rem] border px-4 py-3 shadow-sm", toneClass)}>
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">{label}</div>
+      <div className="mt-1 text-base font-black">{value}</div>
     </div>
   );
 }

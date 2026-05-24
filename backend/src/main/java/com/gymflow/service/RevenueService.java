@@ -48,7 +48,7 @@ public class RevenueService {
     public RevenueSummaryResponse revenueSummary() {
         Organization organization = currentOrganization();
         int reminderDays = organizationSettingService.getOrCreateSettings(organization.getId()).getReminderDaysBeforeExpiry();
-        YearMonth currentMonth = YearMonth.now();
+        YearMonth currentMonth = YearMonth.now(APP_ZONE);
         LocalDate monthStart = currentMonth.atDay(1);
         LocalDate monthEnd = currentMonth.atEndOfMonth();
 
@@ -70,7 +70,6 @@ public class RevenueService {
             .map(MemberPayment::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal expectedRevenue = BigDecimal.ZERO;
         BigDecimal pendingRevenue = BigDecimal.ZERO;
         BigDecimal overdueRevenue = BigDecimal.ZERO;
         long prepaidMembers = 0L;
@@ -91,9 +90,6 @@ public class RevenueService {
             boolean isCurrentObligation = membership.getStatus() == MembershipStatus.ACTIVE
                 && !membership.getStartDate().isAfter(monthEnd)
                 && !membership.getEndDate().isBefore(monthStart);
-            if (isCurrentObligation) {
-                expectedRevenue = expectedRevenue.add(monthlyMembershipFee);
-            }
             if (isCurrentObligation && membership.getStatus() == MembershipStatus.ACTIVE) {
                 pendingRevenue = pendingRevenue.add(
                     coverage.pendingAmount().compareTo(BigDecimal.ZERO) > 0 ? monthlyMembershipFee : BigDecimal.ZERO
@@ -112,6 +108,7 @@ public class RevenueService {
             }
         }
 
+        BigDecimal expectedRevenue = currentRevenue.add(overdueRevenue);
         long activeMembers = memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(organization.getId(), MemberStatus.ACTIVE);
         long activeMembersCollected = Math.max(activeMembers - activeMembersPendingCollection, 0);
 
@@ -129,7 +126,7 @@ public class RevenueService {
 
     public MonthlyRevenueResponse monthlyRevenue() {
         RevenueSummaryResponse summary = revenueSummary();
-        YearMonth currentMonth = YearMonth.now();
+        YearMonth currentMonth = YearMonth.now(APP_ZONE);
         return new MonthlyRevenueResponse(List.of(
             new MonthlyRevenuePoint(
                 currentMonth.getYear(),

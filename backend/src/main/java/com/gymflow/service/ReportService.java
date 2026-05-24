@@ -23,6 +23,7 @@ import com.gymflow.security.SecurityUtils;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -39,6 +40,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ReportService {
 
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
+
     private final RevenueService revenueService;
     private final MemberService memberService;
     private final MemberMembershipService memberMembershipService;
@@ -49,13 +52,14 @@ public class ReportService {
     private final NotificationQueryService notificationQueryService;
     private final com.gymflow.repository.OrganizationRepository organizationRepository;
     private final PlanAccessService planAccessService;
+    private final MemberCreditLedgerService memberCreditLedgerService;
 
     @Transactional
     @Cacheable(value = "dashboardReports", key = "T(com.gymflow.security.SecurityUtils).currentUser().organizationId()")
     public DashboardReportResponse dashboardReport() {
         Long organizationId = requireOrganizationId();
         int reminderDays = organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry();
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(APP_ZONE);
         memberMembershipService.refreshMembershipStatuses(organizationId);
         List<MemberMembership> expiringSoon = memberMembershipRepository.findExpiringSoonMemberships(
             organizationId,
@@ -112,13 +116,10 @@ public class ReportService {
             .findByMembershipIdInAndDeletedFalse(membershipIds)
             .stream()
             .collect(Collectors.groupingBy(payment -> payment.getMembership().getId()));
-        Map<Long, BigDecimal> walletBalanceByMemberId = memberService.toDirectoryItems(
-            memberships.stream().map(MemberMembership::getMember).toList(),
-            reminderDays
-        ).stream().collect(Collectors.toMap(
-            MemberDirectoryItem::id,
-            item -> item.currentMembership() == null ? BigDecimal.ZERO : item.currentMembership().walletBalance()
-        ));
+        Map<Long, BigDecimal> walletBalanceByMemberId = memberCreditLedgerService.balancesForMembers(
+            memberships.getFirst().getOrganization().getId(),
+            memberships.stream().map(membership -> membership.getMember().getId()).toList()
+        );
         Map<Long, BigDecimal> appliedCreditByMembershipId = memberships.stream()
             .collect(Collectors.toMap(MemberMembership::getId, membership -> BigDecimal.ZERO));
         return memberships.stream()
@@ -144,7 +145,7 @@ public class ReportService {
     }
 
     private SubscriptionValiditySummary buildSubscriptionValidity(Organization organization) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(APP_ZONE);
         LocalDate validThrough = resolveValidityDate(organization);
         long daysRemaining = validThrough == null ? 0 : ChronoUnit.DAYS.between(today, validThrough);
 
@@ -205,7 +206,7 @@ public class ReportService {
     }
 
     private List<MonthlyMemberJoinResponse> monthlyMemberJoins(Long organizationId) {
-        YearMonth currentMonth = YearMonth.now();
+        YearMonth currentMonth = YearMonth.now(APP_ZONE);
         YearMonth startMonth = currentMonth.minusMonths(5);
         DateTimeFormatter labelFormatter = DateTimeFormatter.ofPattern("MMM");
 

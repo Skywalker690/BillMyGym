@@ -182,14 +182,19 @@ export default function OrganizationProfile() {
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-8">
       <section className="billmygym-shell rounded-[2rem] p-8">
-        <div className="flex items-start gap-5">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex h-16 w-16 items-center justify-center rounded-[1.6rem] bg-[linear-gradient(135deg,#e7f6ee_0%,#fff7ed_100%)] text-emerald-700 shadow-sm">
             <Building className="h-8 w-8" />
           </div>
-          <div>
+          <div className="flex-1">
             <div className="text-[10px] font-black uppercase tracking-[0.26em] text-emerald-700">Workspace Identity</div>
             <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">{organization.name}</h1>
             <p className="mt-2 text-sm font-medium text-slate-600">Maintain your public gym identity, primary admin contact, and billing-facing organization details.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[420px]">
+            <IdentityCard label="Organization ID" value={`ORG-${organization.id}`} tone="slate" />
+            <IdentityCard label="Workspace Type" value={organization.organizationType ?? "-"} tone="emerald" />
+            <IdentityCard label="Workspace Status" value={organization.status ?? "-"} tone="amber" />
           </div>
         </div>
       </section>
@@ -336,4 +341,19 @@ function SecureField({ label, error, children }: { label: string; error?: string
 
 function formatIndianPhone(phone: string) {
   return phone.replace(/^\+?91\s?/, "").trim();
+}
+
+function IdentityCard({ label, value, tone }: { label: string; value: string; tone: "slate" | "emerald" | "amber" }) {
+  const toneClass = {
+    slate: "border-slate-200 bg-white/80 text-slate-900",
+    emerald: "border-emerald-100 bg-emerald-50/80 text-emerald-900",
+    amber: "border-amber-100 bg-amber-50/80 text-amber-900",
+  }[tone];
+
+  return (
+    <div className={`rounded-[1.35rem] border p-4 shadow-sm ${toneClass}`}>
+      <div className="text-[10px] font-black uppercase tracking-[0.22em] opacity-70">{label}</div>
+      <div className="mt-2 text-lg font-black">{value}</div>
+    </div>
+  );
 }

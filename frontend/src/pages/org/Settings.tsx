@@ -120,13 +120,13 @@ export default function Settings() {
                 </div>
                 <div className="text-sm font-black text-slate-900">BillMyGym System</div>
                 <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600">
-                  Members needing renewal:
+                  Members needing follow-up:
 
-                  1. John - Expired Today
+                  1. John - Due today
                   2. Rahul - Overdue 2 days
                   3. Alex - Overdue 1 day
 
-                  Total pending: 3
+                  Total due now: 3
                 </p>
               </div>
             ) : watchConfig.emailEnabled ? (
@@ -145,7 +145,7 @@ export default function Settings() {
                   Rahul
                   Alex
 
-                  Please review pending renewals.
+                  Please review overdue members and due-soon follow-ups.
                 </p>
               </div>
             ) : (

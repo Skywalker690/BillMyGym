@@ -7,6 +7,7 @@ import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.enums.MembershipStatus;
 import com.gymflow.domain.enums.PaymentStatus;
+import com.gymflow.domain.enums.PaymentType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -98,5 +99,23 @@ class MembershipLifecycleServiceTest {
         assertEquals(0, BigDecimal.ZERO.compareTo(summary.pendingAmount()));
         assertEquals(PaymentStatus.PAID, summary.paymentStatus());
         assertEquals(true, summary.expiringSoon());
+    }
+
+    @Test
+    void ignoresAdmissionPaymentsWhenComputingMembershipCoverage() {
+        MemberMembership membership = new MemberMembership();
+        membership.setPlanAmount(new BigDecimal("3000.00"));
+
+        MemberPayment payment = new MemberPayment();
+        payment.setAmount(new BigDecimal("3000.00"));
+        payment.setPaymentStatus(PaymentStatus.PAID);
+        payment.setPaymentType(PaymentType.ADMISSION);
+
+        membership.setEndDate(LocalDate.now().plusDays(10));
+        PaymentCoverageSummary summary = membershipLifecycleService.buildCoverageSummary(membership, List.of(payment), 3);
+
+        assertEquals(BigDecimal.ZERO, summary.paidAmount());
+        assertEquals(new BigDecimal("3000.00"), summary.pendingAmount());
+        assertEquals(PaymentStatus.PENDING, summary.paymentStatus());
     }
 }

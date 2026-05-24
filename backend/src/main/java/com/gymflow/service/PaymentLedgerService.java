@@ -19,6 +19,7 @@ import com.gymflow.shared.money.MoneyUtils;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -32,6 +33,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class PaymentLedgerService {
+
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final MemberMembershipRepository memberMembershipRepository;
     private final MemberPaymentRepository memberPaymentRepository;
@@ -132,11 +135,10 @@ public class PaymentLedgerService {
         List<MemberPayment> previousPayments,
         RecordPaymentRequest request
     ) {
-        if (request.paymentStatus() != null) {
-            return request.paymentStatus();
+        if (request.paymentStatus() != null && request.paymentStatus() != PaymentStatus.PAID) {
+            throw new BadRequestException("Only paid payment records are supported");
         }
-        BigDecimal totalPaid = membershipLifecycleService.successfulPaymentTotal(previousPayments).add(request.amount());
-        return membershipLifecycleService.resolveCoverageStatus(membership.getPlanAmount(), totalPaid);
+        return PaymentStatus.PAID;
     }
 
     private PaymentResponse toResponse(MemberPayment payment, PaymentCoverageSummary coverage) {
@@ -162,7 +164,7 @@ public class PaymentLedgerService {
         MemberPayment payment = memberPaymentRepository.findByIdAndOrganizationIdAndDeletedFalse(paymentId, organizationId)
             .orElseThrow(() -> new NotFoundException("Payment not found"));
         payment.setDeleted(true);
-        payment.setDeletedAt(OffsetDateTime.now());
+        payment.setDeletedAt(OffsetDateTime.now(APP_ZONE));
     }
 
     private Long requireOrganizationId() {

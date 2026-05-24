@@ -9,7 +9,6 @@ import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.NotificationLog;
 import com.gymflow.domain.Organization;
-import com.gymflow.domain.UsageMetric;
 import com.gymflow.domain.WhatsappReminderLog;
 import com.gymflow.domain.enums.AuditActivityScope;
 import com.gymflow.domain.enums.AuditEventStatus;
@@ -49,6 +48,7 @@ public class IndividualWhatsappReminderService {
 
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
     private static final DateTimeFormatter MESSAGE_DATE = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.ENGLISH);
+    private static final int CUSTOM_REMINDER_LIMIT = 50;
 
     private final OrganizationRepository organizationRepository;
     private final MemberRepository memberRepository;
@@ -173,12 +173,10 @@ public class IndividualWhatsappReminderService {
             return new SendEligibility(false, phoneCheck.reason(), "");
         }
 
-        Integer quota = monthlyQuota(context.organization());
-        if (quota != null) {
-            UsageMetric metric = usageMetricService.resolveMetric(context.organization());
-            if (metric.getMonthlyWhatsappCount() >= quota) {
-                return new SendEligibility(false, "Monthly WhatsApp quota reached", phoneCheck.normalizedPhone());
-            }
+        int customReminderUsage = currentMonthCustomReminderUsage(context.organization());
+        Integer quota = monthlyCustomReminderLimit(context.organization());
+        if (quota != null && customReminderUsage >= quota) {
+            return new SendEligibility(false, "Monthly custom reminder limit reached", phoneCheck.normalizedPhone());
         }
 
         return new SendEligibility(true, null, phoneCheck.normalizedPhone());
@@ -198,15 +196,27 @@ public class IndividualWhatsappReminderService {
         return new PhoneCheck(true, digits, null);
     }
 
-    private Integer monthlyQuota(Organization organization) {
+    public Integer monthlyCustomReminderLimit(Organization organization) {
         if (organization.getOrganizationType() == OrganizationType.DEMO) {
-            return 50;
+            return CUSTOM_REMINDER_LIMIT;
         }
         if (organization.getOrganizationType() == OrganizationType.PILOT) {
-            return 300;
+            return CUSTOM_REMINDER_LIMIT;
         }
         SubscriptionPlan plan = planAccessService.resolvePlan(organization);
-        return plan == SubscriptionPlan.PRO ? 1000 : 0;
+        return plan == SubscriptionPlan.PRO ? CUSTOM_REMINDER_LIMIT : null;
+    }
+
+    public int currentMonthCustomReminderUsage(Organization organization) {
+        YearMonth currentMonth = YearMonth.now(APP_ZONE);
+        OffsetDateTime monthStart = currentMonth.atDay(1).atStartOfDay(APP_ZONE).toOffsetDateTime();
+        OffsetDateTime nextMonthStart = currentMonth.plusMonths(1).atDay(1).atStartOfDay(APP_ZONE).toOffsetDateTime();
+        return Math.toIntExact(whatsappReminderLogRepository.countByOrganizationIdAndStatusAndSentAtBetweenAndDeletedFalse(
+            organization.getId(),
+            WhatsappReminderStatus.SENT,
+            monthStart,
+            nextMonthStart
+        ));
     }
 
     private String buildMessage(Member member, Organization organization, LocalDate dueDate, BigDecimal pendingAmount) {
@@ -247,6 +257,9 @@ public class IndividualWhatsappReminderService {
     }
 
     private WhatsappReminderPreviewResponse toPreview(ReminderContext context, SendEligibility eligibility) {
+        Integer monthlyLimit = monthlyCustomReminderLimit(context.organization());
+        int used = currentMonthCustomReminderUsage(context.organization());
+        int remaining = monthlyLimit == null ? 0 : Math.max(monthlyLimit - used, 0);
         return new WhatsappReminderPreviewResponse(
             context.member().getId(),
             context.member().getFullName(),
@@ -256,7 +269,10 @@ public class IndividualWhatsappReminderService {
             context.organization().getName(),
             context.message(),
             eligibility.canSend(),
-            eligibility.reason()
+            eligibility.reason(),
+            monthlyLimit,
+            used,
+            remaining
         );
     }
 

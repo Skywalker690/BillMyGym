@@ -12,6 +12,7 @@ import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class SubscriptionBillingService {
 
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
     private static final String PAYMENT_LINK = "/app/subscription";
     private static final List<Integer> REMINDER_OFFSETS = List.of(7, 3, 1);
     private static final List<OrganizationType> BILLABLE_TYPES = List.of(OrganizationType.REGULAR);
@@ -36,7 +38,7 @@ public class SubscriptionBillingService {
 
     @Transactional
     public void processDailyBilling() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(APP_ZONE);
         pilotConversionService.convertEligiblePilots();
         sendUpcomingDueReminders(today);
         pauseOverdueOrganizations(today);
@@ -136,7 +138,7 @@ public class SubscriptionBillingService {
     }
 
     private void deactivateLongUnpaidOrganizations(LocalDate today) {
-        OffsetDateTime cutoff = OffsetDateTime.now().minusDays(90);
+        OffsetDateTime cutoff = OffsetDateTime.now(APP_ZONE).minusDays(90);
         for (Organization organization : organizationRepository.findAllByDeletedFalseAndStatus(OrganizationStatus.PAUSED)) {
             if (organization.getPausedAt() == null || !organization.getPausedAt().isBefore(cutoff)) {
                 continue;
@@ -147,11 +149,11 @@ public class SubscriptionBillingService {
                 today
             )) {
                 organization.setStatus(OrganizationStatus.DEACTIVATED);
-                organization.setDeactivatedAt(OffsetDateTime.now());
+                organization.setDeactivatedAt(OffsetDateTime.now(APP_ZONE));
                 continue;
             }
             organization.setStatus(OrganizationStatus.DEACTIVATED);
-            organization.setDeactivatedAt(OffsetDateTime.now());
+            organization.setDeactivatedAt(OffsetDateTime.now(APP_ZONE));
             UsageMetric usage = usageMetricService.refreshMonthlySnapshot(organization);
             emailService.sendDeactivatedNotificationEmail(
                 organization,

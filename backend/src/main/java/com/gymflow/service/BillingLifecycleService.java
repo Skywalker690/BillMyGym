@@ -6,11 +6,13 @@ import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.SubscriptionPlan;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import org.springframework.stereotype.Service;
 
 @Service
 public class BillingLifecycleService {
 
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
     private static final int TRIAL_ACCESS_DAYS = 14;
     private static final int DEMO_ACCESS_DAYS = 90;
     private static final int PILOT_BILLING_DAYS = 30;
@@ -90,7 +92,7 @@ public class BillingLifecycleService {
         organization.setPilotEndDate(null);
         organization.setSubscriptionDueDate(today);
         if (organization.getPausedAt() == null) {
-            organization.setPausedAt(OffsetDateTime.now());
+            organization.setPausedAt(OffsetDateTime.now(APP_ZONE));
         }
         organization.setDeactivatedAt(null);
     }
@@ -126,7 +128,7 @@ public class BillingLifecycleService {
     public void markPaused(Organization organization) {
         organization.setStatus(OrganizationStatus.PAUSED);
         if (organization.getPausedAt() == null) {
-            organization.setPausedAt(OffsetDateTime.now());
+            organization.setPausedAt(OffsetDateTime.now(APP_ZONE));
         }
     }
 }

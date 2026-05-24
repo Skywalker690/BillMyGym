@@ -6,6 +6,7 @@ import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.repository.OrganizationRepository;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class MonthlyOrganizationReportScheduler {
 
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
+
     private final OrganizationRepository organizationRepository;
     private final PlanAccessService planAccessService;
     private final MonthlyOrganizationReportService reportService;
@@ -28,7 +31,7 @@ public class MonthlyOrganizationReportScheduler {
     @Transactional
     @Scheduled(cron = "0 0 1 1 * *", zone = "Asia/Kolkata")
     public void sendPreviousMonthReports() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(APP_ZONE);
         YearMonth reportMonth = YearMonth.from(today.minusMonths(1));
         List<Organization> organizations = organizationRepository.findAllByDeletedFalseAndStatusIn(
             List.of(OrganizationStatus.ACTIVE, OrganizationStatus.TRIAL)

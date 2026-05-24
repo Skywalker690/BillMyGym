@@ -17,6 +17,7 @@ import com.gymflow.domain.enums.MembershipStatus;
 import com.gymflow.shared.money.MoneyUtils;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -26,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class MembershipWorkflowService {
+
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final MemberMembershipService memberMembershipService;
     private final MembershipLifecycleService membershipLifecycleService;
@@ -38,7 +41,14 @@ public class MembershipWorkflowService {
     @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public MembershipResponse createMembership(Long memberId, CreateMembershipRequest request, String idempotencyKey) {
         Long organizationId = requireOrganizationId();
-        Member member = memberMembershipService.requireActiveMember(memberId, organizationId);
+        int reminderDays = organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry();
+        Member member = memberMembershipService.requireMemberForWrite(memberId, organizationId);
+        boolean reactivatedMember = member.getStatus() == com.gymflow.domain.enums.MemberStatus.DEACTIVATED;
+        if (reactivatedMember) {
+            member.setStatus(com.gymflow.domain.enums.MemberStatus.ACTIVE);
+            member.setDeactivatedAt(null);
+            member.setDeactivationReason(null);
+        }
         String requiredKey = idempotencyService.requireKey(idempotencyKey);
         var existing = idempotencyService.findExisting(
             organizationId,
@@ -51,6 +61,9 @@ public class MembershipWorkflowService {
         }
 
         MemberMembership latestMembership = memberMembershipService.findLatestMembership(memberId, organizationId);
+        if (latestMembership != null) {
+            membershipLifecycleService.refreshMembership(latestMembership, reminderDays);
+        }
         boolean renewalFlow = latestMembership != null;
 
         MemberMembership membership = new MemberMembership();
@@ -62,10 +75,7 @@ public class MembershipWorkflowService {
         LocalDate startDate = resolveCreateStartDate(request, latestMembership);
         membership.setStartDate(startDate);
         membership.setEndDate(membershipLifecycleService.calculateMembershipEndDate(startDate, request.durationMonths()));
-        membershipLifecycleService.refreshMembership(
-            membership,
-            organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry()
-        );
+        membershipLifecycleService.refreshMembership(membership, reminderDays);
         membership = memberMembershipService.saveMembership(membership);
 
         idempotencyService.record(
@@ -91,6 +101,17 @@ public class MembershipWorkflowService {
             organizationId,
             member.getFullName()
         );
+        if (reactivatedMember) {
+            auditLogService.logOrganizationActivity(
+                "MEMBER_REACTIVATED",
+                "Member reactivated when a new membership was created for " + member.getFullName(),
+                AuditActivityScope.MEMBER_STATUS_ACTIVITY,
+                AuditEventStatus.INFO,
+                "MEMBER",
+                organizationId,
+                member.getFullName()
+            );
+        }
         return memberMembershipService.membershipResponse(membership.getId(), organizationId);
     }
 
@@ -198,7 +219,7 @@ public class MembershipWorkflowService {
 
     private LocalDate resolveCreateStartDate(CreateMembershipRequest request, MemberMembership latestMembership) {
         if (latestMembership == null) {
-            return request.startDate() == null ? LocalDate.now() : request.startDate();
+            return request.startDate() == null ? LocalDate.now(APP_ZONE) : request.startDate();
         }
         
         LocalDate nextContinuationDate = latestMembership.getEndDate().plusDays(1);

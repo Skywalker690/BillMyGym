@@ -24,6 +24,7 @@ import com.gymflow.shared.money.MoneyUtils;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
@@ -32,6 +33,8 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class OrganizationPaymentWebhookService {
+
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final OrganizationSubscriptionPaymentRepository paymentRepository;
     private final OrganizationSubscriptionRepository subscriptionRepository;
@@ -68,7 +71,7 @@ public class OrganizationPaymentWebhookService {
         ensureUniqueGatewayTransaction(request.razorpayPaymentId(), payment);
         payment.setRazorpayPaymentId(request.razorpayPaymentId());
         payment.setGatewayTransactionId(request.razorpayPaymentId());
-        markPaymentPaid(payment, LocalDate.now());
+        markPaymentPaid(payment, LocalDate.now(APP_ZONE));
     }
 
     @Transactional
@@ -136,7 +139,7 @@ public class OrganizationPaymentWebhookService {
                 }
                 payment.setPaymentStatus(SubscriptionPaymentStatus.FAILED);
                 payment.setRetryCount(payment.getRetryCount() + 1);
-                payment.setNextRetryDate(LocalDate.now().plusDays(Math.min(payment.getRetryCount(), 3) + 1L));
+                payment.setNextRetryDate(LocalDate.now(APP_ZONE).plusDays(Math.min(payment.getRetryCount(), 3) + 1L));
                 payment.setFailureReason(resolveFailureReason(root));
                 notifyPaymentFailure(payment);
                 recordProcessedEvent(eventId, event);
@@ -153,7 +156,7 @@ public class OrganizationPaymentWebhookService {
         if (payment.getPaymentStatus() == SubscriptionPaymentStatus.PAID) {
             return;
         }
-        LocalDate periodStart = paymentDate == null ? LocalDate.now() : paymentDate;
+        LocalDate periodStart = paymentDate == null ? LocalDate.now(APP_ZONE) : paymentDate;
         LocalDate periodEnd = billingLifecycleService.billingPeriodEnd(periodStart);
         payment.setPaymentDate(periodStart);
         payment.setSubscriptionStart(periodStart);
@@ -236,7 +239,7 @@ public class OrganizationPaymentWebhookService {
             selectedPlan = planAccessService.resolvePlan(organization);
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(APP_ZONE);
         OrganizationSubscriptionPayment payment = new OrganizationSubscriptionPayment();
         payment.setOrganization(organization);
         payment.setAmount(selectedPlan.monthlyAmount());
@@ -300,7 +303,7 @@ public class OrganizationPaymentWebhookService {
             createdAt = orderNode.path("created_at").asLong(0L);
         }
         if (createdAt == 0L) {
-            return LocalDate.now();
+            return LocalDate.now(APP_ZONE);
         }
         return Instant.ofEpochSecond(createdAt).atZone(java.time.ZoneOffset.UTC).toLocalDate();
     }

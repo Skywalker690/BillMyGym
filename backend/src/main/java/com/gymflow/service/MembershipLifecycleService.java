@@ -6,17 +6,24 @@ import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.enums.MembershipStatus;
 import com.gymflow.domain.enums.PaymentStatus;
+import com.gymflow.domain.enums.PaymentType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
 public class MembershipLifecycleService {
 
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
+
     public void refreshMembership(MemberMembership membership, int reminderDaysBeforeExpiry) {
+        if (membership.getStatus() == MembershipStatus.DEACTIVATED) {
+            return;
+        }
         membership.setStatus(resolveMembershipStatus(
-            LocalDate.now(),
+            LocalDate.now(APP_ZONE),
             membership.getEndDate(),
             reminderDaysBeforeExpiry
         ));
@@ -72,13 +79,14 @@ public class MembershipLifecycleService {
             normalizedAppliedCredit,
             pendingAmount,
             paymentStatus,
-            isExpiringSoon(LocalDate.now(), membership.getEndDate(), reminderDaysBeforeExpiry)
+            isExpiringSoon(LocalDate.now(APP_ZONE), membership.getEndDate(), reminderDaysBeforeExpiry)
         );
     }
 
     public BigDecimal successfulPaymentTotal(List<MemberPayment> payments) {
         return payments.stream()
             .filter(payment -> payment.getPaymentStatus() == PaymentStatus.PAID)
+            .filter(this::isMembershipCoveragePayment)
             .map(MemberPayment::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
@@ -88,5 +96,11 @@ public class MembershipLifecycleService {
             return PaymentStatus.PAID;
         }
         return PaymentStatus.PENDING;
+    }
+
+    private boolean isMembershipCoveragePayment(MemberPayment payment) {
+        return payment.getPaymentType() == PaymentType.MEMBERSHIP
+            || payment.getPaymentType() == PaymentType.NEW_MEMBERSHIP
+            || payment.getPaymentType() == PaymentType.RENEWAL;
     }
 }

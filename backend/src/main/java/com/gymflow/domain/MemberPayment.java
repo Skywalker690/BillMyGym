@@ -46,7 +46,7 @@ public class MemberPayment extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private PaymentStatus paymentStatus = PaymentStatus.PENDING;
+    private PaymentStatus paymentStatus = PaymentStatus.PAID;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

@@ -30,6 +30,7 @@ import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -48,6 +49,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class MemberService {
 
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
     private static final Set<MemberStatus> INACTIVE_MEMBER_STATUSES = Set.of(
         MemberStatus.DEACTIVATED
     );
@@ -69,7 +71,7 @@ public class MemberService {
         Long orgId = requireOrgId(SecurityUtils.currentUser());
         int normalizedSize = Math.min(Math.max(size, 1), 40);
         int reminderDays = organizationSettingService.getOrCreateSettings(orgId).getReminderDaysBeforeExpiry();
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(APP_ZONE);
         memberMembershipService.refreshMembershipStatuses(orgId);
         String searchPattern = hasText(search) ? "%" + search.trim().toLowerCase() + "%" : null;
         String normalizedMembershipStatus = hasText(membershipStatus) && !"ALL".equalsIgnoreCase(membershipStatus)
@@ -169,6 +171,9 @@ public class MemberService {
         MemberStatus previousStatus = member.getStatus();
         memberMapper.apply(member, request);
         applyMemberStatusSideEffects(member);
+        if (member.getStatus() == MemberStatus.DEACTIVATED) {
+            memberMembershipService.deactivateLatestMembershipForMember(member);
+        }
 
         auditLogService.log(
             "MEMBER_UPDATED",
@@ -211,7 +216,7 @@ public class MemberService {
         Member member = memberRepository.findByIdAndOrganizationIdAndDeletedFalse(memberId, orgId)
             .orElseThrow(() -> new NotFoundException("Member not found"));
         member.setDeleted(true);
-        member.setDeletedAt(OffsetDateTime.now());
+        member.setDeletedAt(OffsetDateTime.now(APP_ZONE));
 
         auditLogService.log(
             "MEMBER_SOFT_DELETED",
@@ -280,7 +285,7 @@ public class MemberService {
     }
 
     public MemberDirectorySummary memberDirectorySummary(Long orgId, int reminderDays) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(APP_ZONE);
         return new MemberDirectorySummary(
             memberRepository.countByOrganizationIdAndDeletedFalse(orgId),
             memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(orgId, MemberStatus.ACTIVE),
@@ -353,7 +358,7 @@ public class MemberService {
             membership.getStartDate(),
             membership.getEndDate(),
             membership.getStatus(),
-            membershipLifecycleService.isExpiringSoon(LocalDate.now(), membership.getEndDate(), reminderDays),
+            membershipLifecycleService.isExpiringSoon(LocalDate.now(APP_ZONE), membership.getEndDate(), reminderDays),
             paymentStatus,
             paidAmount,
             appliedCreditAmount,
@@ -385,7 +390,7 @@ public class MemberService {
     private void applyMemberStatusSideEffects(Member member) {
         if (member.getStatus() == MemberStatus.DEACTIVATED) {
             if (member.getDeactivatedAt() == null) {
-                member.setDeactivatedAt(OffsetDateTime.now());
+                member.setDeactivatedAt(OffsetDateTime.now(APP_ZONE));
             }
         } else {
             member.setDeactivatedAt(null);

@@ -38,6 +38,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
@@ -55,6 +56,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class SubscriptionService {
 
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
     private static final String CURRENCY = "INR";
     private static final int DEFAULT_PAYMENT_HISTORY_SIZE = 5;
     private static final int MAX_PAYMENT_HISTORY_SIZE = 50;
@@ -70,6 +72,7 @@ public class SubscriptionService {
     private final OrganizationPaymentWebhookService organizationPaymentWebhookService;
     private final BillingLifecycleService billingLifecycleService;
     private final OrganizationLifecycleService organizationLifecycleService;
+    private final IndividualWhatsappReminderService individualWhatsappReminderService;
     private final ObjectMapper objectMapper;
 
     @Value("${razorpay.key-id:}")
@@ -90,7 +93,7 @@ public class SubscriptionService {
         if (organization.getOrganizationType() == OrganizationType.DEMO) {
             throw new BadRequestException("Demo organizations have billing bypass enabled.");
         }
-        if (billingLifecycleService.hasCurrentPaidAccess(organization, LocalDate.now())) {
+        if (billingLifecycleService.hasCurrentPaidAccess(organization, LocalDate.now(APP_ZONE))) {
             throw new BadRequestException("Subscription is already active through " + organization.getSubscriptionDueDate().minusDays(1));
         }
         SubscriptionPlan selectedPlan = resolveCheckoutPlan(request, organization);
@@ -133,11 +136,11 @@ public class SubscriptionService {
         payment.setSubscriptionEnd(end);
         payment.setPaymentStatus(SubscriptionPaymentStatus.PENDING);
         payment.setRazorpayOrderId(razorpayOrderId);
-        payment.setNextRetryDate(LocalDate.now().plusDays(1));
+        payment.setNextRetryDate(LocalDate.now(APP_ZONE).plusDays(1));
         subscriptionPaymentRepository.save(payment);
 
         if (!paymentsEnabled) {
-            organizationPaymentWebhookService.markPaymentPaid(payment, LocalDate.now());
+            organizationPaymentWebhookService.markPaymentPaid(payment, LocalDate.now(APP_ZONE));
         }
 
         auditLogService.log(
@@ -187,7 +190,7 @@ public class SubscriptionService {
         }
         Organization organization = organizationRepository.findByIdAndDeletedFalse(organizationId)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
-        organizationLifecycleService.normalize(organization, LocalDate.now());
+        organizationLifecycleService.normalize(organization, LocalDate.now(APP_ZONE));
         return toStatusResponse(organization);
     }
 
@@ -227,7 +230,7 @@ public class SubscriptionService {
     }
 
     private SubscriptionStatusResponse toStatusResponse(Organization organization) {
-        YearMonth currentMonth = YearMonth.now();
+        YearMonth currentMonth = YearMonth.now(APP_ZONE);
         UsageMetric usage = usageMetricRepository.findByOrganizationIdAndYearAndMonthAndDeletedFalse(
             organization.getId(),
             currentMonth.getYear(),
@@ -249,6 +252,8 @@ public class SubscriptionService {
         BigDecimal lifetimeSubscriptionRevenue = organization.getOrganizationType() == OrganizationType.DEMO
             ? BigDecimal.ZERO
             : subscriptionPaymentRepository.sumPaidForOrganization(organization.getId());
+        int customReminderUsage = individualWhatsappReminderService.currentMonthCustomReminderUsage(organization);
+        Integer customReminderLimit = individualWhatsappReminderService.monthlyCustomReminderLimit(organization);
 
         return new SubscriptionStatusResponse(
             organization.getId(),
@@ -266,6 +271,8 @@ public class SubscriptionService {
             latestSubscription == null ? null : latestSubscription.getEndDate(),
             usage.getMonthlyWhatsappCount(),
             usage.getMonthlyEmailCount(),
+            customReminderUsage,
+            customReminderLimit,
             memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(
                 organization.getId(),
                 com.gymflow.domain.enums.MemberStatus.ACTIVE
@@ -350,7 +357,7 @@ public class SubscriptionService {
     }
 
     private LocalDate resolveNextSubscriptionStart(Organization organization) {
-        return LocalDate.now();
+        return LocalDate.now(APP_ZONE);
     }
 
     private Organization resolveCurrentOrganization() {
@@ -360,7 +367,7 @@ public class SubscriptionService {
         }
         Organization organization = organizationRepository.findByIdAndDeletedFalse(user.organizationId())
             .orElseThrow(() -> new NotFoundException("Organization not found"));
-        organizationLifecycleService.normalize(organization, LocalDate.now());
+        organizationLifecycleService.normalize(organization, LocalDate.now(APP_ZONE));
         return organization;
     }
 

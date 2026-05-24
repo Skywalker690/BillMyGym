@@ -1,12 +1,11 @@
 package com.gymflow.service;
 
-import com.gymflow.api.dto.MembershipDtos.PaymentCoverageSummary;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationUsageStats;
-import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.PaymentStatus;
+import com.gymflow.repository.AuditLogRepository;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberPaymentRepository;
 import com.gymflow.repository.MemberRepository;
@@ -17,9 +16,9 @@ import java.time.OffsetDateTime;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -34,7 +33,7 @@ public class MonthlyOrganizationReportService {
     private final MemberMembershipRepository memberMembershipRepository;
     private final MemberPaymentRepository memberPaymentRepository;
     private final OrganizationUsageStatsRepository organizationUsageStatsRepository;
-    private final MembershipLifecycleService membershipLifecycleService;
+    private final AuditLogRepository auditLogRepository;
 
     public MonthlyOrganizationReport buildReport(Organization organization, YearMonth reportMonth) {
         LocalDate monthStart = reportMonth.atDay(1);
@@ -47,10 +46,6 @@ public class MonthlyOrganizationReportService {
             start,
             end
         );
-        long activeMembers = memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(
-            organization.getId(),
-            MemberStatus.ACTIVE
-        );
         long expiredMembers = memberMembershipRepository.countExpiredBetween(
             organization.getId(),
             monthStart,
@@ -60,8 +55,6 @@ public class MonthlyOrganizationReportService {
         List<MemberPayment> payments = memberPaymentRepository.findByOrganizationIdAndDeletedFalseOrderByPaymentDateDescCreatedAtDesc(
             organization.getId()
         );
-        Map<Long, List<MemberPayment>> paymentsByMembershipId = payments.stream()
-            .collect(Collectors.groupingBy(payment -> payment.getMembership().getId()));
         BigDecimal collectedRevenue = payments.stream()
             .filter(payment -> payment.getPaymentDate() != null)
             .filter(payment -> !payment.getPaymentDate().isBefore(monthStart) && !payment.getPaymentDate().isAfter(monthEnd))
@@ -69,23 +62,27 @@ public class MonthlyOrganizationReportService {
             .map(MemberPayment::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal pendingRevenue = BigDecimal.ZERO;
-        for (MemberMembership membership : memberMembershipRepository.findByOrganizationIdAndDeletedFalse(organization.getId())) {
-            if (membership.getMember().getStatus() != MemberStatus.ACTIVE) {
-                continue;
-            }
-            boolean overlapsMonth = !membership.getStartDate().isAfter(monthEnd)
-                && !membership.getEndDate().isBefore(monthStart);
-            if (!overlapsMonth) {
-                continue;
-            }
-            PaymentCoverageSummary coverage = membershipLifecycleService.buildCoverageSummary(
-                membership,
-                paymentsByMembershipId.getOrDefault(membership.getId(), List.of()),
-                0
-            );
-            pendingRevenue = pendingRevenue.add(coverage.pendingAmount());
-        }
+        LocalDate snapshotDate = monthEnd;
+        var latestMemberships = latestMembershipsAsOf(
+            memberMembershipRepository.findByOrganizationIdAndDeletedFalse(organization.getId()),
+            snapshotDate
+        );
+        long activeMembers = latestMemberships.values().stream()
+            .filter(membership -> !membership.getEndDate().isBefore(snapshotDate))
+            .count();
+        long overdueMembers = latestMemberships.values().stream()
+            .filter(membership -> membership.getEndDate().isBefore(snapshotDate))
+            .count();
+        BigDecimal monthlyFee = organization.getMonthlyMembershipFee() == null
+            ? BigDecimal.ZERO
+            : organization.getMonthlyMembershipFee();
+        BigDecimal pendingRevenue = monthlyFee.multiply(BigDecimal.valueOf(overdueMembers));
+        long deactivatedMembers = auditLogRepository.countByOrganizationIdAndEventBetween(
+            organization.getId(),
+            "MEMBER_DEACTIVATED",
+            start.toInstant(),
+            end.toInstant()
+        );
 
         OrganizationUsageStats usageStats = organizationUsageStatsRepository.findSnapshotOrEmpty(organization, reportMonth);
         return new MonthlyOrganizationReport(
@@ -94,11 +91,44 @@ public class MonthlyOrganizationReportService {
             membersJoined,
             activeMembers,
             expiredMembers,
+            overdueMembers,
+            deactivatedMembers,
             collectedRevenue,
             pendingRevenue,
             usageStats.getWhatsappSentCount(),
             usageStats.getEmailSentCount()
         );
+    }
+
+    private HashMap<Long, MemberMembership> latestMembershipsAsOf(List<MemberMembership> memberships, LocalDate snapshotDate) {
+        HashMap<Long, MemberMembership> latestByMember = new HashMap<>();
+        for (MemberMembership membership : memberships) {
+            if (membership.getMember().isDeleted() || !isMemberActiveAtSnapshot(membership.getMember(), snapshotDate)) {
+                continue;
+            }
+            if (membership.getStartDate().isAfter(snapshotDate)) {
+                continue;
+            }
+            latestByMember.merge(
+                membership.getMember().getId(),
+                membership,
+                (left, right) -> latestMembershipComparator().compare(left, right) >= 0 ? left : right
+            );
+        }
+        return latestByMember;
+    }
+
+    private Comparator<MemberMembership> latestMembershipComparator() {
+        return Comparator.comparing(MemberMembership::getEndDate)
+            .thenComparing(MemberMembership::getStartDate)
+            .thenComparing(MemberMembership::getCreatedAt);
+    }
+
+    private boolean isMemberActiveAtSnapshot(com.gymflow.domain.Member member, LocalDate snapshotDate) {
+        if (member.getCreatedAt() != null && member.getCreatedAt().toLocalDate().isAfter(snapshotDate)) {
+            return false;
+        }
+        return member.getDeactivatedAt() == null || member.getDeactivatedAt().toLocalDate().isAfter(snapshotDate);
     }
 
     public record MonthlyOrganizationReport(
@@ -107,6 +137,8 @@ public class MonthlyOrganizationReportService {
         long membersJoined,
         long activeMembers,
         long expiredMembers,
+        long overdueMembers,
+        long deactivatedMembers,
         BigDecimal collectedRevenue,
         BigDecimal pendingRevenue,
         long whatsappSentCount,

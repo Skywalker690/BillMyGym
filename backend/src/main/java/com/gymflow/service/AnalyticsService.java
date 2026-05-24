@@ -53,13 +53,13 @@ public class AnalyticsService {
 
     public PlatformAnalyticsResponse platformAnalytics() {
         ensureSuperAdmin();
-        YearMonth currentMonth = YearMonth.now();
+        YearMonth currentMonth = YearMonth.now(APP_ZONE);
         LocalDate monthStart = currentMonth.atDay(1);
         LocalDate monthEnd = currentMonth.atEndOfMonth();
         YearMonth previousMonth = currentMonth.minusMonths(1);
         LocalDate previousMonthStart = previousMonth.atDay(1);
         LocalDate previousMonthEnd = previousMonth.atEndOfMonth();
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(APP_ZONE);
         List<Organization> organizations = organizationRepository.findAllByDeletedFalse();
         long totalOrganizations = organizations.size();
         long activeOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.ACTIVE);

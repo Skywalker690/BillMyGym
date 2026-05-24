@@ -13,10 +13,16 @@ import { toast } from "sonner";
 import api from "@/lib/api";
 
 const PAGE_SIZE = 40;
+const INDIAN_TIME_ZONE = "Asia/Kolkata";
 
 const formatDate = (value?: string) =>
   value
-    ? new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value))
+    ? new Intl.DateTimeFormat("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        timeZone: INDIAN_TIME_ZONE,
+      }).format(new Date(`${value}T00:00:00+05:30`))
     : "-";
 
 const money = (value?: number | string | null) =>
@@ -199,7 +205,7 @@ export default function MembersList() {
             <div className="text-[10px] font-black uppercase tracking-[0.26em] text-emerald-700">Member Operations</div>
             <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">Members Directory</h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-600">
-              Members needing renewal attention are surfaced first so the daily follow-up queue stays in front of your team.
+              Members needing due-soon or overdue attention are surfaced first so the daily follow-up queue stays in front of your team.
             </p>
           </div>
           <Link to="/app/members/new">
@@ -291,7 +297,7 @@ export default function MembersList() {
                   <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Member</th>
                   <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Period</th>
                   <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Membership</th>
-                  <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Payment</th>
+                  <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Coverage</th>
                   <th className="px-6 py-5 text-right text-xs font-black uppercase tracking-[0.2em]">Actions</th>
                 </tr>
               </thead>
@@ -351,9 +357,7 @@ export default function MembersList() {
                         <StatusBadge status={status} />
                       </td>
                       <td className="px-6 py-5">
-                        <Badge variant="outline" className="rounded-full border-transparent bg-slate-100 px-2.5 py-1 font-black tracking-[0.14em] text-slate-700">
-                          {membership?.paymentStatus ?? "N/A"}
-                        </Badge>
+                        <CoverageBadge membership={membership} />
                       </td>
                       <td className="min-w-[240px] px-6 py-5">
                         <div className="flex flex-wrap justify-end gap-2">
@@ -431,7 +435,12 @@ export default function MembersList() {
         </div>
       </div>
 
-      <section className="flex justify-end">
+      <section className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
+        <CustomReminderLimitCard
+          canUseMemberMessaging={canUseMemberMessaging}
+          used={Number(subscriptionStatus?.customReminderUsage ?? 0)}
+          limit={subscriptionStatus?.customReminderLimit ?? null}
+        />
         <MemberLimitCard
           memberLimit={memberLimit}
           totalMembers={summary.totalMembers ?? 0}
@@ -528,11 +537,23 @@ function canSendMemberWhatsApp(member: any, canUseMemberMessaging: boolean) {
 
 function resolveQuickRenewStartDate(currentEndDate?: string) {
   if (!currentEndDate) {
-    return new Date().toISOString().slice(0, 10);
+    return todayInIndiaIso();
   }
-  const baseDate = new Date(`${currentEndDate}T00:00:00`);
-  baseDate.setDate(baseDate.getDate() + 1);
+  const [year, month, day] = currentEndDate.split("-").map(Number);
+  const baseDate = new Date(Date.UTC(year, month - 1, day));
+  baseDate.setUTCDate(baseDate.getUTCDate() + 1);
   return baseDate.toISOString().slice(0, 10);
+}
+
+function todayInIndiaIso() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: INDIAN_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 function WhatsappReminderModal({
@@ -559,7 +580,7 @@ function WhatsappReminderModal({
   const sendDisabled = isLoading || Boolean(error) || !preview?.canSend || isSubmitting;
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-end justify-center p-4 sm:items-center">
+    <div className="fixed inset-0 z-[130] flex items-end justify-center overflow-y-auto p-0 sm:items-center sm:p-4 lg:p-6">
       <motion.button
         type="button"
         className="absolute inset-0 bg-slate-950/45 backdrop-blur-md"
@@ -570,7 +591,7 @@ function WhatsappReminderModal({
         exit={{ opacity: 0 }}
       />
       <motion.div
-        className="relative z-10 w-full max-w-xl overflow-hidden rounded-t-[2rem] border border-white/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(236,253,245,0.96))] shadow-[0_30px_90px_-30px_rgba(15,23,42,0.52)] sm:rounded-[2rem]"
+        className="relative z-10 flex max-h-[calc(100dvh-0.75rem)] w-full max-w-3xl flex-col overflow-hidden rounded-t-[2rem] border border-white/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(236,253,245,0.96))] shadow-[0_30px_90px_-30px_rgba(15,23,42,0.52)] sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem]"
         initial={{ opacity: 0, y: 48, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 36, scale: 0.98 }}
@@ -578,7 +599,7 @@ function WhatsappReminderModal({
       >
         <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-emerald-300/30 blur-3xl" />
         <div className="absolute bottom-0 left-8 h-36 w-36 rounded-full bg-sky-200/30 blur-3xl" />
-        <div className="relative z-10 p-6 sm:p-7">
+        <div className="relative z-10 overflow-y-auto p-5 sm:p-6 lg:p-7">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">
@@ -600,8 +621,8 @@ function WhatsappReminderModal({
           <div className="mt-5 rounded-[1.35rem] border border-white/80 bg-white/78 p-4 shadow-sm">
             <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Member</div>
             <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div className="text-xl font-black text-slate-950">{preview?.memberName ?? member.fullName}</div>
-              <div className="text-sm font-bold text-slate-500">{preview?.phone ?? member.phone ?? "-"}</div>
+              <div className="min-w-0 break-words text-xl font-black text-slate-950">{preview?.memberName ?? member.fullName}</div>
+              <div className="shrink-0 text-sm font-bold text-slate-500">{preview?.phone ?? member.phone ?? "-"}</div>
             </div>
           </div>
 
@@ -625,7 +646,7 @@ function WhatsappReminderModal({
                   Unable to prepare WhatsApp reminder.
                 </div>
               ) : (
-                <div className="max-w-[92%] rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-sm font-semibold leading-6 text-slate-800 shadow-sm">
+                <div className="max-w-full break-words rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-sm font-semibold leading-6 text-slate-800 shadow-sm sm:max-w-[92%]">
                   {messageLines.map((line, index) => (
                     <div key={`${line}-${index}`} className={line.trim() === "" ? "h-3" : ""}>
                       {line}
@@ -638,8 +659,22 @@ function WhatsappReminderModal({
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <ReminderMetric label="Due Date" value={formatReminderDate(preview?.dueDate)} />
-            <ReminderMetric label="Pending Amount" value={money(preview?.pendingAmount)} />
+            <ReminderMetric label="Due Amount" value={money(preview?.pendingAmount)} />
           </div>
+
+          {preview?.monthlyCustomReminderLimit ? (
+            <div className="mt-4 rounded-[1.25rem] border border-emerald-100 bg-emerald-50/80 p-4 shadow-sm">
+              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">Custom Reminder Usage</div>
+              <div className="mt-2 grid gap-3 sm:grid-cols-[auto_1fr] sm:items-center">
+                <div className="text-lg font-black text-slate-950">
+                  {preview?.monthlyCustomReminderUsed ?? 0} / {preview?.monthlyCustomReminderLimit}
+                </div>
+                <div className="min-w-0 rounded-full border border-white/80 bg-white/85 px-3 py-1.5 text-sm font-bold text-emerald-700 sm:justify-self-end">
+                  {preview?.monthlyCustomReminderRemaining ?? 0} remaining this month
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {blockedMessage && (
             <div className="mt-4 flex items-start gap-3 rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
@@ -685,7 +720,12 @@ function ReminderMetric({ label, value }: { label: string; value: string }) {
 
 function formatReminderDate(value?: string) {
   return value
-    ? new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(`${value}T00:00:00`))
+    ? new Intl.DateTimeFormat("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        timeZone: INDIAN_TIME_ZONE,
+      }).format(new Date(`${value}T00:00:00+05:30`))
     : "-";
 }
 
@@ -936,6 +976,50 @@ function MemberLimitCard({
   );
 }
 
+function CustomReminderLimitCard({
+  canUseMemberMessaging,
+  used,
+  limit,
+}: {
+  canUseMemberMessaging: boolean;
+  used: number;
+  limit: number | null;
+}) {
+  if (!canUseMemberMessaging) {
+    return (
+      <div className="glass-panel rounded-[1.7rem] p-5">
+        <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Custom WhatsApp Reminders</div>
+        <div className="mt-2 text-2xl font-black tracking-tight text-slate-950">Locked on current plan</div>
+        <div className="mt-3 text-sm font-semibold text-slate-500">Upgrade to Pro, Pilot, or Demo-enabled access to send overdue reminders manually.</div>
+      </div>
+    );
+  }
+
+  const safeLimit = Number(limit ?? 50);
+  const percentage = Math.min(Math.round((used / safeLimit) * 100), 100);
+
+  return (
+    <div className="glass-panel rounded-[1.7rem] p-5">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">Custom WhatsApp Reminders</div>
+          <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{used} / {safeLimit}</div>
+        </div>
+        <Badge className="border-emerald-100 bg-emerald-50 text-emerald-700">{Math.max(safeLimit - used, 0)} left</Badge>
+      </div>
+      <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-200">
+        <div
+          className="h-full rounded-full bg-[linear-gradient(90deg,#059669,#22c55e,#f59e0b)] transition-all duration-300"
+          style={{ width: `${Math.max(percentage, used > 0 ? 8 : 0)}%` }}
+        />
+      </div>
+      <div className="mt-3 text-sm font-semibold text-slate-500">
+        Only manual member-wise overdue reminders count toward this 50-per-month limit.
+      </div>
+    </div>
+  );
+}
+
 function SummaryTile({ label, value, tone }: { label: string; value?: number; tone: "slate" | "emerald" | "amber" | "indigo" }) {
   const toneClasses = {
     slate: "from-slate-900/10 via-slate-400/5 to-transparent",
@@ -975,6 +1059,38 @@ function StatusBadge({ status }: { status: string }) {
       {overdue && <ShieldAlert className="h-3.5 w-3.5" />}
       {!active && !expiring && !overdue && status === "NO_MEMBERSHIP" && <XCircle className="h-3.5 w-3.5" />}
       {status.replace("_", " ")}
+    </Badge>
+  );
+}
+
+function CoverageBadge({ membership }: { membership?: any }) {
+  if (!membership) {
+    return (
+      <Badge variant="outline" className="rounded-full border-transparent bg-slate-100 px-2.5 py-1 font-black tracking-[0.14em] text-slate-700">
+        N/A
+      </Badge>
+    );
+  }
+
+  if (membership.status === "OVERDUE") {
+    return (
+      <Badge variant="outline" className="rounded-full border-transparent bg-rose-100 px-2.5 py-1 font-black tracking-[0.14em] text-rose-800">
+        Due
+      </Badge>
+    );
+  }
+
+  if (membership.expiringSoon) {
+    return (
+      <Badge variant="outline" className="rounded-full border-transparent bg-amber-100 px-2.5 py-1 font-black tracking-[0.14em] text-amber-800">
+        Due Soon
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="outline" className="rounded-full border-transparent bg-emerald-100 px-2.5 py-1 font-black tracking-[0.14em] text-emerald-800">
+      Covered
     </Badge>
   );
 }

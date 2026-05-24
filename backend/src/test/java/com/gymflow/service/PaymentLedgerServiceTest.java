@@ -1,10 +1,12 @@
 package com.gymflow.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.gymflow.api.error.BadRequestException;
 import com.gymflow.api.dto.PaymentDtos.RecordPaymentRequest;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
@@ -111,6 +113,29 @@ class PaymentLedgerServiceTest {
         assertEquals(PaymentStatus.PAID, response.paymentStatus());
         assertEquals("2026-05", response.billingMonth());
         verify(memberPaymentRepository).save(any(MemberPayment.class));
+    }
+
+    @Test
+    void rejectsNonPaidPaymentStatuses() {
+        MemberMembership membership = membership(200L, 100L);
+        when(idempotencyService.requireKey("payment-key")).thenReturn("payment-key");
+        when(idempotencyService.findExisting(100L, null, com.gymflow.domain.enums.MembershipOperationType.PAYMENT_RECORD, "payment-key"))
+            .thenReturn(Optional.empty());
+        when(memberMembershipRepository.findByIdAndOrganizationIdAndDeletedFalseForUpdate(200L, 100L))
+            .thenReturn(Optional.of(membership));
+        when(memberPaymentRepository.findByMembershipIdAndDeletedFalseOrderByPaymentDateAscCreatedAtAsc(200L))
+            .thenReturn(List.of());
+
+        RecordPaymentRequest request = new RecordPaymentRequest(
+            200L,
+            new BigDecimal("1000.00"),
+            LocalDate.of(2026, 5, 16),
+            PaymentType.NEW_MEMBERSHIP,
+            PaymentStatus.PENDING,
+            "invalid status"
+        );
+
+        assertThrows(BadRequestException.class, () -> paymentLedgerService.recordPayment(request, "payment-key"));
     }
 
     private MemberMembership membership(Long membershipId, Long organizationId) {

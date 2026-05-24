@@ -4,12 +4,15 @@ import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationSetting;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
 public class OrganizationDigestBuilderService {
+
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
     public DigestContent buildDigest(Organization organization, OrganizationSetting setting, List<MemberMembership> memberships) {
         String brandingName = hasText(setting.getBrandingName()) ? setting.getBrandingName() : organization.getName();
@@ -21,9 +24,9 @@ public class OrganizationDigestBuilderService {
     }
 
     private String buildWhatsappDigest(String memberList, int memberCount) {
-        StringBuilder builder = new StringBuilder("BillMyGym Alert\n\nExpired or overdue memberships:\n\n");
+        StringBuilder builder = new StringBuilder("BillMyGym Alert\n\nOverdue memberships:\n\n");
         builder.append(memberList);
-        builder.append("\n\nTotal pending: ").append(memberCount);
+        builder.append("\n\nTotal overdue: ").append(memberCount);
         return builder.toString();
     }
 
@@ -56,14 +59,14 @@ public class OrganizationDigestBuilderService {
         return """
             <html><body>
             <h2>%s</h2>
-            <p>Expired or overdue memberships needing follow-up:</p>
+            <p>Overdue memberships needing follow-up:</p>
             <ul>%s</ul>
             </body></html>
             """.formatted(brandingName, listBuilder);
     }
 
     private String membershipStatusSummary(MemberMembership membership) {
-        long overdueDays = Math.max(1, ChronoUnit.DAYS.between(membership.getEndDate(), LocalDate.now()));
+        long overdueDays = Math.max(1, ChronoUnit.DAYS.between(membership.getEndDate(), LocalDate.now(APP_ZONE)));
         return "overdue by " + overdueDays + " day" + (overdueDays == 1 ? "" : "s");
     }
 

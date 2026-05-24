@@ -35,7 +35,6 @@ type MembershipSnapshot = {
     durationMonths?: number;
     endDate?: string;
     status?: string;
-    paymentStatus?: string;
   } | null;
 };
 
@@ -90,6 +89,8 @@ type DashboardReport = {
   recentReminderLogs?: ReminderLog[];
 };
 
+const INDIAN_TIME_ZONE = "Asia/Kolkata";
+
 const money = (value: number | string | undefined) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -99,7 +100,12 @@ const money = (value: number | string | undefined) =>
 
 const shortDate = (value?: string) =>
   value
-    ? new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value))
+    ? new Intl.DateTimeFormat("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        timeZone: INDIAN_TIME_ZONE,
+      }).format(new Date(`${value}T00:00:00+05:30`))
     : "-";
 
 const shortDateTime = (value?: string) =>
@@ -109,6 +115,7 @@ const shortDateTime = (value?: string) =>
         month: "short",
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: INDIAN_TIME_ZONE,
       }).format(new Date(value))
     : "-";
 
@@ -136,10 +143,6 @@ export default function Dashboard() {
   const canViewAdvancedAnalytics = report?.planAccess?.canViewAdvancedAnalytics ?? true;
   const subscriptionValidity = report?.subscriptionValidity;
 
-  const membershipCollectedRevenue = Math.max(
-    0,
-    Number(revenue.currentRevenue ?? 0) - Number(revenueSegmentation.admissionRevenue ?? 0)
-  );
   const activeMembersTotal = Number(revenue.activeMembers ?? summary.activeMembers ?? 0);
   const activeMembersPendingCollection = Number(revenue.activeMembersPendingCollection ?? 0);
   const activeMembersCollected = Math.max(
@@ -150,7 +153,7 @@ export default function Dashboard() {
     activeMembersTotal > 0 ? Math.round((activeMembersCollected / activeMembersTotal) * 100) : 0;
   const collectionRate =
     Number(revenue.expectedRevenue ?? 0) > 0
-      ? Math.round((membershipCollectedRevenue / Number(revenue.expectedRevenue ?? 0)) * 100)
+      ? Math.round((Number(revenue.currentRevenue ?? 0) / Number(revenue.expectedRevenue ?? 0)) * 100)
       : 0;
   const atRiskMembers = Number(summary.expiringSoonMemberships ?? 0) + Number(summary.overdueMemberships ?? 0);
   const subscriptionDaysRemaining = Number(subscriptionValidity?.daysRemaining ?? 0);
@@ -270,7 +273,7 @@ export default function Dashboard() {
               Run your gym like a premium membership SaaS, not a spreadsheet.
             </h1>
             <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">
-              Collections, renewals, and reminder health are surfaced in one operator view so you can protect revenue
+              Collections, upcoming dues, and reminder health are surfaced in one operator view so you can protect revenue
               before memberships slip into overdue territory.
             </p>
 
@@ -301,7 +304,7 @@ export default function Dashboard() {
               label="At-Risk Members"
               value={atRiskMembers}
               tone="amber"
-              detail="Expiring soon plus overdue"
+              detail="Due soon plus overdue"
             />
             <HeroMetric
               label="Active Members"
@@ -400,7 +403,7 @@ export default function Dashboard() {
                         {activeMembersCollected} / {activeMembersTotal}
                       </h3>
                       <p className="mt-2 max-w-md text-sm font-medium leading-6 text-slate-600">
-                        Members with fully covered active memberships, out of your total active member base including overdue members.
+                        Members with fully covered active memberships, compared against your current active member base.
                       </p>
                     </div>
                     <div className="rounded-[1.3rem] border border-white/90 bg-white/80 px-4 py-3 text-right shadow-sm">
@@ -418,7 +421,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-slate-600">
                       <span>{activeMembersCollected} members covered</span>
-                      <span>{activeMembersPendingCollection} still need collection or renewal</span>
+                      <span>{activeMembersPendingCollection} still need collection or overdue follow-up</span>
                     </div>
                   </div>
 
@@ -426,7 +429,7 @@ export default function Dashboard() {
                     <div className="rounded-[1.4rem] border border-white/85 bg-white/78 p-4 shadow-sm">
                       <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Need Attention</div>
                       <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{activeMembersPendingCollection}</div>
-                      <div className="mt-1 text-sm font-medium text-slate-500">Active members still waiting for collection or renewal</div>
+                      <div className="mt-1 text-sm font-medium text-slate-500">Active members still waiting for collection or overdue follow-up</div>
                     </div>
                     <div className="rounded-[1.4rem] border border-white/85 bg-white/78 p-4 shadow-sm">
                       <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Active members</div>
@@ -458,15 +461,15 @@ export default function Dashboard() {
       <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <div className="space-y-6">
           <MembershipListCard
-            title="Expiring Soon"
-            subtitle="Members approaching renewal and worth nudging early."
+            title="Upcoming Dues"
+            subtitle="Active memberships nearing their end date and worth nudging early."
             items={expiringSoon}
             emptyMessage="No memberships are nearing expiry right now."
             tone="amber"
           />
           <MembershipListCard
-            title="Pending Renewals"
-            subtitle="Revenue-risk memberships that need immediate follow-up."
+            title="Overdue Memberships"
+            subtitle="Overdue members that need immediate follow-up."
             items={overdue}
             emptyMessage="No overdue memberships in the current snapshot."
             tone="rose"
@@ -561,14 +564,14 @@ function HeroMetric({
 
 function buildSubscriptionTooltip(label?: string, isoDate?: string) {
   if (!label || !isoDate) return null;
-  const date = new Date(`${isoDate}T00:00:00`);
+  const date = new Date(`${isoDate}T00:00:00+05:30`);
   if (Number.isNaN(date.getTime())) return null;
   return `${label} ${formatMonthDayOrdinal(date)}`;
 }
 
 function formatMonthDayOrdinal(date: Date) {
-  const month = new Intl.DateTimeFormat("en-IN", { month: "short" }).format(date);
-  const day = date.getDate();
+  const month = new Intl.DateTimeFormat("en-IN", { month: "short", timeZone: INDIAN_TIME_ZONE }).format(date);
+  const day = Number(new Intl.DateTimeFormat("en-IN", { day: "numeric", timeZone: INDIAN_TIME_ZONE }).format(date));
   const suffix = ordinalSuffix(day);
   return `${month} ${day}${suffix}`;
 }
@@ -704,7 +707,7 @@ function MembershipListCard({
                         {member.currentMembership?.durationMonths ?? 0} month plan
                       </div>
                     </div>
-                    <StatusPill status={member.currentMembership?.paymentStatus ?? member.currentMembership?.status ?? "PENDING"} />
+                    <StatusPill status={member.currentMembership?.status ?? "OVERDUE"} />
                   </div>
                   <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-500">
                     <span>Ends {shortDate(member.currentMembership?.endDate)}</span>

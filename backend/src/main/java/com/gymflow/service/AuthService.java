@@ -39,12 +39,15 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Collections;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class AuthService {
+
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final AppUserRepository userRepository;
     private final JwtService jwtService;
@@ -77,7 +80,7 @@ public class AuthService {
             throw new BadRequestException("Admin phone number already exists");
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(APP_ZONE);
         Organization organization = organizationMapper.toNewOrganization(request);
         if (organization.getOrganizationType() == OrganizationType.PILOT) {
             billingLifecycleService.startPilotAccess(organization, today);

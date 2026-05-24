@@ -8,6 +8,7 @@ import java.util.Collection;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
@@ -20,6 +21,21 @@ import org.springframework.data.jpa.domain.Specification;
 
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSpecificationExecutor<AuditLog> {
+    @Query("""
+        select count(auditLog)
+        from AuditLog auditLog
+        where auditLog.organization.id = :organizationId
+          and auditLog.event = :event
+          and auditLog.timestamp >= :fromTime
+          and auditLog.timestamp < :toTime
+        """)
+    long countByOrganizationIdAndEventBetween(
+        Long organizationId,
+        String event,
+        Instant fromTime,
+        Instant toTime
+    );
+
     default Page<AuditLog> findGlobalLoginAuditPage(
         AuditEventStatus status,
         Long organizationId,

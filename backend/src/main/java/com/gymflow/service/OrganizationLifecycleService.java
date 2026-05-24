@@ -5,6 +5,7 @@ import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.repository.OrganizationRepository;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class OrganizationLifecycleService {
+
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final OrganizationRepository organizationRepository;
     private final BillingLifecycleService billingLifecycleService;
@@ -22,7 +25,7 @@ public class OrganizationLifecycleService {
         if (organization == null) {
             return null;
         }
-        normalize(organization, LocalDate.now());
+        normalize(organization, LocalDate.now(APP_ZONE));
         return organization;
     }
 

@@ -12,6 +12,7 @@ import com.gymflow.domain.enums.NotificationType;
 import com.gymflow.repository.NotificationLogRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class NotificationDispatcherService {
 
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
     private static final int MAX_ATTEMPTS = 3;
     private final NotificationLogRepository notificationLogRepository;
     private final NotificationDeliveryLogService notificationDeliveryLogService;
@@ -96,7 +98,7 @@ public class NotificationDispatcherService {
         persistedLog.setFailureReason(result.errorMessage());
         if (result.sent()) {
             persistedLog.setStatus(NotificationStatus.SENT);
-            persistedLog.setSentAt(OffsetDateTime.now());
+            persistedLog.setSentAt(OffsetDateTime.now(APP_ZONE));
             auditLogService.logOrganizationActivity(
                 "NOTIFICATION_SENT",
                 "WhatsApp reminder sent to " + recipient,
@@ -156,7 +158,7 @@ public class NotificationDispatcherService {
             if (result.success()) {
                 persistedLog.setStatus(NotificationStatus.SENT);
                 persistedLog.setFailureReason(null);
-                persistedLog.setSentAt(OffsetDateTime.now());
+                persistedLog.setSentAt(OffsetDateTime.now(APP_ZONE));
                 notificationDeliveryLogService.markAttempt(deliveryLog, attempt, NotificationDeliveryStatus.SENT);
                 auditLogService.logOrganizationActivity(
                     "NOTIFICATION_SENT",
@@ -204,7 +206,7 @@ public class NotificationDispatcherService {
         log.setStatus(NotificationStatus.PENDING);
         log.setMessage(message);
         log.setAttemptCount(0);
-        log.setNotificationDate(LocalDate.now());
+        log.setNotificationDate(LocalDate.now(APP_ZONE));
         return log;
     }
 

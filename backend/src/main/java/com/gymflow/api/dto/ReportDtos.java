@@ -69,7 +69,8 @@ public class ReportDtos {
         BigDecimal expenses,
         long admissions,
         long activeMembers,
-        long overdueMembers
+        long overdueMembers,
+        long deactivatedMembers
     ) {
     }
 
@@ -85,6 +86,7 @@ public class ReportDtos {
         long admissions,
         long activeMembers,
         long overdueMembers,
+        long deactivatedMembers,
         String planDetails
     ) {
     }
