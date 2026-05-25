@@ -163,7 +163,6 @@ SELECT
     seeded.start_date,
     seeded.end_date,
     CASE
-        WHEN seeded.slot_id IN (4, 5) THEN 'DEACTIVATED'
         WHEN seeded.end_date < DATE '2026-05-24' THEN 'OVERDUE'
         ELSE 'ACTIVE'
     END,

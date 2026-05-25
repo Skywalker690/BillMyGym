@@ -134,8 +134,8 @@ public class MemberMembershipService {
             return;
         }
         MemberMembership latestMembership = findLatestMembership(member.getId(), member.getOrganization().getId());
-        if (latestMembership != null && latestMembership.getStatus() != MembershipStatus.DEACTIVATED) {
-            latestMembership.setStatus(MembershipStatus.DEACTIVATED);
+        if (latestMembership != null && latestMembership.getStatus() != MembershipStatus.OVERDUE) {
+            latestMembership.setStatus(MembershipStatus.OVERDUE);
             latestMembership.setLastSentAt(null);
         }
     }
@@ -242,7 +242,7 @@ public class MemberMembershipService {
                 member.setStatus(MemberStatus.DEACTIVATED);
                 member.setDeactivatedAt(OffsetDateTime.now(APP_ZONE));
                 member.setDeactivationReason(AUTO_DEACTIVATION_REASON);
-                latestMembership.setStatus(MembershipStatus.DEACTIVATED);
+                latestMembership.setStatus(MembershipStatus.OVERDUE);
                 latestMembership.setLastSentAt(null);
                 auditLogService.logOrganizationActivity(
                     "MEMBER_DEACTIVATED",
@@ -257,8 +257,8 @@ public class MemberMembershipService {
             }
 
             if (member.getStatus() == MemberStatus.DEACTIVATED) {
-                if (latestMembership.getStatus() != MembershipStatus.DEACTIVATED) {
-                    latestMembership.setStatus(MembershipStatus.DEACTIVATED);
+                if (latestMembership.getStatus() != MembershipStatus.OVERDUE) {
+                    latestMembership.setStatus(MembershipStatus.OVERDUE);
                     latestMembership.setLastSentAt(null);
                 }
                 continue;

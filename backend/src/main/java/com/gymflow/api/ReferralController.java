@@ -28,7 +28,7 @@ public class ReferralController {
     }
 
     @GetMapping("/analytics")
-    @PreAuthorize("hasAuthority('SUPER_ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> getAnalytics() {
         AdminReferralAnalyticsResponse response = referralService.getAnalytics();
         return ResponseEntity.ok(ApiResponse.success("Referral analytics fetched", response));

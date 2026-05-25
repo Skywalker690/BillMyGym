@@ -205,21 +205,15 @@ export const getPageContext = (pathname: string, role: AppRole | null | undefine
       title: "Reports",
       description: "Month-wise revenue, admissions, dues, and export-ready financial summaries.",
     },
-    {
-      match: "/app/reminders",
-      eyebrow: "Renewal Monitoring",
-      title: "Reminders",
-      description: "Track expired and overdue memberships before revenue slips through.",
-    },
-    {
-      match: "/app/notifications",
-      eyebrow: "Admin Inbox",
-      title: "Notifications",
-      description: "Review digests and system notices delivered to organization admins.",
-    },
-    {
-      match: "/app/subscription",
-      eyebrow: "SaaS Billing",
+      {
+        match: "/app/reminders",
+        eyebrow: "Renewal Monitoring",
+        title: "Reminders",
+        description: "Track expired and overdue memberships before revenue slips through.",
+      },
+      {
+        match: "/app/subscription",
+        eyebrow: "SaaS Billing",
       title: "Subscription",
       description: "Review your BillMyGym access status, usage, billing period, and payment ledger.",
     },

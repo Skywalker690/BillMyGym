@@ -19,7 +19,7 @@ public class AuthDtos {
     public record GoogleLoginRequest(@NotBlank String idToken) {
     }
 
-    public record LoginResponse(String accessToken, String role, Long organizationId, UserDto user) {
+    public record LoginResponse(String accessToken, String role, Long organizationId, UserDto user, boolean referralsEnabled) {
     }
 
     public record RegisterOrganizationAdminRequest(

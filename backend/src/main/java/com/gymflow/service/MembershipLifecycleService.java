@@ -19,7 +19,7 @@ public class MembershipLifecycleService {
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
     public void refreshMembership(MemberMembership membership, int reminderDaysBeforeExpiry) {
-        if (membership.getStatus() == MembershipStatus.DEACTIVATED) {
+        if (membership.getStatus() == MembershipStatus.OVERDUE) {
             return;
         }
         membership.setStatus(resolveMembershipStatus(

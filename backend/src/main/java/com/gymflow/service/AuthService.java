@@ -35,14 +35,8 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -69,6 +63,7 @@ public class AuthService {
     private final BillingLifecycleService billingLifecycleService;
     private final WhatsAppDeliveryService whatsAppDeliveryService;
     private final ReferralService referralService;
+    private final PlatformSettingService platformSettingService;
 
     @Value("${google.client.id}")
     private String googleClientId;
@@ -132,12 +127,17 @@ public class AuthService {
             "https://gymmax.com/login"
         );
 
-        auditLogService.log(
-            "ORG_ADMIN_REGISTERED",
-            "Registered organization " + savedOrganization.getName() + " with admin " + admin.getEmail(),
-            AuditCategory.ORGANIZATION,
-            "AUTH"
-        );
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                auditLogService.log(
+                    "ORG_ADMIN_REGISTERED",
+                    "Registered organization " + savedOrganization.getName() + " with admin " + admin.getEmail(),
+                    AuditCategory.ORGANIZATION,
+                    "AUTH"
+                );
+            }
+        });
     }
 
     @Transactional
@@ -192,13 +192,18 @@ public class AuthService {
             "https://gymmax.com/login"
         );
 
-        auditLogService.logActor(
-            "ORG_ADMIN_PUBLIC_REGISTERED",
-            "Publicly registered organization " + savedOrganization.getName() + " with admin " + admin.getEmail(),
-            AuditCategory.ORGANIZATION,
-            "AUTH",
-            admin.getEmail()
-        );
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                auditLogService.logActor(
+                    "ORG_ADMIN_PUBLIC_REGISTERED",
+                    "Publicly registered organization " + savedOrganization.getName() + " with admin " + admin.getEmail(),
+                    AuditCategory.ORGANIZATION,
+                    "AUTH",
+                    admin.getEmail()
+                );
+            }
+        });
     }
 
     @Transactional
@@ -321,7 +326,8 @@ public class AuthService {
                 user.getEmail()
             );
         }
-        return new LoginResponse(token, user.getRole().name(), organizationId, toUserDto(user));
+        boolean referralsEnabled = platformSettingService.getSettings().isReferralsEnabled();
+        return new LoginResponse(token, user.getRole().name(), organizationId, toUserDto(user), referralsEnabled);
     }
 
     public ApiResponse forgotPassword(ForgotPasswordRequest request) {
