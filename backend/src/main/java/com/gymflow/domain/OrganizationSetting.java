@@ -26,10 +26,7 @@ public class OrganizationSetting extends BaseEntity {
     private boolean whatsappEnabled = true;
 
     @Column(nullable = false)
-    private boolean emailEnabled = true;
-
-    @Column(nullable = false)
-    private int reminderDaysBeforeExpiry = 1;
+    private boolean emailEnabled = false;
 
     private String brandingName;
 }

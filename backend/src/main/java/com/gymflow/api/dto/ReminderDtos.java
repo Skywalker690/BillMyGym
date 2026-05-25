@@ -10,7 +10,16 @@ public class ReminderDtos {
     public record ReminderRunResponse(
         int processedMembers,
         int organizationsGrouped,
-        int digestsSent
+        int digestsSent,
+        ManualReminderQuotaResponse manualQuota
+    ) {
+    }
+
+    public record ManualReminderQuotaResponse(
+        int monthlyLimit,
+        int usedThisMonth,
+        int remainingThisMonth,
+        boolean canRun
     ) {
     }
 

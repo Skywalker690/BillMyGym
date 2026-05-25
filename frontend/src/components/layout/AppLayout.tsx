@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Sidebar } from "./Sidebar";
 import { getPageContext, getProfileNavItems, getSidebarNavItems } from "./navigation";
 import { Topbar } from "./Topbar";
+import api from "../../lib/api";
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
@@ -11,15 +13,26 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const { data: referralsEnabled = true } = useQuery({
+    queryKey: ["referralSettings"],
+    queryFn: () => api.get("/referrals/settings").then((res) => Boolean(res.data)),
+    staleTime: 30_000,
+  });
 
   const role = user?.role ?? null;
-  const sidebarItems = useMemo(() => getSidebarNavItems(role), [role]);
+  const sidebarItems = useMemo(() => getSidebarNavItems(role, referralsEnabled), [role, referralsEnabled]);
   const profileItems = useMemo(() => getProfileNavItems(role), [role]);
   const pageContext = useMemo(() => getPageContext(location.pathname, role), [location.pathname, role]);
 
   useEffect(() => {
     setMobileSidebarOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (role === "ORG_ADMIN" && !referralsEnabled && location.pathname.startsWith("/app/referrals")) {
+      navigate("/app/dashboard", { replace: true });
+    }
+  }, [location.pathname, navigate, referralsEnabled, role]);
 
   const handleLogout = () => {
     logout();

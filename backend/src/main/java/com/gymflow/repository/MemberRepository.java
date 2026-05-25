@@ -97,7 +97,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
                   where membership.member = member
                     and membership.deleted = false
                     and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
-                    and membership.endDate between :today and :expiringThrough
+                      and membership.endDate = :today
               )
           )
           or (
@@ -118,7 +118,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
         @Param("memberStatus") MemberStatus memberStatus,
         @Param("membershipStatus") String membershipStatus,
         @Param("today") java.time.LocalDate today,
-        @Param("expiringThrough") java.time.LocalDate expiringThrough,
         Pageable pageable
     );
 
@@ -154,7 +153,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
                   where membership.member = member
                     and membership.deleted = false
                     and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
-                    and membership.endDate between :today and :expiringThrough
+                      and membership.endDate = :today
               )
           )
           or (
@@ -175,7 +174,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
         @Param("memberStatuses") Collection<MemberStatus> memberStatuses,
         @Param("membershipStatus") String membershipStatus,
         @Param("today") java.time.LocalDate today,
-        @Param("expiringThrough") java.time.LocalDate expiringThrough,
         Pageable pageable
     );
 

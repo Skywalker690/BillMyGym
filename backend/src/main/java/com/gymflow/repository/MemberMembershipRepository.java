@@ -133,7 +133,7 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
               membership.status = 'OVERDUE'
               or (
                   membership.status = 'ACTIVE'
-                  and membership.endDate between :today and :expiringThrough
+                  and membership.endDate = :today
               )
           )
           and (membership.lastSentAt is null or membership.lastSentAt < :dayStart)
@@ -152,8 +152,7 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
     List<MemberMembership> findReminderCandidatesForDay(
         @Param("organizationId") Long organizationId,
         @Param("dayStart") java.time.OffsetDateTime dayStart,
-        @Param("today") java.time.LocalDate today,
-        @Param("expiringThrough") java.time.LocalDate expiringThrough
+        @Param("today") java.time.LocalDate today
     );
 
     @EntityGraph(attributePaths = {"member", "organization"})
@@ -165,13 +164,12 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
           and membership.member.status = 'ACTIVE'
           and membership.organization.id = :organizationId
           and membership.status = 'ACTIVE'
-          and membership.endDate between :today and :expiringThrough
+          and membership.endDate = :today
         order by membership.endDate asc
         """)
     List<MemberMembership> findExpiringSoonMemberships(
         @Param("organizationId") Long organizationId,
         @Param("today") java.time.LocalDate today,
-        @Param("expiringThrough") java.time.LocalDate expiringThrough,
         Pageable pageable
     );
 
@@ -226,12 +224,11 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
         where membership.deleted = false
           and membership.organization.id = :organizationId
           and membership.status = 'ACTIVE'
-          and membership.endDate between :today and :expiringThrough
+          and membership.endDate = :today
         """)
     long countExpiringSoon(
         @Param("organizationId") Long organizationId,
-        @Param("today") java.time.LocalDate today,
-        @Param("expiringThrough") java.time.LocalDate expiringThrough
+        @Param("today") java.time.LocalDate today
     );
 
     @Query("""

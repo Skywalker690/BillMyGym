@@ -221,7 +221,7 @@ export default function MembersList() {
         <SummaryTile label="Total Members" value={summary.totalMembers} tone="slate" />
         <SummaryTile label="Active Members" value={summary.activeMembers} tone="emerald" />
         <SummaryTile label="Deactivated Members" value={summary.deactivatedMembers} tone="indigo" />
-        <SummaryTile label="Expiring Soon" value={summary.expiringSoonMemberships} tone="amber" />
+        <SummaryTile label="Due Today" value={summary.expiringSoonMemberships} tone="amber" />
       </section>
 
       <section className="glass-panel rounded-[1.8rem] p-4">
@@ -826,7 +826,7 @@ function DeactivateMemberModal({
   onConfirm: () => void;
 }) {
   const membership = member.currentMembership;
-  const status = membership?.expiringSoon ? "Expiring Soon" : membership?.status?.replace("_", " ") ?? "No Membership";
+  const status = membership?.expiringSoon ? "Due Today" : membership?.status?.replace("_", " ") ?? "No Membership";
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
@@ -1082,9 +1082,9 @@ function CoverageBadge({ membership }: { membership?: any }) {
 
   if (membership.expiringSoon) {
     return (
-      <Badge variant="outline" className="rounded-full border-transparent bg-amber-100 px-2.5 py-1 font-black tracking-[0.14em] text-amber-800">
-        Due Soon
-      </Badge>
+        <Badge variant="outline" className="rounded-full border-transparent bg-amber-100 px-2.5 py-1 font-black tracking-[0.14em] text-amber-800">
+          Due Today
+        </Badge>
     );
   }
 

@@ -36,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MemberMembershipService {
 
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
+    private static final int DUE_TODAY_WINDOW_DAYS = 0;
     private static final String AUTO_DEACTIVATION_REASON =
         "Automatically deactivated after membership expired without renewal for 30 days";
 
@@ -60,7 +61,7 @@ public class MemberMembershipService {
             .orElseThrow(() -> new NotFoundException("Member not found"));
         List<MemberMembership> memberships = memberMembershipRepository
             .findByMemberIdAndOrganizationIdAndDeletedFalseOrderByStartDateDescCreatedAtDesc(memberId, organizationId);
-        int reminderDays = organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry();
+        int reminderDays = DUE_TODAY_WINDOW_DAYS;
         java.math.BigDecimal walletBalance = memberCreditLedgerService.balanceForMember(memberId, organizationId);
         Map<Long, List<MemberPayment>> paymentsByMembershipId = loadPaymentsByMembershipId(memberships);
         Map<Long, java.math.BigDecimal> appliedCreditByMembershipId = memberCreditLedgerService.appliedCreditForMemberships(
@@ -80,7 +81,7 @@ public class MemberMembershipService {
 
     @Transactional
     public void refreshMembershipStatuses(Long organizationId) {
-        int reminderDays = organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry();
+        int reminderDays = DUE_TODAY_WINDOW_DAYS;
         List<MemberMembership> memberships = memberMembershipRepository.findByOrganizationIdAndDeletedFalse(organizationId);
         for (MemberMembership membership : memberships) {
             membershipLifecycleService.refreshMembership(membership, reminderDays);
@@ -144,7 +145,7 @@ public class MemberMembershipService {
     public MembershipResponse membershipResponse(Long membershipId, Long organizationId) {
         MemberMembership membership = memberMembershipRepository.findByIdAndOrganizationIdAndDeletedFalse(membershipId, organizationId)
             .orElseThrow(() -> new NotFoundException("Membership not found"));
-        int reminderDays = organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry();
+        int reminderDays = DUE_TODAY_WINDOW_DAYS;
         return new MembershipResponse(
             membership.getId(),
             membership.getMember().getId(),

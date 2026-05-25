@@ -43,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReportService {
 
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
+    private static final int DUE_TODAY_WINDOW_DAYS = 0;
 
     private final RevenueService revenueService;
     private final MemberService memberService;
@@ -52,6 +53,7 @@ public class ReportService {
     private final MemberPaymentRepository memberPaymentRepository;
     private final OrganizationSettingService organizationSettingService;
     private final NotificationQueryService notificationQueryService;
+    private final ReminderService reminderService;
     private final com.gymflow.repository.OrganizationRepository organizationRepository;
     private final PlanAccessService planAccessService;
     private final SubscriptionPricingService subscriptionPricingService;
@@ -61,13 +63,11 @@ public class ReportService {
     @Cacheable(value = "dashboardReports", key = "T(com.gymflow.security.SecurityUtils).currentUser().organizationId()")
     public DashboardReportResponse dashboardReport() {
         Long organizationId = requireOrganizationId();
-        int reminderDays = organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry();
         LocalDate today = LocalDate.now(APP_ZONE);
         memberMembershipService.refreshMembershipStatuses(organizationId);
         List<MemberMembership> expiringSoon = memberMembershipRepository.findExpiringSoonMemberships(
             organizationId,
             today,
-            today.plusDays(reminderDays),
             PageRequest.of(0, 5)
         );
         List<MemberMembership> overdue = memberMembershipRepository.findOverdueOrExpiredMemberships(
@@ -75,8 +75,8 @@ public class ReportService {
             today,
             PageRequest.of(0, 5)
         );
-        List<MemberDirectoryItem> expiringItems = toDirectoryItems(expiringSoon, reminderDays);
-        List<MemberDirectoryItem> overdueItems = toDirectoryItems(overdue, reminderDays);
+        List<MemberDirectoryItem> expiringItems = toDirectoryItems(expiringSoon, DUE_TODAY_WINDOW_DAYS);
+        List<MemberDirectoryItem> overdueItems = toDirectoryItems(overdue, DUE_TODAY_WINDOW_DAYS);
         var organization = organizationRepository.findByIdAndDeletedFalse(organizationId)
             .orElseThrow(() -> new BadRequestException("Organization not found"));
         RevenueSummaryResponse revenueSummary = planAccessService.canViewAdvancedAnalytics(organization)
@@ -85,7 +85,7 @@ public class ReportService {
         RevenueSegmentationResponse revenueSegmentation = planAccessService.canViewAdvancedAnalytics(organization)
             ? revenueService.revenueSegmentationSummary()
             : null;
-        MemberDirectorySummary memberSummary = memberService.memberDirectorySummary(organizationId, reminderDays);
+        MemberDirectorySummary memberSummary = memberService.memberDirectorySummary(organizationId, DUE_TODAY_WINDOW_DAYS);
         String planName = planAccessService.resolvePlan(organization).name();
 
         return new DashboardReportResponse(
@@ -109,7 +109,8 @@ public class ReportService {
         Long organizationId = requireOrganizationId();
         return new ReminderReportResponse(
             organizationSettingService.getCurrentSettings(),
-            notificationQueryService.listRecentReminderLogs(organizationId, 25)
+            notificationQueryService.listRecentReminderLogs(organizationId, 25),
+            reminderService.manualQuotaForCurrentOrganization()
         );
     }
 

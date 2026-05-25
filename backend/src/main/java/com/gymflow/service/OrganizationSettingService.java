@@ -42,9 +42,6 @@ public class OrganizationSettingService {
         if (request.emailEnabled() != null) {
             setting.setEmailEnabled(request.emailEnabled());
         }
-        if (request.reminderDaysBeforeExpiry() != null) {
-            setting.setReminderDaysBeforeExpiry(request.reminderDaysBeforeExpiry());
-        }
         if (request.brandingName() != null) {
             setting.setBrandingName(request.brandingName());
         }
@@ -81,7 +78,6 @@ public class OrganizationSettingService {
         return new SettingsResponse(
             setting.isWhatsappEnabled(),
             setting.isEmailEnabled(),
-            setting.getReminderDaysBeforeExpiry(),
             setting.getBrandingName(),
             setting.getOrganization().getMonthlyMembershipFee(),
             setting.getOrganization().getAdmissionFee()

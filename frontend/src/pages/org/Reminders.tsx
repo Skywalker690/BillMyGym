@@ -25,7 +25,9 @@ export default function Reminders() {
       const result = response.data;
       toast.success(`Reminder run complete: ${result.digestsSent ?? 0} digest(s) sent`);
     },
-    onError: () => toast.error("Failed to run reminders"),
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Failed to run reminders");
+    },
   });
 
   if (isLoading) {
@@ -34,7 +36,12 @@ export default function Reminders() {
 
   const settings = reminderReport?.settings;
   const logs = reminderReport?.recentReminderLogs ?? [];
+  const manualQuota = reminderReport?.manualQuota;
   const lastRun = logs[0];
+  const manualRunsUsed = Number(manualQuota?.usedThisMonth ?? 0);
+  const manualRunsRemaining = Number(manualQuota?.remainingThisMonth ?? 0);
+  const manualRunLimit = Number(manualQuota?.monthlyLimit ?? 20);
+  const canRunManual = Boolean(manualQuota?.canRun ?? true);
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 p-8">
@@ -61,10 +68,10 @@ export default function Reminders() {
                   runMutation.mutate();
                 }
               }}
-              disabled={runMutation.isPending}
+              disabled={runMutation.isPending || !canRunManual}
             >
               <Play className="mr-2 h-4 w-4" />
-              {runMutation.isPending ? "Processing..." : "Run Now"}
+              {runMutation.isPending ? "Processing..." : canRunManual ? "Run Now" : "Monthly Limit Reached"}
             </Button>
           </div>
         </div>
@@ -78,15 +85,21 @@ export default function Reminders() {
                 <Clock3 className="h-5 w-5 text-emerald-700" />
                 Control Panel
               </h2>
-              <p className="mt-2 text-sm font-medium text-slate-500">Current reminder timing and delivery channel state.</p>
+              <p className="mt-2 text-sm font-medium text-slate-500">Current digest delivery channel state and workflow status.</p>
             </div>
             <div className="space-y-4 p-6">
-              <SignalRow label="Reminder lead time" value={`${settings?.reminderDaysBeforeExpiry} days`} />
+              <SignalRow label="Manual runs used" value={`${manualRunsUsed} / ${manualRunLimit}`} />
+              <SignalRow label="Manual runs left" value={`${manualRunsRemaining}`} />
               <SignalRow label="WhatsApp digest" value={settings?.whatsappEnabled ? "Enabled" : "Disabled"} />
               <SignalRow label="Email digest" value={settings?.emailEnabled ? "Enabled" : "Disabled"} />
               <div className="rounded-[1.4rem] border border-amber-100 bg-amber-50/70 p-4 text-sm font-semibold text-amber-900">
-                Manual execution uses the same backend workflow as scheduled runs, so this is safe for local ops checks.
+                Manual execution is capped at 20 runs per month for each organization. Scheduled reminder jobs are not counted in this limit.
               </div>
+              {!canRunManual && (
+                <div className="rounded-[1.4rem] border border-rose-100 bg-rose-50/80 p-4 text-sm font-semibold text-rose-900">
+                  The monthly manual reminder limit has been reached. The run button will unlock again at the start of next month.
+                </div>
+              )}
             </div>
           </div>
 

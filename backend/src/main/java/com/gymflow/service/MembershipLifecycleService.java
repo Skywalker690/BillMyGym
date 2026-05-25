@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 public class MembershipLifecycleService {
 
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
+    private static final int DUE_TODAY_WINDOW_DAYS = 0;
 
     public void refreshMembership(MemberMembership membership, int reminderDaysBeforeExpiry) {
         if (membership.getStatus() == MembershipStatus.OVERDUE) {
@@ -51,7 +52,7 @@ public class MembershipLifecycleService {
             return false;
         }
         long daysUntilExpiry = java.time.temporal.ChronoUnit.DAYS.between(today, membershipEndDate);
-        return daysUntilExpiry <= Math.max(reminderDaysBeforeExpiry, 0);
+        return daysUntilExpiry <= DUE_TODAY_WINDOW_DAYS;
     }
 
     public PaymentCoverageSummary buildCoverageSummary(

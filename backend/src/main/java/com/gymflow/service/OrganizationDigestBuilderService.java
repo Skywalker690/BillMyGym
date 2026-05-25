@@ -26,7 +26,7 @@ public class OrganizationDigestBuilderService {
     private String buildWhatsappDigest(String memberList, int memberCount) {
         StringBuilder builder = new StringBuilder("BillMyGym Alert\n\nRenewal follow-ups:\n\n");
         builder.append(memberList);
-        builder.append("\n\nTotal overdue: ").append(memberCount);
+        builder.append("\n\nTotal follow-ups: ").append(memberCount);
         return builder.toString();
     }
 

@@ -105,7 +105,7 @@ INSERT INTO users (
         FALSE, TIMESTAMPTZ '2026-05-07 09:00:00+05:30', TIMESTAMPTZ '2026-05-22 09:00:00+05:30');
 
 INSERT INTO organization_settings (
-    id, organization_id, whatsapp_enabled, email_enabled, reminder_days_before_expiry, branding_name,
+    id, organization_id, whatsapp_enabled, email_enabled, branding_name,
     deleted, created_at, updated_at
 )
 SELECT
@@ -113,7 +113,6 @@ SELECT
     org_id,
     org_id NOT IN (3, 9),
     TRUE,
-    (ARRAY[3, 2, 5, 4, 6, 3, 2, 4, 5, 3])[org_id],
     (ARRAY['Iron Forge', 'Pulse Arena', 'Southside', 'Core Motion', 'Pilot Peak', 'Former Pilot', 'Demo Wellness', 'Renewal Wait', 'Starter House', 'Elite Barbell'])[org_id],
     FALSE,
     TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((30 + org_id) || ' days')::interval,

@@ -12,7 +12,6 @@ import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.Organization;
-import com.gymflow.domain.OrganizationSetting;
 import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.PaymentStatus;
 import com.gymflow.domain.enums.PaymentType;
@@ -47,9 +46,6 @@ class PaymentLedgerServiceTest {
     private AuditLogService auditLogService;
 
     @Mock
-    private OrganizationSettingService organizationSettingService;
-
-    @Mock
     private IdempotencyService idempotencyService;
 
     private final MembershipLifecycleService membershipLifecycleService = new MembershipLifecycleService();
@@ -62,7 +58,6 @@ class PaymentLedgerServiceTest {
             memberMembershipRepository,
             memberPaymentRepository,
             membershipLifecycleService,
-            organizationSettingService,
             auditLogService,
             idempotencyService
         );
@@ -90,9 +85,6 @@ class PaymentLedgerServiceTest {
             .thenReturn(Optional.of(membership));
         when(memberPaymentRepository.findByMembershipIdAndDeletedFalseOrderByPaymentDateAscCreatedAtAsc(200L))
             .thenReturn(List.of());
-        OrganizationSetting setting = new OrganizationSetting();
-        setting.setReminderDaysBeforeExpiry(3);
-        when(organizationSettingService.getOrCreateSettings(100L)).thenReturn(setting);
         when(memberPaymentRepository.save(any(MemberPayment.class))).thenAnswer(invocation -> {
             MemberPayment payment = invocation.getArgument(0);
             payment.setPaymentStatus(PaymentStatus.PAID);

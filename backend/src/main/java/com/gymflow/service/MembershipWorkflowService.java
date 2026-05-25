@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MembershipWorkflowService {
 
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
+    private static final int DUE_TODAY_WINDOW_DAYS = 0;
 
     private final MemberMembershipService memberMembershipService;
     private final MembershipLifecycleService membershipLifecycleService;
@@ -41,7 +42,7 @@ public class MembershipWorkflowService {
     @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public MembershipResponse createMembership(Long memberId, CreateMembershipRequest request, String idempotencyKey) {
         Long organizationId = requireOrganizationId();
-        int reminderDays = organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry();
+        int reminderDays = DUE_TODAY_WINDOW_DAYS;
         Member member = memberMembershipService.requireMemberForWrite(memberId, organizationId);
         boolean reactivatedMember = member.getStatus() == com.gymflow.domain.enums.MemberStatus.DEACTIVATED;
         if (reactivatedMember) {
@@ -173,7 +174,7 @@ public class MembershipWorkflowService {
         newMembership.setEndDate(membershipLifecycleService.calculateMembershipEndDate(switchDate, request.durationMonths()));
         membershipLifecycleService.refreshMembership(
             newMembership,
-            organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry()
+            DUE_TODAY_WINDOW_DAYS
         );
         newMembership = memberMembershipService.saveMembership(newMembership);
 

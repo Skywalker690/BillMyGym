@@ -1,11 +1,28 @@
-import { useQuery } from "@tanstack/react-query";
-import { Users, CheckCircle2, Gift, Crown } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Users, CheckCircle2, Gift, Crown, Settings2 } from "lucide-react";
 import api from "@/lib/api";
+import { toast } from "sonner";
 
 export default function AdminReferralAnalytics() {
+  const queryClient = useQueryClient();
+
   const { data: analyticsData, isLoading } = useQuery({
     queryKey: ["adminReferralAnalytics"],
-    queryFn: () => api.get("/referrals/analytics").then((res) => res.data.data),
+    queryFn: () => api.get("/referrals/analytics").then((res) => res.data),
+  });
+
+  const { data: settingsData } = useQuery({
+    queryKey: ["referralSettings"],
+    queryFn: () => api.get("/referrals/settings").then((res) => Boolean(res.data)),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: (enabled: boolean) => api.post(`/referrals/settings/toggle?enabled=${enabled}`),
+    onSuccess: (_, variables) => {
+      toast.success(variables ? "Referral program enabled" : "Referral program disabled");
+      queryClient.invalidateQueries({ queryKey: ["referralSettings"] });
+    },
+    onError: () => toast.error("Failed to update referral settings"),
   });
 
   if (isLoading) {
@@ -13,6 +30,7 @@ export default function AdminReferralAnalytics() {
   }
 
   const data = analyticsData || {};
+  const isReferralsEnabled = settingsData === true;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -21,11 +39,31 @@ export default function AdminReferralAnalytics() {
         <div className="absolute top-0 right-0 p-8 opacity-20">
           <Gift className="w-48 h-48" />
         </div>
-        <div className="p-8 sm:p-10 relative z-10">
-          <h2 className="text-3xl font-black tracking-tight mb-2">Referral Program Analytics</h2>
-          <p className="text-indigo-100/90 text-lg max-w-2xl font-medium leading-relaxed">
-            Monitor the platform-wide impact of the GymFlow referral program.
-          </p>
+        <div className="p-8 sm:p-10 relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+          <div>
+            <h2 className="text-3xl font-black tracking-tight mb-2">Referral Program Analytics</h2>
+            <p className="text-indigo-100/90 text-lg max-w-2xl font-medium leading-relaxed">
+              Monitor the platform-wide impact of the GymFlow referral program.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20">
+            <Settings2 className="w-5 h-5 text-indigo-200" />
+            <div className="flex flex-col">
+              <span className="text-sm font-bold">Referral Program</span>
+              <span className="text-xs text-indigo-200">{isReferralsEnabled ? 'Active' : 'Disabled'}</span>
+            </div>
+            <button
+              role="switch"
+              aria-checked={isReferralsEnabled}
+              onClick={() => toggleMutation.mutate(!isReferralsEnabled)}
+              disabled={toggleMutation.isPending}
+              className={`ml-2 relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50 ${isReferralsEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
+            >
+              <span
+                className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform ${isReferralsEnabled ? 'translate-x-5' : 'translate-x-0'}`}
+              />
+            </button>
+          </div>
         </div>
       </div>
 

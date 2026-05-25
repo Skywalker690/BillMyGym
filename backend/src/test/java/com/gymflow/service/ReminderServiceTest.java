@@ -82,7 +82,6 @@ class ReminderServiceTest {
         when(memberMembershipRepository.findReminderCandidatesForDay(
             org.mockito.ArgumentMatchers.eq(11L),
             org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.any(),
             org.mockito.ArgumentMatchers.any()
         ))
             .thenReturn(List.of(membership));
@@ -92,6 +91,12 @@ class ReminderServiceTest {
             org.mockito.ArgumentMatchers.eq(NotificationType.ORGANIZATION_RENEWAL_DIGEST),
             org.mockito.ArgumentMatchers.eq(NotificationStatus.SENT)
         )).thenReturn(false);
+        when(notificationLogRepository.countByOrganizationIdAndTypeAndDeletedFalseAndCreatedAtBetween(
+            org.mockito.ArgumentMatchers.eq(11L),
+            org.mockito.ArgumentMatchers.eq(NotificationType.MANUAL_REMINDER_TRIGGER),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any()
+        )).thenReturn(0L);
         when(organizationSettingService.getOrCreateSettings(11L)).thenReturn(setting);
         when(organizationDigestBuilderService.buildDigest(org.mockito.ArgumentMatchers.eq(organization), org.mockito.ArgumentMatchers.eq(setting), org.mockito.ArgumentMatchers.anyList()))
             .thenReturn(new OrganizationDigestBuilderService.DigestContent("Brand", "wa", "subject", "email", 1));

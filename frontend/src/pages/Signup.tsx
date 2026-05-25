@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Dumbbell, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,10 @@ export default function Signup() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const referralCode = searchParams.get("ref") || "";
+  const { data: referralsEnabled = true } = useQuery({
+    queryKey: ["referralSettings"],
+    queryFn: () => api.get("/referrals/settings").then((res) => Boolean(res.data)),
+  });
 
   const {
     register,
@@ -55,6 +59,12 @@ export default function Signup() {
     }
   }, [referralCode, setValue]);
 
+  useEffect(() => {
+    if (!referralsEnabled) {
+      setValue("referralCodeUsed", "");
+    }
+  }, [referralsEnabled, setValue]);
+
   const mutation = useMutation({
     mutationFn: (data: Values) =>
       api.post("/auth/signup", {
@@ -65,7 +75,7 @@ export default function Signup() {
         adminEmail: data.adminEmail,
         adminPhoneNumber: data.adminPhone,
         password: data.password,
-        referralCodeUsed: data.referralCodeUsed || null,
+        referralCodeUsed: referralsEnabled ? data.referralCodeUsed || null : null,
       }),
     onSuccess: () => {
       toast.success("Organization created successfully! Check your email.");
@@ -148,7 +158,18 @@ export default function Signup() {
 
               <div className="space-y-1">
                 <Label>Referral Code (Optional)</Label>
-                <Input {...register("referralCodeUsed")} className="h-12 rounded-2xl" placeholder="REF-CODE" readOnly={!!referralCode} />
+                <Input
+                  {...register("referralCodeUsed")}
+                  className="h-12 rounded-2xl"
+                  placeholder={referralsEnabled ? "REF-CODE" : "Referral program is currently disabled"}
+                  readOnly={!!referralCode || !referralsEnabled}
+                  disabled={!referralsEnabled}
+                />
+                {!referralsEnabled && (
+                  <p className="text-xs font-semibold text-slate-500">
+                    Referral codes are temporarily inactive. You can continue signup without a referral.
+                  </p>
+                )}
               </div>
 
               <Button

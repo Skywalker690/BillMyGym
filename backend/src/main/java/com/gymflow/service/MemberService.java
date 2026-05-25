@@ -50,6 +50,7 @@ import org.springframework.stereotype.Service;
 public class MemberService {
 
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
+    private static final int DUE_TODAY_WINDOW_DAYS = 0;
     private static final Set<MemberStatus> INACTIVE_MEMBER_STATUSES = Set.of(
         MemberStatus.DEACTIVATED
     );
@@ -70,7 +71,6 @@ public class MemberService {
     public MemberPageResponse listMembers(int page, int size, String search, String membershipStatus, MemberStatus memberStatus) {
         Long orgId = requireOrgId(SecurityUtils.currentUser());
         int normalizedSize = Math.min(Math.max(size, 1), 40);
-        int reminderDays = organizationSettingService.getOrCreateSettings(orgId).getReminderDaysBeforeExpiry();
         LocalDate today = LocalDate.now(APP_ZONE);
         memberMembershipService.refreshMembershipStatuses(orgId);
         String searchPattern = hasText(search) ? "%" + search.trim().toLowerCase() + "%" : null;
@@ -89,7 +89,6 @@ public class MemberService {
                 INACTIVE_MEMBER_STATUSES,
                 normalizedMembershipStatus,
                 today,
-                today.plusDays(reminderDays),
                 pageRequest
             )
             : memberRepository.searchDirectory(
@@ -98,13 +97,12 @@ public class MemberService {
                 memberStatus,
                 normalizedMembershipStatus,
                 today,
-                today.plusDays(reminderDays),
                 pageRequest
             );
-        List<MemberDirectoryItem> items = toDirectoryItems(memberPage.getContent(), reminderDays);
+        List<MemberDirectoryItem> items = toDirectoryItems(memberPage.getContent(), DUE_TODAY_WINDOW_DAYS);
         return new MemberPageResponse(
             items,
-            memberDirectorySummary(orgId, reminderDays),
+            memberDirectorySummary(orgId, DUE_TODAY_WINDOW_DAYS),
             memberPage.getNumber(),
             memberPage.getSize(),
             memberPage.getTotalElements(),
@@ -291,7 +289,7 @@ public class MemberService {
             memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(orgId, MemberStatus.ACTIVE),
             memberRepository.countByOrganizationIdAndDeletedFalseAndStatusIn(orgId, INACTIVE_MEMBER_STATUSES),
             memberMembershipRepository.countByOrganizationIdAndDeletedFalseAndStatus(orgId, MembershipStatus.ACTIVE),
-            memberMembershipRepository.countExpiringSoon(orgId, today, today.plusDays(reminderDays)),
+            memberMembershipRepository.countExpiringSoon(orgId, today),
             memberMembershipRepository.countExpiredOn(orgId, today),
             memberMembershipRepository.countOverdueBefore(orgId, today),
             toMemberLimitResponse(memberLimitService.usage(

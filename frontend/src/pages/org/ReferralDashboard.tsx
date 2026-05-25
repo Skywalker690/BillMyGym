@@ -1,13 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
-import { Gift, CheckCircle2, Clock, Copy, Plus, Users, Award } from "lucide-react";
+import { Gift, CheckCircle2, Clock, Copy, Plus, Award, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import api from "@/lib/api";
 
 export default function ReferralDashboard() {
+  const { data: referralsEnabled, isLoading: isLoadingSettings } = useQuery({
+    queryKey: ["referralSettings"],
+    queryFn: () => api.get("/referrals/settings").then((res) => Boolean(res.data)),
+  });
+
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ["referralDashboard"],
     queryFn: () => api.get("/referrals/dashboard").then((res) => res.data),
+    enabled: referralsEnabled === true,
   });
 
   const copyLink = () => {
@@ -23,8 +29,26 @@ export default function ReferralDashboard() {
     toast.success("Referral code copied!");
   };
 
-  if (isLoading) {
+  if (isLoadingSettings || (referralsEnabled === true && isLoading)) {
     return <div className="p-6">Loading dashboard...</div>;
+  }
+
+  if (referralsEnabled === false) {
+    return (
+      <div className="mx-auto max-w-3xl p-4 sm:p-6 lg:p-8">
+        <div className="glass-panel overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl">
+          <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-8 text-white sm:p-10">
+            <div className="mb-6 inline-flex rounded-2xl border border-white/10 bg-white/10 p-4">
+              <ShieldOff className="h-8 w-8 text-amber-300" />
+            </div>
+            <h2 className="text-3xl font-black tracking-tight">Referral program is currently disabled</h2>
+            <p className="mt-3 max-w-2xl text-base font-medium leading-relaxed text-slate-300">
+              Referral links and codes are temporarily inactive. New organizations can still sign up, but no referral will be accepted until the super admin turns the program back on.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const data = dashboardData || {};

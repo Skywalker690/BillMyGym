@@ -35,11 +35,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class PaymentLedgerService {
 
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
+    private static final int DUE_TODAY_WINDOW_DAYS = 0;
 
     private final MemberMembershipRepository memberMembershipRepository;
     private final MemberPaymentRepository memberPaymentRepository;
     private final MembershipLifecycleService membershipLifecycleService;
-    private final OrganizationSettingService organizationSettingService;
     private final AuditLogService auditLogService;
     private final IdempotencyService idempotencyService;
 
@@ -93,10 +93,7 @@ public class PaymentLedgerService {
         );
 
         previousPayments.add(payment);
-        int reminderDays = organizationSettingService
-            .getOrCreateSettings(organizationId)
-            .getReminderDaysBeforeExpiry();
-        PaymentCoverageSummary coverage = membershipLifecycleService.buildCoverageSummary(membership, previousPayments, reminderDays);
+        PaymentCoverageSummary coverage = membershipLifecycleService.buildCoverageSummary(membership, previousPayments, DUE_TODAY_WINDOW_DAYS);
         return toResponse(payment, coverage);
     }
 
@@ -104,11 +101,10 @@ public class PaymentLedgerService {
     public PaymentResponse paymentResponse(Long paymentId, Long organizationId) {
         MemberPayment payment = memberPaymentRepository.findByIdAndOrganizationIdAndDeletedFalse(paymentId, organizationId)
             .orElseThrow(() -> new NotFoundException("Payment not found"));
-        int reminderDays = organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry();
         PaymentCoverageSummary coverage = membershipLifecycleService.buildCoverageSummary(
             payment.getMembership(),
             memberPaymentRepository.findByMembershipIdAndDeletedFalseOrderByPaymentDateAscCreatedAtAsc(payment.getMembership().getId()),
-            reminderDays
+            DUE_TODAY_WINDOW_DAYS
         );
         return toResponse(payment, coverage);
     }
@@ -116,7 +112,6 @@ public class PaymentLedgerService {
     public List<PaymentResponse> listPayments() {
         Long organizationId = requireOrganizationId();
         List<MemberPayment> payments = memberPaymentRepository.findByOrganizationIdAndDeletedFalseOrderByPaymentDateDescCreatedAtDesc(organizationId);
-        int reminderDays = organizationSettingService.getOrCreateSettings(organizationId).getReminderDaysBeforeExpiry();
         Map<Long, List<MemberPayment>> paymentsByMembershipId = loadPaymentsByMembershipId(payments);
         return payments.stream()
             .map(payment -> toResponse(
@@ -124,7 +119,7 @@ public class PaymentLedgerService {
                 membershipLifecycleService.buildCoverageSummary(
                     payment.getMembership(),
                     paymentsByMembershipId.getOrDefault(payment.getMembership().getId(), List.of()),
-                    reminderDays
+                    DUE_TODAY_WINDOW_DAYS
                 )
             ))
             .toList();

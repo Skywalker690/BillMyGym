@@ -5,6 +5,7 @@ import com.gymflow.api.dto.AnalyticsDtos.RevenueSegmentationResponse;
 import com.gymflow.api.dto.MemberDtos.MemberDirectoryItem;
 import com.gymflow.api.dto.MemberDtos.MemberDirectorySummary;
 import com.gymflow.api.dto.NotificationDtos.NotificationResponse;
+import com.gymflow.api.dto.ReminderDtos.ManualReminderQuotaResponse;
 import com.gymflow.api.dto.SubscriptionDtos.PlanAccessResponse;
 import com.gymflow.api.dto.SubscriptionDtos.SubscriptionPricingResponse;
 import com.gymflow.api.dto.SettingDtos.SettingsResponse;
@@ -46,7 +47,8 @@ public class ReportDtos {
 
     public record ReminderReportResponse(
         SettingsResponse settings,
-        List<NotificationResponse> recentReminderLogs
+        List<NotificationResponse> recentReminderLogs,
+        ManualReminderQuotaResponse manualQuota
     ) {
     }
 

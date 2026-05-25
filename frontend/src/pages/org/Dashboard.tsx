@@ -318,7 +318,7 @@ export default function Dashboard() {
               label="At-Risk Members"
               value={atRiskMembers}
               tone="amber"
-              detail="Due soon plus overdue"
+              detail="Due today plus overdue"
             />
             <HeroMetric
               label="Active Members"
@@ -479,10 +479,10 @@ export default function Dashboard() {
       <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <div className="space-y-6">
           <MembershipListCard
-            title="Upcoming Dues"
-            subtitle="Active memberships nearing their end date and worth nudging early."
+            title="Due Today"
+            subtitle="Active memberships ending today and ready for immediate renewal follow-up."
             items={expiringSoon}
-            emptyMessage="No memberships are nearing expiry right now."
+            emptyMessage="No memberships expire today."
             tone="amber"
           />
           <MembershipListCard

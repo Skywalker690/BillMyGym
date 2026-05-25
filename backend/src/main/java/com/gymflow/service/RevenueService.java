@@ -57,7 +57,7 @@ public class RevenueService {
     @Cacheable(value = "revenueReports", key = "T(com.gymflow.security.SecurityUtils).currentUser().organizationId()")
     public RevenueSummaryResponse revenueSummary() {
         Organization organization = currentOrganization();
-        int reminderDays = organizationSettingService.getOrCreateSettings(organization.getId()).getReminderDaysBeforeExpiry();
+        int reminderDays = 0;
         YearMonth currentMonth = YearMonth.now(APP_ZONE);
         LocalDate monthStart = currentMonth.atDay(1);
         LocalDate monthEnd = currentMonth.atEndOfMonth();

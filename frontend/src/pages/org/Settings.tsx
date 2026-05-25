@@ -22,7 +22,6 @@ export default function Settings() {
 
   const { register, handleSubmit, reset, watch, formState: { isSubmitting } } = useForm({
     defaultValues: {
-      reminderDaysBeforeExpiry: 3,
       whatsappEnabled: false,
       emailEnabled: false,
     },
@@ -33,7 +32,6 @@ export default function Settings() {
   useEffect(() => {
     if (settings) {
       reset({
-        reminderDaysBeforeExpiry: settings.reminderDaysBeforeExpiry || 3,
         whatsappEnabled: settings.whatsappEnabled || false,
         emailEnabled: settings.emailEnabled || false,
       });
@@ -59,22 +57,6 @@ export default function Settings() {
     <div className="mx-auto max-w-6xl space-y-8 p-8">
       <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
         <form id="settings-form" onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-6">
-          <div className="glass-panel overflow-hidden rounded-[1.9rem]">
-            <div className="border-b border-white/70 p-6">
-              <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-slate-950">
-                <BellRing className="h-5 w-5 text-amber-600" />
-                Reminder Timing
-              </h2>
-            </div>
-            <div className="p-6">
-              <div className="space-y-2">
-                <Label htmlFor="reminderDaysBeforeExpiry" className="font-semibold text-slate-700">Days before expiry to flag members</Label>
-                <Input id="reminderDaysBeforeExpiry" type="number" min="1" max="30" {...register("reminderDaysBeforeExpiry", { valueAsNumber: true })} className="h-11 rounded-xl bg-white/60" />
-                <p className="text-xs font-medium text-slate-500">Members reaching this threshold show up in the digest and ops reports.</p>
-              </div>
-            </div>
-          </div>
-
           <div className="glass-panel overflow-hidden rounded-[1.9rem]">
             <div className="border-b border-white/70 p-6">
               <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-slate-950">
@@ -116,10 +98,10 @@ export default function Settings() {
             {watchConfig.whatsappEnabled || watchConfig.emailEnabled ? (
               <div className="grid gap-5">
                 {watchConfig.whatsappEnabled && (
-                  <WhatsAppDigestPreview reminderDays={watchConfig.reminderDaysBeforeExpiry || 3} />
+                  <WhatsAppDigestPreview />
                 )}
                 {watchConfig.emailEnabled && (
-                  <EmailDigestPreview reminderDays={watchConfig.reminderDaysBeforeExpiry || 3} />
+                  <EmailDigestPreview />
                 )}
               </div>
             ) : (
@@ -135,11 +117,11 @@ export default function Settings() {
   );
 }
 
-function WhatsAppDigestPreview({ reminderDays }: { reminderDays: number }) {
+function WhatsAppDigestPreview() {
   const members = [
     { name: "Rahul", meta: "overdue by 2 days" },
     { name: "Akhil", meta: "ends today" },
-    { name: "Meera", meta: `ends in ${reminderDays} days` },
+    { name: "Meera", meta: "ends today" },
   ];
 
   return (
@@ -174,11 +156,11 @@ function WhatsAppDigestPreview({ reminderDays }: { reminderDays: number }) {
   );
 }
 
-function EmailDigestPreview({ reminderDays }: { reminderDays: number }) {
+function EmailDigestPreview() {
   const rows = [
     { name: "Rahul", status: "Overdue", detail: "2 days overdue" },
     { name: "Akhil", status: "Due Today", detail: "Renewal closes today" },
-    { name: "Meera", status: "Due Soon", detail: `Within ${reminderDays} days` },
+    { name: "Meera", status: "Due Today", detail: "Renewal closes today" },
   ];
 
   return (

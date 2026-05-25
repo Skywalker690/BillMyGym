@@ -32,6 +32,7 @@ public class ReferralService {
     private final OrganizationRepository organizationRepository;
     private final ReferralRepository referralRepository;
     private final ReferralRewardRepository referralRewardRepository;
+    private final PlatformSettingService platformSettingService;
 
     @Transactional
     public void generateReferralCodeForOrganization(Organization organization) {
@@ -49,6 +50,11 @@ public class ReferralService {
     @Transactional
     public void processReferralSignup(Organization newOrganization, String referralCodeUsed) {
         if (referralCodeUsed == null || referralCodeUsed.isBlank()) {
+            return;
+        }
+
+        if (!platformSettingService.getSettings().isReferralsEnabled()) {
+            log.info("Referral signup ignored because referrals are disabled. Referred org: {}", newOrganization.getId());
             return;
         }
 

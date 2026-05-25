@@ -37,6 +37,13 @@ public interface NotificationLogRepository extends JpaRepository<NotificationLog
 
     long countByOrganizationIdAndTypeAndDeletedFalse(Long organizationId, NotificationType type);
 
+    long countByOrganizationIdAndTypeAndDeletedFalseAndCreatedAtBetween(
+        Long organizationId,
+        NotificationType type,
+        OffsetDateTime fromDate,
+        OffsetDateTime toDate
+    );
+
     @Query(
         value = """
             select notification from NotificationLog notification

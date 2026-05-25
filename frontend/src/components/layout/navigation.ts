@@ -22,7 +22,7 @@ export interface NavItemConfig {
   section: string;
 }
 
-export const getSidebarNavItems = (role: AppRole | null | undefined): NavItemConfig[] => {
+export const getSidebarNavItems = (role: AppRole | null | undefined, referralsEnabled: boolean = true): NavItemConfig[] => {
   if (role === "SUPER_ADMIN") {
     return [
       {
@@ -58,7 +58,7 @@ export const getSidebarNavItems = (role: AppRole | null | undefined): NavItemCon
     ];
   }
 
-  return [
+  const orgAdminItems: NavItemConfig[] = [
     {
       label: "Dashboard",
       href: "/app/dashboard",
@@ -83,13 +83,18 @@ export const getSidebarNavItems = (role: AppRole | null | undefined): NavItemCon
       icon: Clock3,
       section: "Operations",
     },
-    {
+  ];
+
+  if (referralsEnabled) {
+    orgAdminItems.push({
       label: "Referrals",
       href: "/app/referrals",
       icon: Gift,
       section: "Operations",
-    },
-  ];
+    });
+  }
+
+  return orgAdminItems;
 };
 
 export const getProfileNavItems = (role: AppRole | null | undefined): NavItemConfig[] => {
