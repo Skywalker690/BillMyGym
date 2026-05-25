@@ -21,7 +21,7 @@ import Dashboard from "./pages/org/Dashboard";
 import MembersList from "./pages/org/MembersList";
 import MemberForm from "./pages/org/MemberForm";
 import Reminders from "./pages/org/Reminders";
-import Notifications from "./pages/org/Notifications";
+
 import Settings from "./pages/org/Settings";
 import OrganizationProfile from "./pages/org/OrganizationProfile";
 import Subscription from "./pages/org/Subscription";
@@ -80,7 +80,7 @@ export default function App() {
                 <Route path="/app/members/:id/edit" element={<MemberForm mode="edit" />} />
                 <Route path="/app/members/:id/renew" element={<MemberForm mode="renew" />} />
                 <Route path="/app/reminders" element={<Reminders />} />
-                <Route path="/app/notifications" element={<Notifications />} />
+
                 <Route path="/app/reports" element={<Reports />} />
                 <Route path="/app/referrals" element={<ReferralDashboard />} />
                 <Route path="/app/subscription" element={<Subscription />} />

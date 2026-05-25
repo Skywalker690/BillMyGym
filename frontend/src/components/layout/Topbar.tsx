@@ -107,13 +107,7 @@ export function Topbar({
           label: "Settings",
           icon: Settings,
           iconClassName: "text-emerald-700",
-        },
-        {
-          to: "/app/subscription",
-          label: "Billing",
-          icon: CreditCard,
-          iconClassName: "text-emerald-600",
-        },
+        }
       ];
 
   return (

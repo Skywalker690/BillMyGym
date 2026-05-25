@@ -84,12 +84,6 @@ export const getSidebarNavItems = (role: AppRole | null | undefined): NavItemCon
       section: "Operations",
     },
     {
-      label: "Notifications",
-      href: "/app/notifications",
-      icon: Bell,
-      section: "Operations",
-    },
-    {
       label: "Referrals",
       href: "/app/referrals",
       icon: Gift,
@@ -135,12 +129,7 @@ export const getProfileNavItems = (role: AppRole | null | undefined): NavItemCon
       icon: Settings,
       section: "Account",
     },
-    {
-      label: "Billing",
-      href: "/app/subscription",
-      icon: CreditCard,
-      section: "Account",
-    },
+
   ];
 };
 

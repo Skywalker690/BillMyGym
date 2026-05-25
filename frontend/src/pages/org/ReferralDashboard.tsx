@@ -7,7 +7,7 @@ import api from "@/lib/api";
 export default function ReferralDashboard() {
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ["referralDashboard"],
-    queryFn: () => api.get("/referrals/dashboard").then((res) => res.data.data),
+    queryFn: () => api.get("/referrals/dashboard").then((res) => res.data),
   });
 
   const copyLink = () => {
