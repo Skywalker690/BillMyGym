@@ -86,9 +86,7 @@ public class AuthService {
 
         LocalDate today = LocalDate.now(APP_ZONE);
         Organization organization = organizationMapper.toNewOrganization(request);
-        if (organization.getOrganizationType() == OrganizationType.PILOT) {
-            billingLifecycleService.startPilotAccess(organization, today);
-        } else if (organization.getOrganizationType() == OrganizationType.DEMO) {
+        if (organization.getOrganizationType() == OrganizationType.DEMO) {
             billingLifecycleService.startDemoAccess(organization, today);
         } else {
             billingLifecycleService.startRegularTrial(organization, today);
@@ -116,10 +114,7 @@ public class AuthService {
             request.adminEmail(),
             request.adminFullName(),
             request.password(),
-            (savedOrganization.getOrganizationType() == OrganizationType.PILOT
-                || savedOrganization.getOrganizationType() == OrganizationType.DEMO)
-                ? savedOrganization.getPilotEndDate()
-                : savedOrganization.getTrialEndDate()
+            savedOrganization.getTrialEndDate()
         );
         whatsAppDeliveryService.sendOrganizationWelcome(
             savedOrganization,

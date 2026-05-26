@@ -51,7 +51,6 @@ public class SubscriptionDtos {
         BigDecimal lifetimeSubscriptionRevenue,
         Instant joinedAt,
         LocalDate trialEndsAt,
-        LocalDate pilotEndsAt,
         LocalDate subscriptionDueDate,
         LocalDate currentPeriodStart,
         LocalDate currentPeriodEnd,

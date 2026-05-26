@@ -990,7 +990,7 @@ function CustomReminderLimitCard({
       <div className="glass-panel rounded-[1.7rem] p-5">
         <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Custom WhatsApp Reminders</div>
         <div className="mt-2 text-2xl font-black tracking-tight text-slate-950">Locked on current plan</div>
-        <div className="mt-3 text-sm font-semibold text-slate-500">Upgrade to Pro, Pilot, or Demo-enabled access to send overdue reminders manually.</div>
+        <div className="mt-3 text-sm font-semibold text-slate-500">Upgrade to Pro or use a Demo workspace to send overdue reminders manually.</div>
       </div>
     );
   }

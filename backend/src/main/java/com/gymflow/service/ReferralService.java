@@ -8,6 +8,7 @@ import com.gymflow.api.error.NotFoundException;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.Referral;
 import com.gymflow.domain.ReferralReward;
+import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.ReferralStatus;
 import com.gymflow.domain.enums.RewardType;
 import com.gymflow.domain.enums.SubscriptionPlan;
@@ -64,6 +65,11 @@ public class ReferralService {
             return;
         }
 
+        if (newOrganization.getOrganizationType() == OrganizationType.DEMO || referrer.getOrganizationType() == OrganizationType.DEMO) {
+            log.info("Referral ignored because demo workspaces are not eligible. Referrer: {}, Referred: {}", referrer.getId(), newOrganization.getId());
+            return;
+        }
+
         if (referrer.getId().equals(newOrganization.getId()) ||
             referrer.getAdminEmail().equalsIgnoreCase(newOrganization.getAdminEmail()) ||
             referrer.getAdminPhoneNumber().equals(newOrganization.getAdminPhoneNumber())) {
@@ -82,12 +88,20 @@ public class ReferralService {
 
     @Transactional
     public void fulfillReferralRewards(Organization referredOrg) {
+        if (referredOrg.getOrganizationType() == OrganizationType.DEMO) {
+            return;
+        }
         Referral referral = referralRepository.findByReferred(referredOrg).orElse(null);
         if (referral == null || referral.getStatus() != ReferralStatus.PENDING) {
             return; // Not referred, or already fulfilled/rejected
         }
 
         Organization referrer = referral.getReferrer();
+        if (referrer.getOrganizationType() == OrganizationType.DEMO) {
+            referral.setStatus(ReferralStatus.REJECTED);
+            referralRepository.save(referral);
+            return;
+        }
         long successfulReferrals = referralRepository.countByReferrer(referrer);
         long milestone = successfulReferrals + 1; // including this one
 

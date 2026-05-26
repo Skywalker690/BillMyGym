@@ -34,14 +34,13 @@ type Organization = {
   adminEmail?: string | null;
   adminPhoneNumber?: string | null;
   status: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
-  organizationType?: "REGULAR" | "PILOT" | "DEMO";
+  organizationType?: "REGULAR" | "DEMO";
   subscriptionPlan?: "STARTER" | "GROWTH" | "PRO" | "PILOT";
   subscriptionDueDate?: string | null;
   trialEndDate?: string | null;
-  pilotEndDate?: string | null;
 };
 
-type DirectoryScope = "ALL" | "REGULAR" | "PILOT" | "DEMO" | "REGULAR_TRIAL";
+type DirectoryScope = "ALL" | "REGULAR" | "DEMO" | "REGULAR_TRIAL";
 
 type DistributionItem = {
   key: string;
@@ -83,7 +82,6 @@ const badgeClasses: Record<string, string> = {
   TRIAL: "border-amber-200 bg-amber-100 text-amber-800",
   PAUSED: "border-rose-200 bg-rose-100 text-rose-800",
   DEACTIVATED: "border-slate-300 bg-slate-200 text-slate-800",
-  PILOT: "border-sky-200 bg-sky-100 text-sky-800",
   DEMO: "border-cyan-200 bg-cyan-100 text-cyan-800",
   STARTER: "border-slate-200 bg-slate-100 text-slate-800",
   GROWTH: "border-emerald-200 bg-emerald-100 text-emerald-800",
@@ -94,7 +92,6 @@ const planMeta: Record<string, string> = {
   STARTER: "Rs. 299/month",
   GROWTH: "Rs. 699/month",
   PRO: "Rs. 1499/month",
-  PILOT: "Rs. 299/month",
   DEMO: "No subscription fee",
 };
 
@@ -111,8 +108,6 @@ function organizationPlanLabel(plan?: Organization["subscriptionPlan"]) {
       return "Growth";
     case "PRO":
       return "Pro";
-    case "PILOT":
-      return "Pilot";
     default:
       return "Starter";
   }
@@ -125,9 +120,7 @@ function isRenewalAttention(org: Organization) {
 
   const parse = (value?: string | null) => (value ? new Date(value) : null);
   const dueDate =
-    org.organizationType === "PILOT" || org.organizationType === "DEMO"
-      ? parse(org.pilotEndDate)
-      : org.status === "TRIAL"
+    org.status === "TRIAL"
         ? parse(org.trialEndDate ?? org.subscriptionDueDate)
         : parse(org.subscriptionDueDate);
 
@@ -136,11 +129,8 @@ function isRenewalAttention(org: Organization) {
 }
 
 function lifecycleMeta(org: Organization) {
-  if (org.organizationType === "PILOT") {
-    return { label: "Pilot", value: `Renewal Date: ${formatDate(org.subscriptionDueDate)}` };
-  }
   if (org.organizationType === "DEMO") {
-    return { label: "Demo Access", value: `Access Ends: ${formatDate(org.pilotEndDate)}` };
+    return { label: "Demo Workspace", value: "Billing disabled for this showcase workspace" };
   }
   if (org.status === "TRIAL") {
     return { label: "Free Trial Access", value: `Access Ends: ${formatDate(org.trialEndDate ?? org.subscriptionDueDate)}` };
@@ -173,15 +163,13 @@ export default function OrganizationsList() {
           size: pageSize,
           search: deferredSearch || undefined,
           includeAllTypes: scope === "ALL",
-          pilotOnly: scope === "PILOT",
+          pilotOnly: scope === "DEMO",
           organizationType:
             scope === "ALL"
               ? undefined
               : scope === "REGULAR" || scope === "REGULAR_TRIAL"
               ? "REGULAR"
-              : scope === "PILOT"
-                ? "PILOT"
-                : "DEMO",
+              : "DEMO",
           plan: scope === "REGULAR" && planFilter !== "ALL" ? planFilter : undefined,
           status: scope === "REGULAR_TRIAL" ? "TRIAL" : statusFilter !== "ALL" ? statusFilter : undefined,
         },
@@ -265,9 +253,9 @@ export default function OrganizationsList() {
         />
         <MetricCard
           icon={Crown}
-          label="Pilot Gyms"
+          label="Demo Workspaces"
           value={summary?.totalPilotOrganizations ?? 0}
-          detail="Founding partner access"
+          detail="Showcase environments"
           tone="sky"
         />
       </section>
@@ -300,7 +288,7 @@ export default function OrganizationsList() {
                         ? "bg-indigo-500"
                         : item.key === "GROWTH"
                           ? "bg-emerald-500"
-                          : item.key === "PILOT"
+                          : item.key === "DEMO"
                             ? "bg-sky-500"
                             : "bg-slate-500"
                     }`}
@@ -324,15 +312,6 @@ export default function OrganizationsList() {
               }`}
             >
               All Gyms
-            </button>
-            <button
-              type="button"
-              onClick={() => setScope("PILOT")}
-              className={`rounded-full px-5 py-2 text-sm font-black transition ${
-                scope === "PILOT" ? "bg-slate-950 text-white" : "bg-white text-slate-700 shadow-sm"
-              }`}
-            >
-              Pilot Gyms
             </button>
             <button
               type="button"
@@ -423,7 +402,7 @@ export default function OrganizationsList() {
             {organizations.map((org) => {
               const lifecycle = lifecycleMeta(org);
               const attention = isRenewalAttention(org);
-              const plan = org.subscriptionPlan ?? ((org.organizationType === "PILOT" || org.organizationType === "DEMO") ? "PILOT" : "STARTER");
+              const plan = org.subscriptionPlan ?? (org.organizationType === "DEMO" ? "PRO" : "STARTER");
 
               return (
                 <div key={org.id} className="grid gap-4 p-5 transition hover:bg-white/90 lg:grid-cols-[1.15fr_0.8fr_0.8fr_0.95fr_auto] lg:items-center">
@@ -456,7 +435,7 @@ export default function OrganizationsList() {
                   <div className="flex flex-wrap gap-2">
                     <Badge className={badgeClasses[plan]}>{organizationPlanLabel(plan)}</Badge>
                     <Badge className={badgeClasses[org.status]}>{organizationStatusLabel(org.status)}</Badge>
-                    {(org.organizationType === "PILOT" || org.organizationType === "DEMO") && (
+                    {org.organizationType === "DEMO" && (
                       <Badge className={badgeClasses[org.organizationType]}>{organizationTypeLabel(org.organizationType)}</Badge>
                     )}
                   </div>

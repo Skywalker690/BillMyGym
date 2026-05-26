@@ -2,7 +2,6 @@ package com.gymflow.service;
 
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.enums.OrganizationStatus;
-import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.repository.OrganizationRepository;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -34,18 +33,15 @@ public class OrganizationLifecycleService {
             return;
         }
 
-        if (organization.getOrganizationType() == OrganizationType.PILOT
-            && organization.getPilotEndDate() != null
-            && !organization.getPilotEndDate().isAfter(today)) {
-            billingLifecycleService.convertExpiredPilotToRegularBilling(organization, today);
-            return;
-        }
-
-        if (organization.getOrganizationType() == OrganizationType.REGULAR
+        if (organization.getOrganizationType() == com.gymflow.domain.enums.OrganizationType.REGULAR
             && (organization.getStatus() == OrganizationStatus.ACTIVE || organization.getStatus() == OrganizationStatus.TRIAL)
             && organization.getSubscriptionDueDate() != null
             && !organization.getSubscriptionDueDate().isAfter(today)) {
-            billingLifecycleService.markPaused(organization);
+            if (organization.getStatus() == OrganizationStatus.TRIAL) {
+                billingLifecycleService.expireRegularTrial(organization, today);
+            } else {
+                billingLifecycleService.markPaused(organization);
+            }
         }
     }
 }

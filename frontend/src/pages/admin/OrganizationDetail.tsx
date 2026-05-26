@@ -39,13 +39,11 @@ type Organization = {
   description?: string | null;
   monthlyMembershipFee?: number | null;
   admissionFee?: number | null;
-  organizationType?: "REGULAR" | "PILOT" | "DEMO";
+  organizationType?: "REGULAR" | "DEMO";
   subscriptionPlan?: "STARTER" | "GROWTH" | "PRO" | "PILOT";
   status: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
   trialStartDate?: string | null;
   trialEndDate?: string | null;
-  pilotStartDate?: string | null;
-  pilotEndDate?: string | null;
   subscriptionDueDate?: string | null;
 };
 
@@ -92,7 +90,7 @@ type FormValues = {
   adminEmail: string;
   monthlyMembershipFee: number;
   admissionFee: number;
-  organizationType: "REGULAR" | "PILOT" | "DEMO";
+  organizationType: "REGULAR" | "DEMO";
   status: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
 };
 
@@ -116,10 +114,8 @@ function planLabel(plan?: Organization["subscriptionPlan"]) {
       return "Growth";
     case "PRO":
       return "Pro";
-    case "PILOT":
-      return "Pilot";
     default:
-      return "Starter";
+      return plan === "PRO" ? "Pro" : plan === "GROWTH" ? "Growth" : "Starter";
   }
 }
 
@@ -248,9 +244,7 @@ export default function OrganizationDetail() {
     if (!organization) return false;
     if (organization.status === "PAUSED" || organization.status === "DEACTIVATED") return true;
     const targetDate =
-      organization.organizationType === "PILOT" || organization.organizationType === "DEMO"
-        ? organization.pilotEndDate
-        : organization.status === "TRIAL"
+      organization.status === "TRIAL"
           ? organization.trialEndDate ?? organization.subscriptionDueDate
           : organization.subscriptionDueDate;
     if (!targetDate) return false;
@@ -282,7 +276,7 @@ export default function OrganizationDetail() {
             <div className="flex flex-wrap items-center gap-2">
               <Badge className="border-white/20 bg-white/10 text-white">{organizationStatusLabel(organization.status)}</Badge>
               <Badge className="border-emerald-300/20 bg-emerald-300/10 text-emerald-100">{planLabel(organization.subscriptionPlan)}</Badge>
-              {(organization.organizationType === "PILOT" || organization.organizationType === "DEMO") && (
+              {organization.organizationType === "DEMO" && (
                 <Badge className="border-sky-300/20 bg-sky-300/10 text-sky-100">{organizationTypeLabel(organization.organizationType)}</Badge>
               )}
             </div>
@@ -318,10 +312,10 @@ export default function OrganizationDetail() {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
           icon={CalendarDays}
-          label={organization.organizationType === "PILOT" || organization.organizationType === "DEMO" ? "Access Window" : "Renewal Date"}
+          label={organization.organizationType === "DEMO" ? "Workspace Type" : "Renewal Date"}
           value={formatDate(
-            organization.organizationType === "PILOT" || organization.organizationType === "DEMO"
-              ? organization.pilotEndDate
+            organization.organizationType === "DEMO"
+              ? null
               : organization.status === "TRIAL"
                 ? organization.trialEndDate ?? organization.subscriptionDueDate
                 : organization.subscriptionDueDate
@@ -387,7 +381,7 @@ export default function OrganizationDetail() {
                 <ShieldCheck className="h-6 w-6 text-emerald-700" />
                 Access & Billing Control
               </h2>
-              <p className="mt-1 text-sm font-semibold text-slate-500">Manage subscription state, pilot access, and visible renewal signals.</p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">Manage subscription state, workspace type, and visible renewal signals.</p>
             </div>
             <div className="grid gap-5 p-6 md:grid-cols-2">
               <Field label="Subscription Status">
@@ -398,11 +392,10 @@ export default function OrganizationDetail() {
                   <option value="DEACTIVATED">Account Inactive</option>
                 </select>
               </Field>
-              <Field label="Pilot Gym Access">
+              <Field label="Workspace Type">
                 <select {...register("organizationType")} className="h-11 w-full rounded-xl border border-black/5 bg-white/75 px-4 text-sm font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/40">
-                  <option value="REGULAR">Standard Billing</option>
-                  <option value="PILOT">Pilot</option>
-                  <option value="DEMO">Demo</option>
+                  <option value="REGULAR">Regular</option>
+                  <option value="DEMO">Demo Workspace</option>
                 </select>
               </Field>
               <Field label="Monthly Membership Fee (INR)">
@@ -414,7 +407,7 @@ export default function OrganizationDetail() {
             </div>
             <div className="grid gap-4 border-t border-black/5 p-6 md:grid-cols-3">
               <DateTile label="Trial Window" value={`${formatDate(organization.trialStartDate)} - ${formatDate(organization.trialEndDate)}`} attention={organization.status === "TRIAL" && needsRenewalAttention} />
-              <DateTile label="Pilot Window" value={`${formatDate(organization.pilotStartDate)} - ${formatDate(organization.pilotEndDate)}`} attention={(organization.organizationType === "PILOT" || organization.organizationType === "DEMO") && needsRenewalAttention} />
+              <DateTile label="Workspace Type" value={organization.organizationType === "DEMO" ? "Demo Workspace" : "Regular Workspace"} attention={organization.organizationType === "DEMO"} />
               <DateTile label="Renewal Date" value={formatDate(organization.subscriptionDueDate)} attention={organization.organizationType === "REGULAR" && needsRenewalAttention} />
             </div>
           </section>

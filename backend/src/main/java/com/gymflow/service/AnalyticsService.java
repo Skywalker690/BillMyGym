@@ -64,7 +64,7 @@ public class AnalyticsService {
         long totalOrganizations = organizations.size();
         long activeOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.ACTIVE);
         long trialOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.TRIAL);
-        long pilotOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.PILOT);
+        long demoOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.DEMO);
         long pausedOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.PAUSED);
         long deactivatedOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.DEACTIVATED);
         long overdueRegularOrganizations = organizationRepository.countByDeletedFalseAndOrganizationTypeAndStatusInAndSubscriptionDueDateBefore(
@@ -78,11 +78,6 @@ public class AnalyticsService {
             List.of(OrganizationStatus.ACTIVE, OrganizationStatus.TRIAL),
             today,
             today.plusDays(7)
-        );
-        long pilotsEndingInThirtyDays = organizationRepository.countByDeletedFalseAndOrganizationTypeAndPilotEndDateBetween(
-            OrganizationType.PILOT,
-            today,
-            today.plusDays(30)
         );
         BigDecimal monthlySaasRevenue = safe(subscriptionPaymentRepository.sumPaidBetween(monthStart, monthEnd));
         BigDecimal previousMonthlySaasRevenue = safe(subscriptionPaymentRepository.sumPaidBetween(previousMonthStart, previousMonthEnd));
@@ -115,7 +110,7 @@ public class AnalyticsService {
             totalOrganizations,
             activeOrganizations,
             trialOrganizations,
-            pilotOrganizations,
+            demoOrganizations,
             pausedOrganizations,
             overdueRegularOrganizations,
             deactivatedOrganizations,
@@ -132,7 +127,7 @@ public class AnalyticsService {
             emailUsage,
             whatsappUsage + emailUsage,
             renewalsDueInSevenDays,
-            pilotsEndingInThirtyDays,
+            0,
             currentMonthNewOrganizations,
             previousMonthNewOrganizations,
             growthPercent(previousMonthNewOrganizations, currentMonthNewOrganizations),
@@ -144,7 +139,7 @@ public class AnalyticsService {
                 breakdown("RENEWALS_DUE", "Renewals due in 7 days", renewalsDueInSevenDays, BigDecimal.ZERO, totalOrganizations),
                 breakdown("EXPIRED", "Expired or overdue organizations", expiredOrganizations, BigDecimal.ZERO, totalOrganizations),
                 breakdown("PAYMENT_ATTENTION", "Failed or pending payments", paymentFailures + pendingPayments, BigDecimal.ZERO, Math.max(paymentFailures + pendingPayments, totalOrganizations)),
-                breakdown("PILOT_ENDING", "Founding partner access ending in 30 days", pilotsEndingInThirtyDays, BigDecimal.ZERO, totalOrganizations)
+                breakdown("DEMO", "Demo workspaces", demoOrganizations, BigDecimal.ZERO, totalOrganizations)
             )
         );
     }
@@ -197,6 +192,7 @@ public class AnalyticsService {
 
     private List<PlatformBreakdownResponse> organizationsByPlan(long totalOrganizations) {
         List<PlatformBreakdownResponse> items = new ArrayList<>(Arrays.stream(SubscriptionPlan.values())
+            .filter(plan -> plan != SubscriptionPlan.PILOT)
             .map(plan -> {
                 long count = organizationRepository.countByDeletedFalseAndSubscriptionPlan(plan);
                 return breakdown(
@@ -331,7 +327,7 @@ public class AnalyticsService {
 
     private String label(String value) {
         return switch (value) {
-            case "PILOT" -> "Founding Partner Access";
+            case "DEMO" -> "Demo Workspace";
             case "TRIAL" -> "Free Trial Access";
             case "ACTIVE" -> "Active Subscription";
             case "PAUSED" -> "Subscription Renewal Required";

@@ -281,7 +281,6 @@ public class SubscriptionService {
             lifetimeSubscriptionRevenue,
             organization.getCreatedAt() == null ? null : organization.getCreatedAt().toInstant(),
             organization.getTrialEndDate(),
-            organization.getPilotEndDate(),
             organization.getSubscriptionDueDate(),
             latestSubscription == null ? null : latestSubscription.getStartDate(),
             latestSubscription == null ? null : latestSubscription.getEndDate(),
@@ -373,8 +372,8 @@ public class SubscriptionService {
         SubscriptionPlan selectedPlan = request == null || request.subscriptionPlan() == null
             ? planAccessService.resolvePlan(organization)
             : request.subscriptionPlan();
-        if (selectedPlan == SubscriptionPlan.PILOT && organization.getOrganizationType() != OrganizationType.PILOT) {
-            throw new BadRequestException("Pilot is an invitation-only evaluation plan and cannot be purchased from checkout");
+        if (selectedPlan == SubscriptionPlan.PILOT) {
+            throw new BadRequestException("Pilot billing is no longer available");
         }
         return selectedPlan;
     }

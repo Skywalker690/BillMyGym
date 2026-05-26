@@ -75,8 +75,6 @@ public class Organization extends BaseEntity {
 
     private LocalDate trialStartDate;
     private LocalDate trialEndDate;
-    private LocalDate pilotStartDate;
-    private LocalDate pilotEndDate;
     private LocalDate subscriptionDueDate;
     private OffsetDateTime pausedAt;
     private OffsetDateTime deactivatedAt;

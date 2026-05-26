@@ -13,9 +13,7 @@ import org.springframework.stereotype.Service;
 public class BillingLifecycleService {
 
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
-    private static final int TRIAL_ACCESS_DAYS = 14;
-    private static final int DEMO_ACCESS_DAYS = 90;
-    private static final int PILOT_BILLING_DAYS = 30;
+    private static final int TRIAL_ACCESS_DAYS = 60;
 
     public void startRegularTrial(Organization organization, LocalDate startDate) {
         LocalDate trialEndDate = trialEndDate(startDate);
@@ -26,33 +24,20 @@ public class BillingLifecycleService {
         organization.setStatus(OrganizationStatus.TRIAL);
         organization.setTrialStartDate(startDate);
         organization.setTrialEndDate(trialEndDate);
-        organization.setPilotStartDate(null);
-        organization.setPilotEndDate(null);
         organization.setSubscriptionDueDate(trialEndDate);
         organization.setPausedAt(null);
         organization.setDeactivatedAt(null);
     }
 
-    public void startPilotAccess(Organization organization, LocalDate startDate) {
-        LocalDate pilotEndDate = startDate.plusDays(PILOT_BILLING_DAYS);
-        organization.setOrganizationType(OrganizationType.PILOT);
-        organization.setSubscriptionPlan(SubscriptionPlan.PILOT);
-        organization.setStatus(OrganizationStatus.ACTIVE);
-        organization.setPilotStartDate(startDate);
-        organization.setPilotEndDate(pilotEndDate);
-        organization.setSubscriptionDueDate(pilotEndDate);
-        organization.setPausedAt(null);
-        organization.setDeactivatedAt(null);
-    }
-
     public void startDemoAccess(Organization organization, LocalDate startDate) {
-        LocalDate demoEndDate = pilotEndDate(startDate);
         organization.setOrganizationType(OrganizationType.DEMO);
-        organization.setSubscriptionPlan(SubscriptionPlan.PILOT);
+        if (organization.getSubscriptionPlan() == null || organization.getSubscriptionPlan() == SubscriptionPlan.PILOT) {
+            organization.setSubscriptionPlan(SubscriptionPlan.PRO);
+        }
         organization.setStatus(OrganizationStatus.ACTIVE);
-        organization.setPilotStartDate(startDate);
-        organization.setPilotEndDate(demoEndDate);
-        organization.setSubscriptionDueDate(demoEndDate);
+        organization.setTrialStartDate(null);
+        organization.setTrialEndDate(null);
+        organization.setSubscriptionDueDate(null);
         organization.setPausedAt(null);
         organization.setDeactivatedAt(null);
     }
@@ -62,34 +47,24 @@ public class BillingLifecycleService {
             startDemoAccess(organization, periodStart);
             return;
         }
-        if (organization.getOrganizationType() != OrganizationType.PILOT) {
-            organization.setOrganizationType(OrganizationType.REGULAR);
-        }
-        if (organization.getSubscriptionPlan() == SubscriptionPlan.PILOT && organization.getOrganizationType() != OrganizationType.PILOT) {
+        organization.setOrganizationType(OrganizationType.REGULAR);
+        if (organization.getSubscriptionPlan() == SubscriptionPlan.PILOT) {
             organization.setSubscriptionPlan(SubscriptionPlan.STARTER);
         }
         organization.setStatus(OrganizationStatus.ACTIVE);
         organization.setTrialStartDate(null);
         organization.setTrialEndDate(null);
-        if (organization.getOrganizationType() != OrganizationType.PILOT) {
-            organization.setPilotStartDate(null);
-            organization.setPilotEndDate(null);
-        }
         organization.setSubscriptionDueDate(nextDueDate(periodEnd));
         organization.setPausedAt(null);
         organization.setDeactivatedAt(null);
     }
 
-    public void convertExpiredPilotToRegularBilling(Organization organization, LocalDate today) {
+    public void expireRegularTrial(Organization organization, LocalDate today) {
         organization.setOrganizationType(OrganizationType.REGULAR);
         if (organization.getSubscriptionPlan() == null || organization.getSubscriptionPlan() == SubscriptionPlan.PILOT) {
             organization.setSubscriptionPlan(SubscriptionPlan.STARTER);
         }
         organization.setStatus(OrganizationStatus.PAUSED);
-        organization.setTrialStartDate(null);
-        organization.setTrialEndDate(null);
-        organization.setPilotStartDate(null);
-        organization.setPilotEndDate(null);
         organization.setSubscriptionDueDate(today);
         if (organization.getPausedAt() == null) {
             organization.setPausedAt(OffsetDateTime.now(APP_ZONE));
@@ -111,10 +86,6 @@ public class BillingLifecycleService {
 
     public LocalDate trialEndDate(LocalDate startDate) {
         return startDate.plusDays(TRIAL_ACCESS_DAYS - 1L);
-    }
-
-    public LocalDate pilotEndDate(LocalDate startDate) {
-        return startDate.plusDays(DEMO_ACCESS_DAYS);
     }
 
     public LocalDate billingPeriodEnd(LocalDate periodStart) {

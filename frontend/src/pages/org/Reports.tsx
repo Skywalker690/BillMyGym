@@ -260,7 +260,7 @@ export default function Reports() {
                 Upgrade to Pro to unlock this feature
               </h1>
               <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">
-                Financial reports, month-wise revenue views, and report exports are available on Growth, Pro, Pilot, and Demo workspaces.
+                Financial reports, month-wise revenue views, and report exports are available on Growth, Pro, and Demo workspaces.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link to="/app/subscription/plans">

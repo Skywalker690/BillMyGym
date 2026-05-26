@@ -34,12 +34,10 @@ public class SubscriptionBillingService {
     private final BillingLifecycleService billingLifecycleService;
     private final WhatsAppDeliveryService whatsAppDeliveryService;
     private final SubscriptionPricingService subscriptionPricingService;
-    private final PilotConversionService pilotConversionService;
 
     @Transactional
     public void processDailyBilling() {
         LocalDate today = LocalDate.now(APP_ZONE);
-        pilotConversionService.convertEligiblePilots();
         sendUpcomingDueReminders(today);
         pauseOverdueOrganizations(today);
         deactivateLongUnpaidOrganizations(today);

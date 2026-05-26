@@ -73,7 +73,7 @@ public class PlanAccessService {
 
     public void requireMonthlyReports(Organization organization) {
         if (!canReceiveMonthlyReports(organization)) {
-            throw new ForbiddenException("Monthly reports are available on Growth, Pro, and Pilot plans.");
+            throw new ForbiddenException("Monthly reports are available on Growth and Pro plans.");
         }
     }
 
@@ -81,9 +81,8 @@ public class PlanAccessService {
         if (organization == null) {
             return SubscriptionPlan.STARTER;
         }
-        if (organization.getOrganizationType() == OrganizationType.PILOT
-            || organization.getOrganizationType() == OrganizationType.DEMO) {
-            return SubscriptionPlan.PILOT;
+        if (organization.getOrganizationType() == OrganizationType.DEMO) {
+            return organization.getSubscriptionPlan() == null ? SubscriptionPlan.PRO : organization.getSubscriptionPlan();
         }
         return organization.getSubscriptionPlan() == null ? SubscriptionPlan.STARTER : organization.getSubscriptionPlan();
     }

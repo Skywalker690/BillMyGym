@@ -39,7 +39,6 @@ export default function Reminders() {
   const manualQuota = reminderReport?.manualQuota;
   const lastRun = logs[0];
   const manualRunsUsed = Number(manualQuota?.usedThisMonth ?? 0);
-  const manualRunsRemaining = Number(manualQuota?.remainingThisMonth ?? 0);
   const manualRunLimit = Number(manualQuota?.monthlyLimit ?? 20);
   const canRunManual = Boolean(manualQuota?.canRun ?? true);
 
@@ -89,7 +88,6 @@ export default function Reminders() {
             </div>
             <div className="space-y-4 p-6">
               <SignalRow label="Manual runs used" value={`${manualRunsUsed} / ${manualRunLimit}`} />
-              <SignalRow label="Manual runs left" value={`${manualRunsRemaining}`} />
               <SignalRow label="WhatsApp digest" value={settings?.whatsappEnabled ? "Enabled" : "Disabled"} />
               <SignalRow label="Email digest" value={settings?.emailEnabled ? "Enabled" : "Disabled"} />
               <div className="rounded-[1.4rem] border border-amber-100 bg-amber-50/70 p-4 text-sm font-semibold text-amber-900">

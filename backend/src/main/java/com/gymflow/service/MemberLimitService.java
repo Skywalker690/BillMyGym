@@ -41,7 +41,7 @@ public class MemberLimitService {
         long usedMembers = memberRepository.countByOrganizationIdAndDeletedFalse(organization.getId());
         Integer limit;
         if (organization.getOrganizationType() == OrganizationType.DEMO) {
-            limit = Integer.valueOf(3);
+            limit = Integer.valueOf(50);
         } else {
             limit = plan.memberLimit();
         }

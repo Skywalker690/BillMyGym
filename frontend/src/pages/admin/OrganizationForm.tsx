@@ -35,7 +35,7 @@ const schema = z.object({
   district: z.string().min(1, "District is required"),
   monthlyMembershipFee: z.coerce.number().min(0, "Monthly membership fee must be zero or more"),
   admissionFee: z.coerce.number().min(0, "Admission fee must be zero or more"),
-  organizationType: z.enum(["REGULAR", "PILOT", "DEMO"]),
+  organizationType: z.enum(["REGULAR", "DEMO"]),
   subscriptionPlan: z.enum(["STARTER", "GROWTH", "PRO"]),
   adminName: z.string().min(1, "Admin name is required"),
   adminEmail: z.string().email("Enter a valid admin email"),
@@ -100,7 +100,7 @@ export default function OrganizationForm() {
   const watchedMapUrl = watch("mapLocationLink");
   const watchedLogoUrl = watch("logoUrl");
   const watchedDescription = watch("description");
-  const specialAccess = organizationType === "PILOT" || organizationType === "DEMO";
+  const specialAccess = organizationType === "DEMO";
 
   const mutation = useMutation({
     mutationFn: (data: Values) =>
@@ -118,7 +118,7 @@ export default function OrganizationForm() {
         monthlyMembershipFee: data.monthlyMembershipFee,
         admissionFee: data.admissionFee,
         organizationType: data.organizationType,
-        subscriptionPlan: data.organizationType === "REGULAR" ? data.subscriptionPlan : "PILOT",
+        subscriptionPlan: data.organizationType === "REGULAR" ? data.subscriptionPlan : "PRO",
         password: data.password,
       }),
     onSuccess: () => {
@@ -225,7 +225,6 @@ export default function OrganizationForm() {
                     className="h-12 w-full rounded-2xl border border-black/5 bg-white/75 px-4 text-sm font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/40"
                   >
                     <option value="REGULAR">Regular</option>
-                    <option value="PILOT">Pilot</option>
                     <option value="DEMO">Demo</option>
                   </select>
                 </Field>
@@ -364,7 +363,7 @@ export default function OrganizationForm() {
                 title="Organization"
                 rows={[
                   { label: "Name", value: watchedName },
-                  { label: "Type", value: organizationType === "REGULAR" ? "Regular" : organizationType === "PILOT" ? "Pilot" : "Demo" },
+                  { label: "Type", value: organizationType === "REGULAR" ? "Regular" : "Demo" },
                   { label: "Place", value: watchedPlace },
                   { label: "District", value: watchedDistrict },
                   { label: "Monthly Fee", value: `INR ${Number(watchedMonthlyMembershipFee ?? 0).toLocaleString("en-IN")}` },

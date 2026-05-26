@@ -316,9 +316,15 @@ public class EmailService {
         String temporaryPassword,
         LocalDate accessEndsAt
     ) {
-        String accessEndLabel = organization.getOrganizationType() == OrganizationType.PILOT
-            ? "Founding Partner Access"
+        String accessEndLabel = organization.getOrganizationType() == OrganizationType.DEMO
+            ? "Demo Workspace"
             : "Free Trial Access";
+        String accessType = organization.getOrganizationType() == OrganizationType.DEMO
+            ? "Demo Workspace"
+            : "Regular Workspace";
+        String accessWindow = organization.getOrganizationType() == OrganizationType.DEMO
+            ? "Unlimited showcase access"
+            : "Ends: " + (accessEndsAt == null ? "-" : accessEndsAt.toString());
         String content = """
             <p style="margin:0 0 16px 0;">Hello <strong>%s</strong>,</p>
             <p style="margin:0 0 16px 0;">Your organization workspace on <strong>BillMyGym</strong> is now ready. You can sign in and start managing memberships, payments, reminders, and reports from one place.</p>
@@ -345,9 +351,9 @@ public class EmailService {
             html(adminName),
             detailRow("Organization", organization.getName()),
             detailRow("District", organization.getDistrict()),
-            detailRow("Access Type", organization.getOrganizationType() == OrganizationType.PILOT ? "Founding Partner Access" : "Standard Billing"),
+            detailRow("Access Type", accessType),
             detailRow("Lifecycle Status", organizationStatusLabel(organization)),
-            detailRow(accessEndLabel, "Access Ends: " + (accessEndsAt == null ? "-" : accessEndsAt.toString())),
+            detailRow(accessEndLabel, accessWindow),
             detailRow("Admin Email", toEmail),
             detailRow("Temporary Password", temporaryPassword),
             detailRow("Sign-in URL", "<a href=\"" + html(appUrl("/login")) + "\" style=\"color:#166534;font-weight:700;text-decoration:none;\">"
@@ -707,7 +713,7 @@ public class EmailService {
             content,
             "Open Dashboard",
             "/app/dashboard",
-            "Monthly reports are included with Growth, Pro, and Pilot access."
+            "Monthly reports are included with Growth and Pro access."
         );
     }
 

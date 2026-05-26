@@ -223,9 +223,9 @@ public class OrganizationService {
         long totalRenewalPendingOrganizations = organizationRepository.countByDeletedFalseAndStatusIn(
             List.of(OrganizationStatus.PAUSED, OrganizationStatus.DEACTIVATED)
         );
-        long totalPilotOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.PILOT);
         long totalDemoOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.DEMO);
         List<OrganizationPlanSummary> subscriptionDistribution = new ArrayList<>(Arrays.stream(com.gymflow.domain.enums.SubscriptionPlan.values())
+            .filter(plan -> plan != com.gymflow.domain.enums.SubscriptionPlan.PILOT)
             .map(plan -> {
                 long count = organizationRepository.countByDeletedFalseAndSubscriptionPlan(plan);
                 int percentage = totalOrganizations <= 0 ? 0 : (int) Math.round((count * 100.0) / totalOrganizations);
@@ -248,7 +248,7 @@ public class OrganizationService {
             totalOrganizations,
             totalActiveOrganizations,
             totalRenewalPendingOrganizations,
-            totalPilotOrganizations + totalDemoOrganizations,
+            totalDemoOrganizations,
             subscriptionDistribution
         );
     }
@@ -259,26 +259,10 @@ public class OrganizationService {
         OrganizationStatus previousStatus
     ) {
         LocalDate today = LocalDate.now(APP_ZONE);
-        if (organization.getOrganizationType() == OrganizationType.PILOT) {
-            if (previousType != OrganizationType.PILOT
-                || organization.getPilotStartDate() == null
-                || organization.getPilotEndDate() == null) {
-                billingLifecycleService.startPilotAccess(organization, today);
-            }
-            return;
-        }
-
         if (organization.getOrganizationType() == OrganizationType.DEMO) {
-            if (previousType != OrganizationType.DEMO
-                || organization.getPilotStartDate() == null
-                || organization.getPilotEndDate() == null) {
+            if (previousType != OrganizationType.DEMO) {
                 billingLifecycleService.startDemoAccess(organization, today);
             }
-            return;
-        }
-
-        if (previousType == OrganizationType.PILOT) {
-            billingLifecycleService.convertExpiredPilotToRegularBilling(organization, today);
             return;
         }
 

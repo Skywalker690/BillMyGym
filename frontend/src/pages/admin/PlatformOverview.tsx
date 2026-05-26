@@ -98,7 +98,6 @@ const planMeta: Record<string, string> = {
   STARTER: "Rs. 299/month",
   GROWTH: "Rs. 699/month",
   PRO: "Rs. 1499/month",
-  PILOT: "Rs. 299/month",
   DEMO: "No subscription fee",
 };
 
@@ -110,7 +109,6 @@ const statusTone: Record<string, string> = {
   STARTER: "bg-slate-100 text-slate-800 border-slate-200",
   GROWTH: "bg-emerald-100 text-emerald-800 border-emerald-200",
   PRO: "bg-indigo-100 text-indigo-800 border-indigo-200",
-  PILOT: "bg-sky-100 text-sky-800 border-sky-200",
   DEMO: "bg-cyan-100 text-cyan-800 border-cyan-200",
 };
 

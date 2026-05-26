@@ -66,8 +66,8 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
             or (:organizationType is not null and o.organizationType = :organizationType)
             or (
               :includeAllTypes = false and :organizationType is null and (
-                (:pilotOnly = true and o.organizationType = com.gymflow.domain.enums.OrganizationType.PILOT)
-                or (:pilotOnly = false and o.organizationType <> com.gymflow.domain.enums.OrganizationType.PILOT)
+                (:pilotOnly = true and o.organizationType = com.gymflow.domain.enums.OrganizationType.DEMO)
+                or (:pilotOnly = false and o.organizationType <> com.gymflow.domain.enums.OrganizationType.DEMO)
               )
             )
           )
@@ -97,8 +97,8 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
             or (:organizationType is not null and o.organizationType = :organizationType)
             or (
               :includeAllTypes = false and :organizationType is null and (
-                (:pilotOnly = true and o.organizationType = com.gymflow.domain.enums.OrganizationType.PILOT)
-                or (:pilotOnly = false and o.organizationType <> com.gymflow.domain.enums.OrganizationType.PILOT)
+                (:pilotOnly = true and o.organizationType = com.gymflow.domain.enums.OrganizationType.DEMO)
+                or (:pilotOnly = false and o.organizationType <> com.gymflow.domain.enums.OrganizationType.DEMO)
               )
             )
           )
@@ -115,11 +115,6 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
             @Param("status") OrganizationStatus status,
             @Param("plan") SubscriptionPlan plan,
             Pageable pageable
-    );
-
-    List<Organization> findAllByDeletedFalseAndOrganizationTypeAndPilotEndDateBefore(
-            OrganizationType organizationType,
-            LocalDate date
     );
 
     List<Organization> findAllByDeletedFalseAndOrganizationTypeAndSubscriptionDueDateIn(
@@ -153,12 +148,6 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
     long countByDeletedFalseAndOrganizationTypeAndStatusInAndSubscriptionDueDateBetween(
             OrganizationType organizationType,
             Collection<OrganizationStatus> statuses,
-            LocalDate startDate,
-            LocalDate endDate
-    );
-
-    long countByDeletedFalseAndOrganizationTypeAndPilotEndDateBetween(
-            OrganizationType organizationType,
             LocalDate startDate,
             LocalDate endDate
     );

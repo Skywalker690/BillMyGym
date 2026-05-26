@@ -1,5 +1,5 @@
 export type OrganizationStatus = "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
-export type OrganizationType = "REGULAR" | "PILOT" | "DEMO";
+export type OrganizationType = "REGULAR" | "DEMO";
 export type SubscriptionPlan = "STARTER" | "GROWTH" | "PRO" | "PILOT";
 
 export function organizationStatusLabel(status: OrganizationStatus): string {
@@ -16,14 +16,13 @@ export function organizationStatusLabel(status: OrganizationStatus): string {
 }
 
 export function organizationTypeLabel(type?: OrganizationType): string {
-  if (type === "PILOT") return "Pilot";
-  if (type === "DEMO") return "Demo";
-  return "Standard Billing";
+  if (type === "DEMO") return "Demo Workspace";
+  return "Regular Workspace";
 }
 
 export function subscriptionPlanLabel(plan?: SubscriptionPlan): string {
   if (!plan) return "Starter";
-  if (plan === "PILOT") return "Pilot";
+  if (plan === "PILOT") return "Legacy";
   return plan.charAt(0) + plan.slice(1).toLowerCase();
 }
 
@@ -41,7 +40,7 @@ export function organizationStatusDescription(status: OrganizationStatus): strin
 }
 
 export function foundingPartnerDescription(): string {
-  return "Pilot access has full features at Rs. 299/month. Demo keeps full features with a 3-member limit and no subscription fee.";
+  return "Demo workspaces are meant for walkthroughs and showcases, with full workflow visibility, no billing, and a capped member sandbox.";
 }
 
 export function notificationTypeLabel(type: string): string {
@@ -71,6 +70,6 @@ export function notificationMessageLabel(message: string): string {
     .replaceAll("Organization paused", "Subscription Renewal Required")
     .replaceAll("Organization Deactivated", "Account Inactive")
     .replaceAll("Organization deactivated", "Account Inactive")
-    .replaceAll("Pilot Access Ends", "Access Ends")
+    .replaceAll("Demo Access Ends", "Access Ends")
     .replaceAll("Trial Ends", "Free Trial Access Ends");
 }

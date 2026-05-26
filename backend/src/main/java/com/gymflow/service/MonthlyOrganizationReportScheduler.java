@@ -37,6 +37,9 @@ public class MonthlyOrganizationReportScheduler {
             List.of(OrganizationStatus.ACTIVE, OrganizationStatus.TRIAL)
         );
         for (Organization organization : organizations) {
+            if (organization.getOrganizationType() == com.gymflow.domain.enums.OrganizationType.DEMO) {
+                continue;
+            }
             if (!planAccessService.canReceiveMonthlyReports(organization)) {
                 continue;
             }

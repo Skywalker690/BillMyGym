@@ -29,8 +29,6 @@ public class OrganizationMapper {
             organization.getStatus(),
             organization.getTrialStartDate(),
             organization.getTrialEndDate(),
-            organization.getPilotStartDate(),
-            organization.getPilotEndDate(),
             organization.getSubscriptionDueDate(),
             organization.getPausedAt(),
             organization.getDeactivatedAt()

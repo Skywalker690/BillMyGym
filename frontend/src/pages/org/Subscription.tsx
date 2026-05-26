@@ -79,12 +79,11 @@ type SubscriptionPricing = {
 type SubscriptionStatus = {
   organizationId: number;
   organizationName: string;
-  organizationType: "REGULAR" | "PILOT" | "DEMO";
+  organizationType: "REGULAR" | "DEMO";
   organizationStatus: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
   subscriptionPlan: SubscriptionPlanKey;
   monthlyAmount: number;
   trialEndsAt?: string | null;
-  pilotEndsAt?: string | null;
   subscriptionDueDate?: string | null;
   currentPeriodStart?: string | null;
   currentPeriodEnd?: string | null;
@@ -219,7 +218,6 @@ const statusStyles: Record<string, string> = {
   TRIAL: "border-amber-200 bg-amber-100 text-amber-800",
   PAUSED: "border-orange-200 bg-orange-100 text-orange-800",
   DEACTIVATED: "border-rose-200 bg-rose-100 text-rose-800",
-  PILOT: "border-sky-200 bg-sky-100 text-sky-800",
   DEMO: "border-cyan-200 bg-cyan-100 text-cyan-800",
   REGULAR: "border-slate-200 bg-slate-100 text-slate-800",
   STARTER: "border-slate-200 bg-slate-100 text-slate-800",
@@ -243,7 +241,7 @@ function loadRazorpayScript() {
 }
 
 function preferredCheckoutPlan(subscription?: SubscriptionStatus): CheckoutPlanKey {
-  if (!subscription || subscription.subscriptionPlan === "PILOT") {
+  if (!subscription || subscription.organizationType === "DEMO") {
     return "GROWTH";
   }
   return subscription.subscriptionPlan;
@@ -516,25 +514,25 @@ export default function Subscription({ immersive = false, showPlans = false }: {
     );
   }
 
-  const isPilot = subscription.organizationType === "PILOT" || subscription.organizationType === "DEMO";
-  const isActive = subscription.organizationStatus === "ACTIVE" && !isPilot;
+  const isDemo = subscription.organizationType === "DEMO";
+  const isActive = subscription.organizationStatus === "ACTIVE" && !isDemo;
   const isTrial = subscription.organizationStatus === "TRIAL";
   const isPaused = subscription.organizationStatus === "PAUSED";
   const isDeactivated = subscription.organizationStatus === "DEACTIVATED";
   const hasInactiveSubscription = isPaused || isDeactivated;
-  const canCheckout = !isPilot && !isActive;
+  const canCheckout = !isDemo && !isActive;
   const selectedPlanDetails = checkoutPlans.find((plan) => plan.key === selectedPlan) ?? checkoutPlans[1];
   const selectedPlanEstimatedPrice = estimatedPlanPrice(selectedPlanDetails, subscription);
   const proPreview = proPricingPreview(subscription);
   const isCurrentPro = subscription.subscriptionPlan === "PRO";
-  const currentPlanStudioName = subscription.subscriptionPlan === "PILOT"
-    ? "Founding Partner Access"
+  const currentPlanStudioName = isDemo
+    ? "Demo Workspace"
     : subscriptionPlanLabel(subscription.subscriptionPlan);
   const memberLimitLabel = subscription.memberLimit?.unlimited
     ? `${subscription.memberLimit.usedMembers} / Unlimited`
     : `${subscription.memberLimit?.usedMembers ?? subscription.activeMembers} / ${subscription.memberLimit?.memberLimit ?? 0}`;
-  const lifecycleCards = isPilot
-    ? [{ label: "Founding Partner Access", value: `Access Ends: ${dateText(subscription.pilotEndsAt)}`, emphasis: "text-sky-700" }]
+  const lifecycleCards = isDemo
+    ? [{ label: "Demo Workspace", value: "This workspace is for product showcases and workflow walkthroughs.", emphasis: "text-sky-700" }]
     : isActive
       ? [
           {
@@ -563,8 +561,8 @@ export default function Subscription({ immersive = false, showPlans = false }: {
     if (createOrderMutation.isPending && selectedPlan === plan.key) {
       return "Opening checkout...";
     }
-    if (isPilot) {
-      return "Included with founding partner access";
+    if (isDemo) {
+      return "Billing disabled for demo workspace";
     }
     if (isActive) {
       return subscription.subscriptionPlan === plan.key ? "Active plan" : "Available at renewal";
@@ -602,7 +600,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
             <div>
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <Badge className={statusStyles[subscription.organizationStatus]}>{organizationStatusLabel(subscription.organizationStatus)}</Badge>
-                {(subscription.organizationType === "PILOT" || subscription.organizationType === "DEMO") && (
+                {subscription.organizationType === "DEMO" && (
                   <Badge className={statusStyles[subscription.organizationType]}>{organizationTypeLabel(subscription.organizationType)}</Badge>
                 )}
                 <Badge className={statusStyles[subscription.subscriptionPlan]}>{subscriptionPlanLabel(subscription.subscriptionPlan)}</Badge>
@@ -619,8 +617,8 @@ export default function Subscription({ immersive = false, showPlans = false }: {
               <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-slate-600">
                 {showPlans
                   ? `${subscription.organizationName} can continue with Starter, unlock rolling 6-month reports with Growth, or move to Pro for custom-range reporting and exports. Compare the plans below and continue when you're ready.`
-                  : isPilot
-                    ? `${subscription.organizationName} is currently running under founding partner access. Use this page to review access status, usage, and subscription guidance.`
+                  : isDemo
+                    ? `${subscription.organizationName} is currently running as a demo workspace. Use this page to review showcase access, usage, and plan guidance.`
                     : `${subscription.organizationName} can continue with Starter, unlock rolling 6-month reports with Growth, or move to Pro for custom-range reporting and exports. Use this page to review your billing status, usage, and renewal guidance.`}
               </p>
 
@@ -687,19 +685,19 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                   <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Currently Selected</div>
                   <div className="mt-2 flex items-end gap-2">
                     <span className="text-3xl font-black text-slate-950">
-                      {subscription.subscriptionPlan === "PILOT"
+                      {isDemo
                         ? currentPlanStudioName
                         : checkoutPlans.find((plan) => plan.key === subscription.subscriptionPlan)?.name ?? currentPlanStudioName}
                     </span>
                     <span className="pb-1 text-sm font-bold text-slate-500">
-                      {subscription.subscriptionPlan === "PILOT"
-                        ? "Priority early access"
+                      {isDemo
+                        ? "Showcase workspace"
                         : checkoutPlans.find((plan) => plan.key === subscription.subscriptionPlan)?.limit ?? "Premium early access"}
                     </span>
                   </div>
                   <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-                    {subscription.subscriptionPlan === "PILOT"
-                      ? "This workspace is currently running under founding partner access."
+                    {isDemo
+                      ? "This workspace is currently running in demo mode with billing disabled."
                       : `${money.format(subscription.pricing?.totalAmount ?? subscription.monthlyAmount)} per month is currently applied to this workspace.`}
                   </p>
                 </div>

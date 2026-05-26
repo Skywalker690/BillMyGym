@@ -32,8 +32,6 @@ public class OrganizationDtos {
         OrganizationStatus status,
         LocalDate trialStartDate,
         LocalDate trialEndDate,
-        LocalDate pilotStartDate,
-        LocalDate pilotEndDate,
         LocalDate subscriptionDueDate,
         OffsetDateTime pausedAt,
         OffsetDateTime deactivatedAt

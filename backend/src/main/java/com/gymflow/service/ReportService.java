@@ -168,15 +168,6 @@ public class ReportService {
         LocalDate validThrough = resolveValidityDate(organization);
         long daysRemaining = validThrough == null ? 0 : ChronoUnit.DAYS.between(today, validThrough);
 
-        if (organization.getOrganizationType() == OrganizationType.PILOT) {
-            return new SubscriptionValiditySummary(
-                "Pilot access",
-                daysRemaining,
-                validThrough == null ? "Access date unavailable" : "Valid through",
-                validThrough
-            );
-        }
-
         if (organization.getStatus() == OrganizationStatus.TRIAL) {
             return new SubscriptionValiditySummary(
                 "Trial access",
@@ -213,9 +204,6 @@ public class ReportService {
     }
 
     private LocalDate resolveValidityDate(Organization organization) {
-        if (organization.getOrganizationType() == OrganizationType.PILOT) {
-            return organization.getPilotEndDate();
-        }
         if (organization.getStatus() == OrganizationStatus.TRIAL) {
             return organization.getTrialEndDate() != null
                 ? organization.getTrialEndDate()

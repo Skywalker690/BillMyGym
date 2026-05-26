@@ -198,9 +198,6 @@ public class IndividualWhatsappReminderService {
         if (organization.getOrganizationType() == OrganizationType.DEMO) {
             return CUSTOM_REMINDER_LIMIT;
         }
-        if (organization.getOrganizationType() == OrganizationType.PILOT) {
-            return CUSTOM_REMINDER_LIMIT;
-        }
         SubscriptionPlan plan = planAccessService.resolvePlan(organization);
         return plan == SubscriptionPlan.PRO ? CUSTOM_REMINDER_LIMIT : null;
     }
