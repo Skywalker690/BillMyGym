@@ -35,6 +35,7 @@ import {
   organizationTypeLabel,
   subscriptionPlanLabel,
 } from "@/lib/subscriptionLabels";
+import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
 
 declare global {
   interface Window {
@@ -269,6 +270,7 @@ function proPricingPreview(subscription?: SubscriptionStatus) {
 }
 
 export default function Subscription({ immersive = false, showPlans = false }: { immersive?: boolean; showPlans?: boolean }) {
+  const { effectivePlan, isDemoWorkspace } = useDemoPlanPreview();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { logout } = useAuth();
@@ -291,8 +293,11 @@ export default function Subscription({ immersive = false, showPlans = false }: {
   });
 
   useEffect(() => {
-    setSelectedPlan(preferredCheckoutPlan(subscription));
-  }, [subscription?.subscriptionPlan]);
+    if (!subscription) {
+      return;
+    }
+    setSelectedPlan(isDemoWorkspace ? effectivePlan : preferredCheckoutPlan(subscription));
+  }, [effectivePlan, isDemoWorkspace, subscription]);
 
   useEffect(() => {
     if (!subscription) {
@@ -524,9 +529,10 @@ export default function Subscription({ immersive = false, showPlans = false }: {
   const selectedPlanDetails = checkoutPlans.find((plan) => plan.key === selectedPlan) ?? checkoutPlans[1];
   const selectedPlanEstimatedPrice = estimatedPlanPrice(selectedPlanDetails, subscription);
   const proPreview = proPricingPreview(subscription);
-  const isCurrentPro = subscription.subscriptionPlan === "PRO";
+  const currentShowcasePlan = isDemoWorkspace ? effectivePlan : subscription.subscriptionPlan;
+  const isCurrentPro = currentShowcasePlan === "PRO";
   const currentPlanStudioName = isDemo
-    ? "Demo Workspace"
+    ? `${subscriptionPlanLabel(currentShowcasePlan)} Demo Workspace`
     : subscriptionPlanLabel(subscription.subscriptionPlan);
   const memberLimitLabel = subscription.memberLimit?.unlimited
     ? `${subscription.memberLimit.usedMembers} / Unlimited`
@@ -685,9 +691,9 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                   <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Currently Selected</div>
                   <div className="mt-2 flex items-end gap-2">
                     <span className="text-3xl font-black text-slate-950">
-                      {isDemo
-                        ? currentPlanStudioName
-                        : checkoutPlans.find((plan) => plan.key === subscription.subscriptionPlan)?.name ?? currentPlanStudioName}
+                        {isDemo
+                          ? currentPlanStudioName
+                          : checkoutPlans.find((plan) => plan.key === subscription.subscriptionPlan)?.name ?? currentPlanStudioName}
                     </span>
                     <span className="pb-1 text-sm font-bold text-slate-500">
                       {isDemo
@@ -784,7 +790,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
             {checkoutPlans.map((plan) => {
               const Icon = plan.icon;
               const isSelected = selectedPlan === plan.key;
-              const isCurrent = subscription.subscriptionPlan === plan.key;
+                const isCurrent = currentShowcasePlan === plan.key;
               const isPro = plan.key === "PRO";
               const isGrowth = plan.key === "GROWTH";
               const isStarter = plan.key === "STARTER";

@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
 
 type ReminderLog = {
   id: number;
@@ -136,6 +137,7 @@ const shortDateTime = (value?: string) =>
     : "-";
 
 export default function Dashboard() {
+  const { effectivePlan, isDemoWorkspace } = useDemoPlanPreview();
   const { data: report, isLoading } = useQuery<DashboardReport>({
     queryKey: ["dashboardReport"],
     queryFn: async () => {
@@ -164,9 +166,11 @@ export default function Dashboard() {
   const recentReminderLogs = report?.recentReminderLogs ?? [];
   const monthlyMemberJoins = report?.monthlyMemberJoins ?? [];
   const joinedThisMonth = monthlyMemberJoins.at(-1)?.joinedMembers ?? 0;
-  const canViewAdvancedAnalytics = report?.planAccess?.canViewAdvancedAnalytics ?? true;
-  const isStarterPlan = report?.planName === "STARTER";
-  const isProPlan = report?.planName === "PRO";
+  const canViewAdvancedAnalytics = isDemoWorkspace
+    ? effectivePlan !== "STARTER"
+    : report?.planAccess?.canViewAdvancedAnalytics ?? true;
+  const isStarterPlan = (isDemoWorkspace ? effectivePlan : report?.planName) === "STARTER";
+  const isProPlan = (isDemoWorkspace ? effectivePlan : report?.planName) === "PRO";
   const isDemoGym = subscriptionStatus?.organizationType === "DEMO";
   const subscriptionValidity = report?.subscriptionValidity;
   const subscriptionPricing = report?.subscriptionPricing;
@@ -237,7 +241,7 @@ export default function Dashboard() {
 
     return (
       <div className="mx-auto max-w-7xl space-y-8 p-8">
-        {isDemoGym && <DemoWorkspaceBanner organizationName={subscriptionStatus?.organizationName} />}
+        {isDemoGym && <DemoWorkspaceBanner organizationName={subscriptionStatus?.organizationName} previewPlan={effectivePlan} />}
         <section className="billmygym-shell relative overflow-hidden rounded-[2rem] p-8 lg:p-10">
           <div className="relative z-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
             <div>
@@ -290,7 +294,7 @@ export default function Dashboard() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 p-8">
-      {isDemoGym && <DemoWorkspaceBanner organizationName={subscriptionStatus?.organizationName} />}
+      {isDemoGym && <DemoWorkspaceBanner organizationName={subscriptionStatus?.organizationName} previewPlan={effectivePlan} />}
       <section className="billmygym-shell relative overflow-hidden rounded-[2rem] p-8 lg:p-10">
         <div className="absolute inset-y-0 right-0 w-[38%] bg-[radial-gradient(circle_at_top,rgba(22,163,74,0.16),transparent_45%),radial-gradient(circle_at_bottom,rgba(245,158,11,0.12),transparent_35%)]" />
         <div className="relative z-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
@@ -550,7 +554,13 @@ export default function Dashboard() {
   );
 }
 
-function DemoWorkspaceBanner({ organizationName }: { organizationName?: string }) {
+function DemoWorkspaceBanner({
+  organizationName,
+  previewPlan,
+}: {
+  organizationName?: string;
+  previewPlan: "STARTER" | "GROWTH" | "PRO";
+}) {
   return (
     <section className="relative overflow-hidden rounded-[1.9rem] border border-sky-200 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(255,255,255,0.92)_45%,rgba(34,197,94,0.12))] p-6 shadow-sm">
       <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-sky-200/40 blur-2xl" />
@@ -566,8 +576,13 @@ function DemoWorkspaceBanner({ organizationName }: { organizationName?: string }
             This workspace is intended for showcasing workflows and product demonstrations. Billing is disabled, and data here can be used safely for walkthroughs.
           </p>
         </div>
-        <div className="rounded-[1.3rem] border border-white/80 bg-white/80 px-4 py-3 text-sm font-bold text-sky-800 shadow-sm">
-          Demo gym clearly marked
+        <div className="flex flex-col gap-2">
+          <div className="rounded-[1.3rem] border border-white/80 bg-white/80 px-4 py-3 text-sm font-bold text-sky-800 shadow-sm">
+            Demo gym clearly marked
+          </div>
+          <div className="rounded-[1.3rem] border border-slate-900/5 bg-slate-950 px-4 py-3 text-sm font-black uppercase tracking-[0.18em] text-white shadow-sm">
+            Previewing {previewPlan}
+          </div>
         </div>
       </div>
     </section>

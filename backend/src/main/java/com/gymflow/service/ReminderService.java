@@ -11,6 +11,7 @@ import com.gymflow.domain.enums.NotificationChannel;
 import com.gymflow.domain.enums.NotificationType;
 import com.gymflow.domain.enums.NotificationStatus;
 import com.gymflow.domain.enums.OrganizationStatus;
+import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.NotificationLogRepository;
 import com.gymflow.repository.OrganizationRepository;
@@ -143,7 +144,8 @@ public class ReminderService {
                 MANUAL_REMINDER_RUN_LIMIT_PER_MONTH,
                 0,
                 MANUAL_REMINDER_RUN_LIMIT_PER_MONTH,
-                true
+                true,
+                false
             )
         );
     }
@@ -158,24 +160,41 @@ public class ReminderService {
     }
 
     private ManualReminderQuotaResponse manualQuota(Long organizationId) {
-        OffsetDateTime monthStart = LocalDate.now(APP_ZONE)
-            .withDayOfMonth(1)
-            .atStartOfDay(APP_ZONE)
-            .toOffsetDateTime();
-        OffsetDateTime nextMonthStart = monthStart.plusMonths(1);
-        int used = Math.toIntExact(notificationLogRepository.countByOrganizationIdAndTypeAndDeletedFalseAndCreatedAtBetween(
-            organizationId,
-            NotificationType.MANUAL_REMINDER_TRIGGER,
-            monthStart,
-            nextMonthStart
-        ));
+        Organization organization = organizationRepository.findByIdAndDeletedFalse(organizationId)
+            .orElseThrow(() -> new BadRequestException("Organization not found"));
+        if (organization.getOrganizationType() == OrganizationType.DEMO) {
+            int used = countManualTriggersThisMonth(organizationId);
+            return new ManualReminderQuotaResponse(
+                Integer.MAX_VALUE,
+                used,
+                Integer.MAX_VALUE,
+                true,
+                true
+            );
+        }
+        int used = countManualTriggersThisMonth(organizationId);
         int remaining = Math.max(MANUAL_REMINDER_RUN_LIMIT_PER_MONTH - used, 0);
         return new ManualReminderQuotaResponse(
             MANUAL_REMINDER_RUN_LIMIT_PER_MONTH,
             used,
             remaining,
-            remaining > 0
+            remaining > 0,
+            false
         );
+    }
+
+    private int countManualTriggersThisMonth(Long organizationId) {
+        OffsetDateTime monthStart = LocalDate.now(APP_ZONE)
+            .withDayOfMonth(1)
+            .atStartOfDay(APP_ZONE)
+            .toOffsetDateTime();
+        OffsetDateTime nextMonthStart = monthStart.plusMonths(1);
+        return Math.toIntExact(notificationLogRepository.countByOrganizationIdAndTypeAndDeletedFalseAndCreatedAtBetween(
+            organizationId,
+            NotificationType.MANUAL_REMINDER_TRIGGER,
+            monthStart,
+            nextMonthStart
+        ));
     }
 
     private void recordManualReminderTrigger(Long organizationId, int candidateCount) {

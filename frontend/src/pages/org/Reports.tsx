@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
 
 type ReportPeriod = "monthly" | "yearly";
 type ReportRange = "current_month" | "last_month" | "current_year" | "custom";
@@ -139,6 +140,7 @@ function reportWindowLabel(startDate?: string | null, endDate?: string | null) {
 }
 
 export default function Reports() {
+  const { effectivePlan, effectivePlanAccess, isDemoWorkspace } = useDemoPlanPreview();
   const [period, setPeriod] = useState<ReportPeriod>("monthly");
   const [range, setRange] = useState<ReportRange>("current_year");
   const [customFrom, setCustomFrom] = useState(() => currentYearStartInIndiaIso());
@@ -154,7 +156,9 @@ export default function Reports() {
     staleTime: 60_000,
   });
 
-  const isGrowthPlan = subscription?.subscriptionPlan === "GROWTH";
+  const effectiveAccess = effectivePlanAccess(subscription?.planAccess);
+  const previewPlan = isDemoWorkspace ? effectivePlan : subscription?.subscriptionPlan;
+  const isGrowthPlan = previewPlan === "GROWTH";
 
   const params = useMemo(() => {
     if (isGrowthPlan) {
@@ -168,8 +172,8 @@ export default function Reports() {
     return next;
   }, [period, range, customFrom, customTo, isGrowthPlan]);
 
-  const canViewReports = Boolean(subscription?.planAccess?.canReceiveMonthlyReports);
-  const canExportReports = Boolean(subscription?.planAccess?.canExportReports);
+  const canViewReports = Boolean(effectiveAccess.canReceiveMonthlyReports);
+  const canExportReports = Boolean(effectiveAccess.canExportReports);
   const todayIso = todayInIndiaIso();
   const currentMonthKey = currentYearMonthInIndia();
   const customRangeInvalid = range === "custom" && (!customFrom || !customTo || customFrom > customTo || customFrom > todayIso);
@@ -260,7 +264,7 @@ export default function Reports() {
                 Upgrade to Pro to unlock this feature
               </h1>
               <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">
-                Financial reports, month-wise revenue views, and report exports are available on Growth, Pro, and Demo workspaces.
+                Financial reports, month-wise revenue views, and report exports are available on Growth and Pro. Use the demo plan switch to showcase each access level.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link to="/app/subscription/plans">
@@ -272,7 +276,7 @@ export default function Reports() {
             </div>
             <div className="rounded-[1.7rem] border border-white/80 bg-white/72 p-6 shadow-sm">
               <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Current Plan</div>
-              <div className="mt-2 text-4xl font-black tracking-tight text-slate-950">{subscription?.subscriptionPlan ?? "STARTER"}</div>
+              <div className="mt-2 text-4xl font-black tracking-tight text-slate-950">{previewPlan ?? "STARTER"}</div>
               <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
                 Upgrade to Pro to unlock this feature
               </div>
@@ -297,7 +301,7 @@ export default function Reports() {
                 <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
                 Financial Reports
               </Badge>
-              <Badge className="border-slate-200 bg-white/80 text-slate-700">{report?.planName ?? subscription?.subscriptionPlan ?? "PLAN"}</Badge>
+              <Badge className="border-slate-200 bg-white/80 text-slate-700">{previewPlan ?? report?.planName ?? "PLAN"}</Badge>
             </div>
             <h1 className="mt-5 max-w-3xl text-4xl font-black tracking-tight text-slate-950 lg:text-5xl">
               Month-wise revenue clarity for the gym.

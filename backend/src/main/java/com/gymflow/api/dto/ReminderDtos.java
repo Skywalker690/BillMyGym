@@ -19,7 +19,8 @@ public class ReminderDtos {
         int monthlyLimit,
         int usedThisMonth,
         int remainingThisMonth,
-        boolean canRun
+        boolean canRun,
+        boolean unlimited
     ) {
     }
 

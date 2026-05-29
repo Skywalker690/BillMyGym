@@ -13,6 +13,7 @@ import {
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import type { AppRole, NavItemConfig } from "./navigation";
+import { useDemoPlanPreview, type DemoPreviewPlan } from "@/context/DemoPlanPreviewContext";
 
 interface TopbarProps {
   user: {
@@ -44,6 +45,7 @@ export function Topbar({
   onOpenMobileSidebar,
   onLogout,
 }: TopbarProps) {
+  const { isDemoWorkspace, previewPlan, setPreviewPlan } = useDemoPlanPreview();
   const location = useLocation();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -74,6 +76,7 @@ export function Topbar({
   const primaryName = (user?.name || user?.email || "BillMyGym").split(" ")[0];
   const initials = (user?.name || user?.email || "G").trim().charAt(0).toUpperCase();
   const isSuperAdmin = role === "SUPER_ADMIN";
+  const showDemoPlanToggle = role === "ORG_ADMIN" && isDemoWorkspace;
   const quickLinks = isSuperAdmin
     ? [
         {
@@ -156,6 +159,34 @@ export function Topbar({
         </div>
 
         <div className="flex max-w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:gap-3">
+          {showDemoPlanToggle && (
+            <div className="flex items-center gap-2 rounded-[1.6rem] border border-sky-100 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(255,255,255,0.92))] px-3 py-2 shadow-sm">
+              <div className="hidden pr-1 sm:block">
+                <div className="text-[9px] font-black uppercase tracking-[0.22em] text-sky-700">Demo Plan</div>
+                <div className="text-xs font-bold text-slate-500">Live showcase switch</div>
+              </div>
+              <div className="flex items-center rounded-full border border-white/80 bg-white/90 p-1 shadow-inner">
+                {(["STARTER", "GROWTH", "PRO"] as DemoPreviewPlan[]).map((plan) => {
+                  const active = previewPlan === plan;
+                  return (
+                    <button
+                      key={plan}
+                      type="button"
+                      onClick={() => setPreviewPlan(plan)}
+                      className={cn(
+                        "rounded-full px-3 py-2 text-[11px] font-black uppercase tracking-[0.18em] transition-all",
+                        active
+                          ? "bg-slate-950 text-white shadow-[0_10px_24px_-16px_rgba(15,23,42,0.85)]"
+                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900",
+                      )}
+                    >
+                      {plan}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {quickLinks.map((item) => (
             <Link
               key={item.to}

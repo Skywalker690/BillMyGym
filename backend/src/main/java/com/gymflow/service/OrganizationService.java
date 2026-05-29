@@ -27,9 +27,11 @@ import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -81,6 +83,9 @@ public class OrganizationService {
 
         Organization organization = organizationRepository.findByIdAndDeletedFalse(id)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
+        if (user.role() != Role.SUPER_ADMIN) {
+            validateDemoSelfServiceUpdate(organization, request);
+        }
         validateAdminUniqueness(request.adminEmail(), request.adminPhoneNumber(), organization.getId());
         OrganizationType previousType = organization.getOrganizationType();
         OrganizationStatus previousStatus = organization.getStatus();
@@ -293,5 +298,41 @@ public class OrganizationService {
         if (organization.getStatus() == OrganizationStatus.DEACTIVATED && organization.getDeactivatedAt() == null) {
             organization.setDeactivatedAt(OffsetDateTime.now(APP_ZONE));
         }
+    }
+
+    private void validateDemoSelfServiceUpdate(Organization organization, UpdateOrganizationRequest request) {
+        if (organization.getOrganizationType() != OrganizationType.DEMO) {
+            throw new ForbiddenException("Only demo workspaces can self-manage primary contact details.");
+        }
+        boolean changingRestrictedField =
+            !Objects.equals(request.name(), organization.getName())
+                || !Objects.equals(request.district(), organization.getDistrict())
+                || !Objects.equals(request.place(), organization.getPlace())
+                || !Objects.equals(request.logoUrl(), organization.getLogoUrl())
+                || !Objects.equals(request.mapLocationLink(), organization.getMapLocationLink())
+                || !Objects.equals(request.address(), organization.getAddress())
+                || !Objects.equals(request.adminEmail(), organization.getAdminEmail())
+                || !Objects.equals(request.description(), organization.getDescription())
+                || compareMoney(request.monthlyMembershipFee(), organization.getMonthlyMembershipFee()) != 0
+                || compareMoney(request.admissionFee(), organization.getAdmissionFee()) != 0
+                || request.organizationType() != null && request.organizationType() != organization.getOrganizationType()
+                || request.subscriptionPlan() != null && request.subscriptionPlan() != organization.getSubscriptionPlan()
+                || request.status() != null && request.status() != organization.getStatus();
+        if (changingRestrictedField) {
+            throw new ForbiddenException("Demo org admins can only update the primary contact name and phone number.");
+        }
+    }
+
+    private int compareMoney(BigDecimal left, BigDecimal right) {
+        if (left == null && right == null) {
+            return 0;
+        }
+        if (left == null) {
+            return -1;
+        }
+        if (right == null) {
+            return 1;
+        }
+        return left.compareTo(right);
     }
 }

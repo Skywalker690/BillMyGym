@@ -8,10 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
 
 type PasswordFieldName = "currentPassword" | "newPassword" | "confirmPassword" | "otp";
 
 export default function OrganizationProfile() {
+  const { isDemoWorkspace } = useDemoPlanPreview();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [passwordOtpSent, setPasswordOtpSent] = useState(false);
@@ -93,8 +95,8 @@ export default function OrganizationProfile() {
       mapLocationLink: organization.mapLocationLink,
       address: organization.address,
       description: organization.description || null,
-      adminFullName: organization.adminFullName,
-      adminPhoneNumber: organization.adminPhoneNumber,
+      adminFullName: isDemoWorkspace ? data.adminName : organization.adminFullName,
+      adminPhoneNumber: isDemoWorkspace ? normalizeIndianPhone(data.adminPhone) : organization.adminPhoneNumber,
       adminEmail: organization.adminEmail,
       monthlyMembershipFee: organization.monthlyMembershipFee,
       admissionFee: organization.admissionFee,
@@ -189,7 +191,11 @@ export default function OrganizationProfile() {
           <div className="flex-1">
             <div className="text-[10px] font-black uppercase tracking-[0.26em] text-emerald-700">Workspace Identity</div>
             <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">{organization.name}</h1>
-            <p className="mt-2 text-sm font-medium text-slate-600">Maintain your public gym identity, primary admin contact, and billing-facing organization details.</p>
+            <p className="mt-2 text-sm font-medium text-slate-600">
+              {isDemoWorkspace
+                ? "Update the demo workspace contact number used during live walkthroughs and manual reminder showcases."
+                : "Maintain your public gym identity, primary admin contact, and billing-facing organization details."}
+            </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[420px]">
             <IdentityCard label="Organization ID" value={`ORG-${organization.id}`} tone="slate" />
@@ -206,16 +212,29 @@ export default function OrganizationProfile() {
               <User className="h-5 w-5 text-emerald-700" />
               Primary Contact
             </h2>
+            {isDemoWorkspace && (
+              <p className="mt-2 text-sm font-semibold text-sky-700">
+                Demo gyms can update the primary contact used for manual reminder showcases.
+              </p>
+            )}
           </div>
           <div className="grid gap-6 p-6 md:grid-cols-2">
             <Field label="Admin Full Name" icon={<User className="h-4 w-4" />}>
-              <Input readOnly {...register("adminName")} className="h-11 rounded-xl bg-slate-50/80 pl-10 text-slate-600" />
+              <Input
+                readOnly={!isDemoWorkspace}
+                {...register("adminName")}
+                className={`h-11 rounded-xl pl-10 ${isDemoWorkspace ? "bg-white/80 text-slate-900" : "bg-slate-50/80 text-slate-600"}`}
+              />
             </Field>
             <Field label="Admin Email" icon={<Mail className="h-4 w-4" />}>
               <Input readOnly type="email" {...register("adminEmail")} className="h-11 rounded-xl bg-slate-50/80 pl-10 text-slate-600" />
             </Field>
             <Field label="Admin Phone Number" icon={<Phone className="h-4 w-4" />}>
-              <Input readOnly {...register("adminPhone")} className="h-11 rounded-xl bg-slate-50/80 pl-10 text-slate-600" />
+              <Input
+                readOnly={!isDemoWorkspace}
+                {...register("adminPhone")}
+                className={`h-11 rounded-xl pl-10 ${isDemoWorkspace ? "bg-white/80 text-slate-900" : "bg-slate-50/80 text-slate-600"}`}
+              />
             </Field>
             <Field label="Monthly Membership Fee (INR)">
               <Input readOnly type="number" {...register("monthlyMembershipFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-slate-50/80 text-slate-600" />
@@ -308,9 +327,15 @@ export default function OrganizationProfile() {
         </div>
 
         <div className="flex justify-end pt-2">
-          <Button type="submit" disabled={isSubmitting} className="h-12 rounded-full bg-slate-950 px-8 font-bold text-white hover:bg-slate-800">
-            {isSubmitting ? "Saving..." : "Save Profile"}
-          </Button>
+          {isDemoWorkspace ? (
+            <Button type="submit" disabled={isSubmitting} className="h-12 rounded-full bg-slate-950 px-8 font-bold text-white hover:bg-slate-800">
+              {isSubmitting ? "Saving..." : "Save Demo Contact"}
+            </Button>
+          ) : (
+            <div className="rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-500">
+              Contact details are managed by platform admin for regular workspaces.
+            </div>
+          )}
         </div>
       </form>
     </div>
@@ -341,6 +366,19 @@ function SecureField({ label, error, children }: { label: string; error?: string
 
 function formatIndianPhone(phone: string) {
   return phone.replace(/^\+?91\s?/, "").trim();
+}
+
+function normalizeIndianPhone(phone: string) {
+  const trimmed = phone.trim();
+  if (!trimmed) return trimmed;
+  const digits = trimmed.replace(/[^\d]/g, "");
+  if (digits.length === 10) {
+    return `+91${digits}`;
+  }
+  if (digits.length === 12 && digits.startsWith("91")) {
+    return `+${digits}`;
+  }
+  return trimmed.startsWith("+") ? trimmed : `+${trimmed}`;
 }
 
 function IdentityCard({ label, value, tone }: { label: string; value: string; tone: "slate" | "emerald" | "amber" }) {

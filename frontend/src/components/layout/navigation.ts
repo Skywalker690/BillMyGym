@@ -83,21 +83,21 @@ export const getSidebarNavItems = (role: AppRole | null | undefined, referralsEn
       icon: Clock3,
       section: "Operations",
     },
+    {
+      label: "Billing",
+      href: "/app/subscription",
+      icon: CreditCard,
+      section: "Billing",
+    },
   ];
-
-  if (referralsEnabled) {
-    orgAdminItems.push({
-      label: "Referrals",
-      href: "/app/referrals",
-      icon: Gift,
-      section: "Operations",
-    });
-  }
 
   return orgAdminItems;
 };
 
-export const getProfileNavItems = (role: AppRole | null | undefined): NavItemConfig[] => {
+export const getProfileNavItems = (
+  role: AppRole | null | undefined,
+  referralsEnabled: boolean = true,
+): NavItemConfig[] => {
   if (role === "SUPER_ADMIN") {
     return [
       {
@@ -121,7 +121,7 @@ export const getProfileNavItems = (role: AppRole | null | undefined): NavItemCon
     ];
   }
 
-  return [
+  const items: NavItemConfig[] = [
     {
       label: "Organization Profile",
       href: "/app/organization",
@@ -134,8 +134,18 @@ export const getProfileNavItems = (role: AppRole | null | undefined): NavItemCon
       icon: Settings,
       section: "Account",
     },
-
   ];
+
+  if (referralsEnabled) {
+    items.push({
+      label: "Referrals",
+      href: "/app/referrals",
+      icon: Gift,
+      section: "Account",
+    });
+  }
+
+  return items;
 };
 
 export const getPageContext = (pathname: string, role: AppRole | null | undefined) => {

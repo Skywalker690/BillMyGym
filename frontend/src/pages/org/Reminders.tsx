@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
+import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
 
 export default function Reminders() {
+  const { isDemoWorkspace } = useDemoPlanPreview();
   const queryClient = useQueryClient();
 
   const { data: reminderReport, isLoading } = useQuery({
@@ -40,6 +42,7 @@ export default function Reminders() {
   const lastRun = logs[0];
   const manualRunsUsed = Number(manualQuota?.usedThisMonth ?? 0);
   const manualRunLimit = Number(manualQuota?.monthlyLimit ?? 20);
+  const unlimitedManualRuns = Boolean(manualQuota?.unlimited);
   const canRunManual = Boolean(manualQuota?.canRun ?? true);
 
   return (
@@ -87,12 +90,21 @@ export default function Reminders() {
               <p className="mt-2 text-sm font-medium text-slate-500">Current digest delivery channel state and workflow status.</p>
             </div>
             <div className="space-y-4 p-6">
-              <SignalRow label="Manual runs used" value={`${manualRunsUsed} / ${manualRunLimit}`} />
+              <SignalRow label="Manual runs used" value={unlimitedManualRuns ? `${manualRunsUsed} this month` : `${manualRunsUsed} / ${manualRunLimit}`} />
               <SignalRow label="WhatsApp digest" value={settings?.whatsappEnabled ? "Enabled" : "Disabled"} />
               <SignalRow label="Email digest" value={settings?.emailEnabled ? "Enabled" : "Disabled"} />
-              <div className="rounded-[1.4rem] border border-amber-100 bg-amber-50/70 p-4 text-sm font-semibold text-amber-900">
-                Manual execution is capped at 20 runs per month for each organization. Scheduled reminder jobs are not counted in this limit.
-              </div>
+              {unlimitedManualRuns ? (
+                <div className="rounded-[1.4rem] border border-sky-100 bg-sky-50/80 p-4 text-sm font-semibold text-sky-900">
+                  This demo workspace has unlimited manual runs for showcase use only. Scheduled reminder jobs still remain separate from manual control-page runs.
+                </div>
+              ) : (
+                <div className="rounded-[1.4rem] border border-amber-100 bg-amber-50/70 p-4 text-sm font-semibold text-amber-900">
+                  Manual execution is capped at 20 runs per month for each organization. Scheduled reminder jobs are not counted in this limit.
+                </div>
+              )}
+              {isDemoWorkspace && (
+                <Badge className="w-fit border-sky-200 bg-sky-100 text-sky-800">Demo purpose only</Badge>
+              )}
               {!canRunManual && (
                 <div className="rounded-[1.4rem] border border-rose-100 bg-rose-50/80 p-4 text-sm font-semibold text-rose-900">
                   The monthly manual reminder limit has been reached. The run button will unlock again at the start of next month.

@@ -11,6 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
 
 const PAGE_SIZE = 40;
 const INDIAN_TIME_ZONE = "Asia/Kolkata";
@@ -33,6 +34,7 @@ const money = (value?: number | string | null) =>
   }).format(Number(value ?? 0));
 
 export default function MembersList() {
+  const { effectivePlanAccess } = useDemoPlanPreview();
   const { user } = useAuth();
   const [searchInput, setSearchInput] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
@@ -186,7 +188,7 @@ export default function MembersList() {
   }, [data?.members]);
   const summary = data?.summary ?? {};
   const memberLimit = summary.memberLimit;
-  const canUseMemberMessaging = Boolean(subscriptionStatus?.planAccess?.canUsePremiumFeatures);
+  const canUseMemberMessaging = Boolean(effectivePlanAccess(subscriptionStatus?.planAccess).canUsePremiumFeatures);
   const memberTabs = [
     { id: "ALL" as const, label: "All Members", count: summary.totalMembers ?? 0 },
     { id: "ACTIVE" as const, label: "Active", count: summary.activeMembers ?? 0 },

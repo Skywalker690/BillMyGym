@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.text.NumberFormat;
+import java.util.Date;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -289,9 +290,12 @@ public class EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(fromEmail, SENDER_NAME);
+            helper.setReplyTo(fromEmail, SENDER_NAME);
             helper.setTo(toEmail);
             helper.setSubject(subject);
-            helper.setText(html, true);
+            helper.setText(toPlainText(html), html);
+            message.setSentDate(new Date());
+            message.setHeader("X-Auto-Response-Suppress", "All");
             mailSender.send(message);
             if (organization != null) {
                 usageMetricService.recordEmailSent(organization);
@@ -912,6 +916,27 @@ public class EmailService {
             .replace(">", "&gt;")
             .replace("\"", "&quot;")
             .replace("'", "&#39;");
+    }
+
+    private String toPlainText(String html) {
+        if (html == null || html.isBlank()) {
+            return "";
+        }
+        return html
+            .replaceAll("(?i)<br\\s*/?>", "\n")
+            .replaceAll("(?i)</p>", "\n\n")
+            .replaceAll("(?i)</li>", "\n")
+            .replaceAll("(?i)<li>", "- ")
+            .replaceAll("<[^>]+>", " ")
+            .replace("&nbsp;", " ")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'")
+            .replaceAll("[ \\t]+", " ")
+            .replaceAll("\\n{3,}", "\n\n")
+            .trim();
     }
 }
 
