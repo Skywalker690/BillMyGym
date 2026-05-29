@@ -13,7 +13,7 @@ public class MemberDtos {
 
     public record MemberRequest(
         @NotBlank String fullName,
-        @NotBlank String phone,
+        String phone,
         MemberStatus status,
         String deactivationReason
     ) {

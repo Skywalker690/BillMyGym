@@ -313,7 +313,7 @@ export default function MembersList() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="font-black text-slate-950">{member.fullName}</div>
-                            <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{member.phone}</div>
+                            <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{member.phone || "No phone number"}</div>
                             <div className="mt-2">
                               <Badge
                                 className={cn(
@@ -329,13 +329,22 @@ export default function MembersList() {
                             {canSendMemberWhatsApp(member, canUseMemberMessaging) && (
                               <button
                                 type="button"
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100 hover:text-emerald-800"
+                                className={cn(
+                                  "inline-flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition-colors",
+                                  hasMemberPhone(member)
+                                    ? "border-emerald-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                                    : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                                )}
                                 aria-label={`Send WhatsApp reminder to ${member.fullName}`}
-                                title="Send WhatsApp reminder"
+                                title={hasMemberPhone(member) ? "Send WhatsApp reminder" : "Add a phone number to send WhatsApp reminder"}
                                 onClick={() => {
+                                  if (!hasMemberPhone(member)) {
+                                    return;
+                                  }
                                   sendReminderMutation.reset();
                                   setReminderMember(member);
                                 }}
+                                disabled={!hasMemberPhone(member)}
                               >
                                 <MessageCircleMore className="h-4 w-4" />
                               </button>
@@ -537,6 +546,10 @@ function canSendMemberWhatsApp(member: any, canUseMemberMessaging: boolean) {
   return canUseMemberMessaging && member.status === "ACTIVE" && member.currentMembership?.status === "OVERDUE";
 }
 
+function hasMemberPhone(member: any) {
+  return Boolean(member?.phone && String(member.phone).trim());
+}
+
 function resolveQuickRenewStartDate(currentEndDate?: string) {
   if (!currentEndDate) {
     return todayInIndiaIso();
@@ -622,9 +635,9 @@ function WhatsappReminderModal({
 
           <div className="mt-5 rounded-[1.35rem] border border-white/80 bg-white/78 p-4 shadow-sm">
             <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Member</div>
-            <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div className="min-w-0 break-words text-xl font-black text-slate-950">{preview?.memberName ?? member.fullName}</div>
-              <div className="shrink-0 text-sm font-bold text-slate-500">{preview?.phone ?? member.phone ?? "-"}</div>
+              <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0 break-words text-xl font-black text-slate-950">{preview?.memberName ?? member.fullName}</div>
+              <div className="shrink-0 text-sm font-bold text-slate-500">{preview?.phone ?? member.phone ?? "No phone number"}</div>
             </div>
           </div>
 
@@ -645,7 +658,7 @@ function WhatsappReminderModal({
                 </div>
               ) : error ? (
                 <div className="rounded-2xl bg-white px-4 py-5 text-sm font-semibold text-rose-700 shadow-sm">
-                  Unable to prepare WhatsApp reminder.
+                  {member.phone ? "Unable to prepare WhatsApp reminder." : "This member does not have a phone number yet. Add it from Edit Member to enable WhatsApp reminders."}
                 </div>
               ) : (
                 <div className="max-w-full break-words rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-sm font-semibold leading-6 text-slate-800 shadow-sm sm:max-w-[92%]">
@@ -930,6 +943,7 @@ function MemberLimitCard({
   const unlimited = Boolean(memberLimit?.unlimited);
   const usagePercent = unlimited ? 0 : Number(memberLimit?.usagePercent ?? 0);
   const remainingSlots = Number(memberLimit?.remainingSlots ?? 0);
+  const activePricing = !unlimited && limit !== null;
 
   return (
     <div className="glass-panel w-full max-w-sm rounded-[1.7rem] p-5">
@@ -946,17 +960,15 @@ function MemberLimitCard({
                 <Info className="h-3.5 w-3.5" />
               </button>
               <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-3 w-56 -translate-x-1/2 rounded-2xl border border-emerald-100 bg-slate-950 px-4 py-3 text-left text-[11px] font-bold normal-case tracking-normal text-white opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100">
-                {deactivatedMembers} deactivated members are included in this usage limit.
+                {deactivatedMembers} deactivated members stay in your directory, but only active members affect Starter and Growth pricing.
               </div>
             </div>
           </div>
-          <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-            {unlimited ? `${usedMembers} / Unlimited` : `${usedMembers} / ${limit ?? 0}`}
-          </div>
+          <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{unlimited ? `${usedMembers} Active` : `${usedMembers} / ${limit ?? 0}`}</div>
         </div>
         <Badge className="border-slate-200 bg-white/80 text-slate-700">{memberLimit?.plan ?? "STARTER"}</Badge>
       </div>
-      {!unlimited ? (
+      {activePricing ? (
         <>
           <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-200">
             <div
@@ -966,12 +978,13 @@ function MemberLimitCard({
           </div>
           <div className="mt-3 flex items-center justify-between gap-3 text-sm font-bold text-slate-600">
             <span>{usagePercent}%</span>
-            <span>{remainingSlots} slots remaining</span>
+            <span>{remainingSlots} active members included before overage</span>
           </div>
+          <div className="mt-3 text-sm font-semibold text-slate-500">Total members can remain unlimited. Billing reacts only to active members.</div>
         </>
       ) : (
         <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
-          Unlimited member capacity
+          Unlimited active-member scale on the current plan
         </div>
       )}
     </div>

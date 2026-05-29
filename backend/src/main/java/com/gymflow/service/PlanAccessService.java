@@ -67,7 +67,7 @@ public class PlanAccessService {
 
     public void requireAdvancedAnalytics() {
         if (!canViewAdvancedAnalytics()) {
-            throw new ForbiddenException("Upgrade to Growth or Pro to access advanced analytics.");
+            throw new ForbiddenException("Advanced analytics are available on Starter, Growth, and Pro plans.");
         }
     }
 

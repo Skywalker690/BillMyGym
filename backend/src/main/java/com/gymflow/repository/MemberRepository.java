@@ -33,8 +33,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
         """)
     Optional<Member> findByIdAndOrganizationIdAndDeletedFalseForUpdate(@Param("id") Long id, @Param("organizationId") Long organizationId);
 
-    Optional<Member> findByOrganizationIdAndPhoneAndDeletedFalse(Long organizationId, String phone);
-
     long countByOrganizationIdAndDeletedFalseAndStatus(Long organizationId, MemberStatus status);
 
     long countByOrganizationIdAndDeletedFalseAndStatusIn(Long organizationId, Collection<MemberStatus> statuses);

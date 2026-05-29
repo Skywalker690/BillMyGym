@@ -214,7 +214,7 @@ export default function Reports() {
 
   async function exportReport(type: "csv" | "pdf") {
     if (!canExportReports) {
-      toast.error("Upgrade to Pro to unlock this feature");
+      toast.error("Report exports are available on the Pro plan.");
       return;
     }
     if (customRangeInvalid) {
@@ -261,7 +261,7 @@ export default function Reports() {
                 Reports Locked
               </Badge>
               <h1 className="mt-5 max-w-2xl text-4xl font-black tracking-tight text-slate-950 lg:text-5xl">
-                Upgrade to Pro to unlock this feature
+                Reports are available on Growth and Pro
               </h1>
               <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">
                 Financial reports, month-wise revenue views, and report exports are available on Growth and Pro. Use the demo plan switch to showcase each access level.
@@ -278,7 +278,7 @@ export default function Reports() {
               <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Current Plan</div>
               <div className="mt-2 text-4xl font-black tracking-tight text-slate-950">{previewPlan ?? "STARTER"}</div>
               <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
-                Upgrade to Pro to unlock this feature
+                Starter includes the revenue dashboard, but reports start on Growth.
               </div>
             </div>
           </div>
@@ -382,7 +382,7 @@ export default function Reports() {
               <Button
                 type="button"
                 className="h-11 rounded-xl bg-slate-200 px-5 font-bold text-slate-600 hover:bg-slate-200"
-                onClick={() => toast.error("Upgrade to Pro to unlock this feature")}
+                onClick={() => toast.error("Report exports are available on the Pro plan.")}
               >
                 <Lock className="mr-2 h-4 w-4" />
                 Export Locked
@@ -498,7 +498,7 @@ export default function Reports() {
 
         {!canExportReports && (
           <div className="border-t border-white/70 px-5 py-4 text-sm font-bold text-amber-900">
-            {isGrowthPlan ? "Upgrade to Pro to unlock custom date ranges and exports" : "Upgrade to Pro to unlock this feature"}
+            {isGrowthPlan ? "Upgrade to Pro to unlock custom date ranges and exports" : "Starter includes dashboard analytics, while reports begin on Growth."}
           </div>
         )}
       </section>

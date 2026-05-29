@@ -33,8 +33,16 @@ public class MemberMapper {
 
     public void apply(Member member, MemberRequest request) {
         member.setFullName(request.fullName());
-        member.setPhone(request.phone());
+        member.setPhone(normalizePhone(request.phone()));
         member.setStatus(request.status() == null ? MemberStatus.ACTIVE : request.status());
         member.setDeactivationReason(request.deactivationReason());
+    }
+
+    private String normalizePhone(String phone) {
+        if (phone == null) {
+            return null;
+        }
+        String normalized = phone.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

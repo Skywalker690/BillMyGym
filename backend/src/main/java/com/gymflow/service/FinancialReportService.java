@@ -59,7 +59,7 @@ public class FinancialReportService {
     public FinancialReportResponse financialReport(String period, String range, LocalDate from, LocalDate to) {
         Organization organization = currentOrganization();
         if (!planAccessService.canReceiveMonthlyReports(organization)) {
-            throw new ForbiddenException("Upgrade to Pro to unlock this feature");
+            throw new ForbiddenException("Financial reports are available on Growth and Pro plans.");
         }
 
         ReportWindow window = resolveWindow(organization, period, range, from, to);

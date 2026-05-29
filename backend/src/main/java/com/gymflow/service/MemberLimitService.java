@@ -20,11 +20,14 @@ public class MemberLimitService {
         if (requestedStatus != null && requestedStatus != MemberStatus.ACTIVE) {
             return;
         }
+        if (organization.getOrganizationType() != OrganizationType.DEMO) {
+            return;
+        }
         MemberLimitSummary usage = usage(organization);
         if (!usage.unlimited() && usage.usedMembers() >= usage.memberLimit()) {
             throw new BadRequestException(
-                "Member limit reached for the %s plan (%d/%d total members)."
-                    .formatted(usage.plan().name(), usage.usedMembers(), usage.memberLimit())
+                "Demo member sandbox limit reached (%d/%d members)."
+                    .formatted(usage.usedMembers(), usage.memberLimit())
             );
         }
     }
@@ -38,14 +41,16 @@ public class MemberLimitService {
 
     public MemberLimitSummary usage(Organization organization) {
         SubscriptionPlan plan = planAccessService.resolvePlan(organization);
-        long usedMembers = memberRepository.countByOrganizationIdAndDeletedFalse(organization.getId());
+        long usedMembers = organization.getOrganizationType() == OrganizationType.DEMO
+            ? memberRepository.countByOrganizationIdAndDeletedFalse(organization.getId())
+            : memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(organization.getId(), MemberStatus.ACTIVE);
         Integer limit;
         if (organization.getOrganizationType() == OrganizationType.DEMO) {
             limit = Integer.valueOf(50);
         } else {
             limit = plan.memberLimit();
         }
-        boolean unlimited = limit == null;
+        boolean unlimited = organization.getOrganizationType() != OrganizationType.DEMO;
         long remaining = unlimited ? Long.MAX_VALUE : Math.max(limit - usedMembers, 0);
         int usagePercent = unlimited || limit == 0
             ? 0

@@ -126,7 +126,6 @@ public class MemberService {
         Long orgId = requireOrgId(SecurityUtils.currentUser());
         Organization organization = organizationRepository.findByIdAndDeletedFalse(orgId)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
-        ensurePhoneUnique(orgId, request.phone(), null);
         memberLimitService.validateCanCreateMember(
             organization,
             request.status() == null ? MemberStatus.ACTIVE : request.status()
@@ -160,7 +159,6 @@ public class MemberService {
         Long orgId = requireOrgId(SecurityUtils.currentUser());
         Member member = memberRepository.findByIdAndOrganizationIdAndDeletedFalse(memberId, orgId)
             .orElseThrow(() -> new NotFoundException("Member not found"));
-        ensurePhoneUnique(orgId, request.phone(), memberId);
         memberLimitService.validateCanActivateMember(
             member.getOrganization(),
             member.getStatus(),
@@ -231,14 +229,6 @@ public class MemberService {
             orgId,
             member.getFullName()
         );
-    }
-
-    private void ensurePhoneUnique(Long organizationId, String phone, Long currentMemberId) {
-        memberRepository.findByOrganizationIdAndPhoneAndDeletedFalse(organizationId, phone)
-            .filter(existing -> !existing.getId().equals(currentMemberId))
-            .ifPresent(existing -> {
-                throw new BadRequestException("A member with this phone already exists in the organization");
-            });
     }
 
     public List<MemberDirectoryItem> toDirectoryItems(Collection<Member> members, int reminderDays) {

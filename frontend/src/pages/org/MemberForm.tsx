@@ -17,7 +17,7 @@ type MemberFormMode = "create" | "edit" | "renew";
 
 const memberSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
-  phone: z.string().min(1, "Phone is required"),
+  phone: z.string().optional().default(""),
   status: z.enum(["ACTIVE", "DEACTIVATED"]),
   deactivationReason: z.string().optional(),
   durationMonths: z.coerce.number().min(1).optional(),
@@ -160,7 +160,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
     mutationFn: async (data: MemberFormValues) => {
       const memberPayload = {
         fullName: data.fullName,
-        phone: data.phone,
+        phone: data.phone?.trim() || null,
         status: isEdit ? data.status : "ACTIVE",
         deactivationReason: isEdit && data.status === "DEACTIVATED" ? data.deactivationReason : null,
       };
@@ -318,8 +318,8 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                 <Field label="Full Name" error={errors.fullName?.message}>
                   <Input {...register("fullName")} disabled={isRenew} className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" />
                 </Field>
-                <Field label="Phone" error={errors.phone?.message}>
-                  <Input {...register("phone")} disabled={isRenew} className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" />
+                <Field label="Phone" hint="Optional. You can add or update it later from edit member." error={errors.phone?.message}>
+                  <Input {...register("phone")} disabled={isRenew} placeholder="Optional phone number" className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" />
                 </Field>
                 {(isEdit || isRenew) && (
                   <Field label="Status">

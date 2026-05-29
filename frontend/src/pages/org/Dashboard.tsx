@@ -166,9 +166,6 @@ export default function Dashboard() {
   const recentReminderLogs = report?.recentReminderLogs ?? [];
   const monthlyMemberJoins = report?.monthlyMemberJoins ?? [];
   const joinedThisMonth = monthlyMemberJoins.at(-1)?.joinedMembers ?? 0;
-  const canViewAdvancedAnalytics = isDemoWorkspace
-    ? effectivePlan !== "STARTER"
-    : report?.planAccess?.canViewAdvancedAnalytics ?? true;
   const isStarterPlan = (isDemoWorkspace ? effectivePlan : report?.planName) === "STARTER";
   const isProPlan = (isDemoWorkspace ? effectivePlan : report?.planName) === "PRO";
   const isDemoGym = subscriptionStatus?.organizationType === "DEMO";
@@ -232,66 +229,6 @@ export default function Dashboard() {
     },
   ];
 
-  if (isStarterPlan) {
-    const starterSignals = [
-      { label: "Total Members", value: summary.totalMembers ?? 0 },
-      { label: "Active Members", value: summary.activeMembers ?? 0 },
-      { label: "New Members This Month", value: joinedThisMonth },
-    ];
-
-    return (
-      <div className="mx-auto max-w-7xl space-y-8 p-8">
-        {isDemoGym && <DemoWorkspaceBanner organizationName={subscriptionStatus?.organizationName} previewPlan={effectivePlan} />}
-        <section className="billmygym-shell relative overflow-hidden rounded-[2rem] p-8 lg:p-10">
-          <div className="relative z-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
-            <div>
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">Starter Dashboard</Badge>
-                <Badge className="border-slate-200 bg-white/80 text-slate-700">Live backend snapshot</Badge>
-              </div>
-              <h1 className="max-w-3xl text-4xl font-black tracking-tight text-slate-950 lg:text-5xl">
-                Member activity, kept focused.
-              </h1>
-              <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">
-                Your Starter plan dashboard shows the essential member signals for day-to-day operations.
-              </p>
-
-              <div className="mt-7 flex flex-wrap gap-3">
-                <Link to="/app/members/new">
-                  <Button className="h-12 rounded-full bg-slate-950 px-6 font-bold text-white hover:bg-slate-800">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Member
-                  </Button>
-                </Link>
-                <Link to="/app/members">
-                  <Button variant="outline" className="h-12 rounded-full border-white/80 bg-white/75 px-6 font-bold text-slate-800 hover:bg-white">
-                    Open Members
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-              <HeroMetric label="Active Members" value={summary.activeMembers ?? 0} tone="emerald" detail="Currently active member profiles" />
-              <HeroMetric label="New This Month" value={joinedThisMonth} tone="blue" detail="Members joined this month" />
-              <HeroMetric label="Total Members" value={summary.totalMembers ?? 0} tone="slate" detail="All non-deleted members" />
-            </div>
-          </div>
-        </section>
-
-        <section className="grid gap-5 md:grid-cols-3">
-          {starterSignals.map((signal) => (
-            <div key={signal.label} className="glass-panel rounded-[1.4rem] border border-white/80 bg-white/72 p-6 shadow-sm">
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{signal.label}</div>
-              <div className="mt-2 text-4xl font-black tracking-tight text-slate-950">{signal.value}</div>
-            </div>
-          ))}
-        </section>
-      </div>
-    );
-  }
-
   return (
     <div className="mx-auto max-w-7xl space-y-8 p-8">
       {isDemoGym && <DemoWorkspaceBanner organizationName={subscriptionStatus?.organizationName} previewPlan={effectivePlan} />}
@@ -302,13 +239,15 @@ export default function Dashboard() {
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">Revenue OS</Badge>
               <Badge className="border-slate-200 bg-white/80 text-slate-700">Live backend snapshot</Badge>
+              {isStarterPlan && <Badge className="border-amber-200 bg-amber-100 text-amber-800">Starter: Current month only</Badge>}
             </div>
             <h1 className="max-w-3xl text-4xl font-black tracking-tight text-slate-950 lg:text-5xl">
-              Run your gym like a premium membership SaaS, not a spreadsheet.
+              {isStarterPlan ? "Run your gym with a focused revenue view." : "Run your gym like a premium membership SaaS, not a spreadsheet."}
             </h1>
             <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">
-              Collections, upcoming dues, and reminder health are surfaced in one operator view so you can protect revenue
-              before memberships slip into overdue territory.
+              {isStarterPlan
+                ? "Starter uses the same revenue dashboard experience, but keeps the view constrained to the current month and current operational snapshot."
+                : "Collections, upcoming dues, and reminder health are surfaced in one operator view so you can protect revenue before memberships slip into overdue territory."}
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
@@ -318,9 +257,9 @@ export default function Dashboard() {
                   Add Member
                 </Button>
               </Link>
-              <Link to="/app/reminders">
+              <Link to={isStarterPlan ? "/app/members" : "/app/reminders"}>
                 <Button variant="outline" className="h-12 rounded-full border-white/80 bg-white/75 px-6 font-bold text-slate-800 hover:bg-white">
-                  Open Reminders
+                  {isStarterPlan ? "Open Members" : "Open Reminders"}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
@@ -356,8 +295,8 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {isProPlan && subscriptionPricing && (
-        <ProBillingPanel pricing={subscriptionPricing} />
+      {subscriptionPricing && (
+        <PlanBillingPanel planName={(isDemoWorkspace ? effectivePlan : report?.planName) ?? "STARTER"} pricing={subscriptionPricing} />
       )}
 
       <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -486,7 +425,7 @@ export default function Dashboard() {
               <div className="text-[10px] font-black uppercase tracking-[0.24em] text-sky-700">Growth Track</div>
               <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Members Joined By Month</h2>
               <p className="mt-2 text-sm font-medium text-slate-500">
-                A quick read on how many new members joined in each of the last 6 months.
+                {isStarterPlan ? "Starter keeps this trend limited to the current month." : "A quick read on how many new members joined in each of the last 6 months."}
               </p>
             </div>
             <div className="p-7">
@@ -635,9 +574,11 @@ function HeroMetric({
   );
 }
 
-function ProBillingPanel({
+function PlanBillingPanel({
+  planName,
   pricing,
 }: {
+  planName: string;
   pricing: {
     baseAmount?: number;
     totalAmount?: number;
@@ -664,7 +605,7 @@ function ProBillingPanel({
       <div className="relative z-10 grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className="border-sky-300/30 bg-sky-300/10 text-sky-100">Pro Billing</Badge>
+            <Badge className="border-sky-300/30 bg-sky-300/10 text-sky-100">{planName} Billing</Badge>
             <Badge className="border-white/10 bg-white/10 text-slate-100">Live member responsive</Badge>
           </div>
           <div className="mt-5 flex items-center gap-4">
@@ -677,7 +618,11 @@ function ProBillingPanel({
             </div>
           </div>
           <p className="mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-300">
-            Pro includes {includedMembers} active members. Every active member above that adds {money(overageRate)} to the next monthly subscription payment.
+            {planName === "STARTER"
+              ? `Starter includes ${includedMembers} active members and keeps total members unlimited. Every active member above that adds ${money(overageRate)} to the next monthly subscription payment.`
+              : planName === "GROWTH"
+                ? `Growth includes ${includedMembers} active members and keeps total members unlimited. Every active member above that adds ${money(overageRate)} to the next monthly subscription payment.`
+                : `Pro includes ${includedMembers} active members. Every active member above that adds ${money(overageRate)} to the next monthly subscription payment.`}
           </p>
         </div>
 

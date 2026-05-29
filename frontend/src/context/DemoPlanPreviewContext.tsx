@@ -63,7 +63,7 @@ export function DemoPlanPreviewProvider({
         if (previewPlan === "STARTER") {
           return {
             canCreateMembers: true,
-            canViewAdvancedAnalytics: false,
+            canViewAdvancedAnalytics: true,
             canReceiveMonthlyReports: false,
             canExportReports: false,
             canUsePremiumFeatures: false,

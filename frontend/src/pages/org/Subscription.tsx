@@ -17,7 +17,6 @@ import {
   MessageCircle,
   LogOut,
   ShieldCheck,
-  Sparkles,
   Users,
   Zap,
   type LucideIcon,
@@ -144,27 +143,27 @@ const checkoutPlans: PlanCard[] = [
     key: "STARTER",
     name: "Starter",
     price: 299,
-    limit: "100 members",
+    limit: "100 active members included",
     tagline: "Essential front-desk control",
-    description: "A clean operating system for memberships, reminders, payment tracking, and the day-to-day member desk.",
+    description: "A clean operating system for memberships, reminders, payment tracking, and a focused current-month revenue dashboard.",
     icon: Users,
     accent: "from-slate-900 to-slate-700",
     glow: "bg-slate-200",
-    features: ["Member management", "Membership renewals", "Reminders", "WhatsApp and email digest", "Payment tracking"],
-    demos: ["Member desk", "Daily follow-up", "Core operations"],
+    features: ["Member management", "Membership renewals", "Reminders", "Current-month revenue dashboard", "WhatsApp and email digest", "Payment tracking", "INR 5 per active member above 100"],
+    demos: ["Member desk", "Current-month revenue", "Core operations"],
   },
   {
     key: "GROWTH",
     name: "Growth",
     price: 699,
-    limit: "300 members",
+    limit: "200 active members included",
     tagline: "Revenue visibility built in",
-    description: "Adds dashboards, monthly analytics, usage insights, report delivery, and a rolling 6-month financial reporting window.",
+    description: "Adds full revenue visibility, report delivery, and a rolling 6-month financial reporting window while keeping total members unlimited.",
     icon: BarChart3,
     accent: "from-emerald-600 to-teal-500",
     glow: "bg-emerald-200",
     badge: "Most Popular",
-    features: ["Revenue dashboard", "Pending revenue", "Monthly analytics", "Last 6 months of reports", "WhatsApp monthly reports", "Email monthly reports"],
+    features: ["Full revenue dashboard", "Pending revenue", "Historical analytics", "Last 6 months of reports", "WhatsApp monthly reports", "Email monthly reports", "INR 5 per active member above 200"],
     demos: ["Revenue trends", "6-month reports", "Growth insights"],
   },
   {
@@ -208,6 +207,9 @@ const money = new Intl.NumberFormat("en-IN", {
 
 const PRO_INCLUDED_MEMBERS = 600;
 const PRO_OVERAGE_RATE = 3;
+const STARTER_INCLUDED_MEMBERS = 100;
+const GROWTH_INCLUDED_MEMBERS = 200;
+const STARTER_GROWTH_OVERAGE_RATE = 5;
 
 const dateText = (value?: string | null) => {
   if (!value) return "Not set";
@@ -249,23 +251,26 @@ function preferredCheckoutPlan(subscription?: SubscriptionStatus): CheckoutPlanK
 }
 
 function estimatedPlanPrice(plan: PlanCard, subscription?: SubscriptionStatus) {
-  if (plan.key !== "PRO") {
-    return plan.price;
-  }
-  const activeMembers = subscription?.pricing?.activeMembers ?? subscription?.activeMembers ?? 0;
-  return plan.price + Math.max(activeMembers - PRO_INCLUDED_MEMBERS, 0) * PRO_OVERAGE_RATE;
+  return planPricingPreview(plan.key, subscription).totalAmount;
 }
 
-function proPricingPreview(subscription?: SubscriptionStatus) {
+function planPricingPreview(plan: CheckoutPlanKey, subscription?: SubscriptionStatus) {
   const activeMembers = subscription?.pricing?.activeMembers ?? subscription?.activeMembers ?? 0;
-  const overageMembers = Math.max(activeMembers - PRO_INCLUDED_MEMBERS, 0);
+  const includedMembers = plan === "STARTER"
+    ? STARTER_INCLUDED_MEMBERS
+    : plan === "GROWTH"
+      ? GROWTH_INCLUDED_MEMBERS
+      : PRO_INCLUDED_MEMBERS;
+  const overageRate = plan === "PRO" ? PRO_OVERAGE_RATE : STARTER_GROWTH_OVERAGE_RATE;
+  const baseAmount = checkoutPlans.find((item) => item.key === plan)?.price ?? 0;
+  const overageMembers = Math.max(activeMembers - includedMembers, 0);
   return {
     activeMembers,
-    includedMembers: PRO_INCLUDED_MEMBERS,
+    includedMembers,
     overageMembers,
-    overageRate: PRO_OVERAGE_RATE,
-    overageAmount: overageMembers * PRO_OVERAGE_RATE,
-    totalAmount: 1499 + overageMembers * PRO_OVERAGE_RATE,
+    overageRate,
+    overageAmount: overageMembers * overageRate,
+    totalAmount: baseAmount + overageMembers * overageRate,
   };
 }
 
@@ -528,12 +533,9 @@ export default function Subscription({ immersive = false, showPlans = false }: {
   const canCheckout = !isDemo && !isActive;
   const selectedPlanDetails = checkoutPlans.find((plan) => plan.key === selectedPlan) ?? checkoutPlans[1];
   const selectedPlanEstimatedPrice = estimatedPlanPrice(selectedPlanDetails, subscription);
-  const proPreview = proPricingPreview(subscription);
+  const selectedPlanPreview = planPricingPreview(selectedPlanDetails.key, subscription);
   const currentShowcasePlan = isDemoWorkspace ? effectivePlan : subscription.subscriptionPlan;
-  const isCurrentPro = currentShowcasePlan === "PRO";
-  const currentPlanStudioName = isDemo
-    ? `${subscriptionPlanLabel(currentShowcasePlan)} Demo Workspace`
-    : subscriptionPlanLabel(subscription.subscriptionPlan);
+  const currentPlanPreview = planPricingPreview(currentShowcasePlan, subscription);
   const memberLimitLabel = subscription.memberLimit?.unlimited
     ? `${subscription.memberLimit.usedMembers} / Unlimited`
     : `${subscription.memberLimit?.usedMembers ?? subscription.activeMembers} / ${subscription.memberLimit?.memberLimit ?? 0}`;
@@ -659,12 +661,12 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                   <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-sm font-semibold text-slate-200">
                     <div className="flex items-center justify-between gap-3">
                       <span>Included active members</span>
-                      <span className="font-black text-white">{proPreview.includedMembers}</span>
+                      <span className="font-black text-white">{selectedPlanPreview.includedMembers}</span>
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-3">
                       <span>Billable overage</span>
                       <span className="font-black text-white">
-                        {proPreview.overageMembers} x {money.format(proPreview.overageRate)}
+                        {selectedPlanPreview.overageMembers} x {money.format(selectedPlanPreview.overageRate)}
                       </span>
                     </div>
                   </div>
@@ -682,44 +684,33 @@ export default function Subscription({ immersive = false, showPlans = false }: {
               </div>
             ) : (
               <div className="rounded-[1.9rem] border border-emerald-100/80 bg-[linear-gradient(145deg,rgba(15,23,42,0.04),rgba(16,185,129,0.12)),linear-gradient(180deg,rgba(255,255,255,0.92),rgba(240,253,250,0.92))] p-6 shadow-[0_20px_55px_rgba(15,23,42,0.08)] backdrop-blur">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 shadow-sm">
-                  <Sparkles className="h-7 w-7" />
-                </div>
-                <div className="mt-6 text-sm font-black uppercase tracking-[0.24em] text-emerald-700">Subscription Studio</div>
-                <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">Your current plan is {currentPlanStudioName}.</div>
-                <div className="mt-5 rounded-[1.5rem] border border-emerald-200/80 bg-white/80 p-4 shadow-sm">
-                  <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Currently Selected</div>
+                <div className="rounded-[1.5rem] border border-emerald-200/80 bg-white/80 p-4 shadow-sm">
+                  <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Active Member Billing</div>
                   <div className="mt-2 flex items-end gap-2">
                     <span className="text-3xl font-black text-slate-950">
-                        {isDemo
-                          ? currentPlanStudioName
-                          : checkoutPlans.find((plan) => plan.key === subscription.subscriptionPlan)?.name ?? currentPlanStudioName}
+                      {money.format(subscription.pricing?.totalAmount ?? subscription.monthlyAmount)}
                     </span>
-                    <span className="pb-1 text-sm font-bold text-slate-500">
-                      {isDemo
-                        ? "Showcase workspace"
-                        : checkoutPlans.find((plan) => plan.key === subscription.subscriptionPlan)?.limit ?? "Premium early access"}
-                    </span>
+                    {!isDemo && <span className="pb-1 text-sm font-bold text-slate-500">current monthly total</span>}
                   </div>
                   <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
                     {isDemo
                       ? "This workspace is currently running in demo mode with billing disabled."
-                      : `${money.format(subscription.pricing?.totalAmount ?? subscription.monthlyAmount)} per month is currently applied to this workspace.`}
+                      : `${currentPlanPreview.includedMembers} active members are included, then ${money.format(currentPlanPreview.overageRate)} per extra active member.`}
                   </p>
                 </div>
-                {isCurrentPro && (
+                {!isDemo && (
                   <div className="mt-4 rounded-[1.5rem] border border-sky-100 bg-white/80 p-4 shadow-sm">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <div className="text-[10px] font-black uppercase tracking-[0.22em] text-sky-700">Pro Overage</div>
+                        <div className="text-[10px] font-black uppercase tracking-[0.22em] text-sky-700">Current Overage</div>
                         <div className="mt-1 text-sm font-semibold text-slate-600">
-                          {proPreview.includedMembers} active members included, then {money.format(proPreview.overageRate)} per extra member.
+                          Extra active members are added automatically to the next monthly subscription payment.
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-2xl font-black text-slate-950">{money.format(subscription.pricing?.overageAmount ?? proPreview.overageAmount)}</div>
+                        <div className="text-2xl font-black text-slate-950">{money.format(subscription.pricing?.overageAmount ?? currentPlanPreview.overageAmount)}</div>
                         <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-                          {subscription.pricing?.overageMembers ?? proPreview.overageMembers} extra
+                          {subscription.pricing?.overageMembers ?? currentPlanPreview.overageMembers} extra active members
                         </div>
                       </div>
                     </div>
@@ -735,7 +726,6 @@ export default function Subscription({ immersive = false, showPlans = false }: {
               </div>
             )}
           </div>
-          <Sparkles className="absolute bottom-6 right-8 h-14 w-14 text-amber-300/50" />
         </div>
 
         {!showPlans && (
@@ -753,7 +743,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                   <Info className="h-3.5 w-3.5" />
                 </button>
                 <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-3 w-56 -translate-x-1/2 rounded-2xl border border-emerald-100 bg-slate-950 px-4 py-3 text-left text-[11px] font-bold normal-case tracking-normal text-white opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100">
-                  {subscription.memberLimit.deactivatedMembers} deactivated members are included in this usage limit.
+                  {subscription.memberLimit.deactivatedMembers} deactivated members remain in your directory, but only active members affect Starter and Growth billing.
                 </div>
               </div>
             </div>
@@ -766,7 +756,8 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                       style={{ width: `${Math.min(Math.max(subscription.memberLimit.usagePercent, 0), 100)}%` }}
                     />
                   </div>
-                  <p className="mt-2 text-sm font-bold text-slate-500">{subscription.memberLimit.remainingSlots} slots remaining</p>
+                  <p className="mt-2 text-sm font-bold text-slate-500">{subscription.memberLimit.remainingSlots} active members included before overage</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-500">Total members can be unlimited. Billing responds only to active members.</p>
                 </>
               )}
             </div>
@@ -795,6 +786,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
               const isGrowth = plan.key === "GROWTH";
               const isStarter = plan.key === "STARTER";
               const planMonthlyPrice = estimatedPlanPrice(plan, subscription);
+              const planPreview = planPricingPreview(plan.key, subscription);
               return (
                 <div
                   key={plan.key}
@@ -878,14 +870,19 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                         <span className={`pb-1 text-sm font-bold ${isPro ? "text-slate-300" : "text-slate-500"}`}>/ month</span>
                       </div>
                       {isPro && (
-                        <div className={`mt-3 rounded-2xl border px-3 py-2 text-xs font-bold leading-5 ${
-                          proPreview.overageMembers > 0
+                      <div className={`mt-3 rounded-2xl border px-3 py-2 text-xs font-bold leading-5 ${
+                          planPreview.overageMembers > 0
                             ? "border-sky-300/20 bg-sky-300/10 text-sky-50"
                             : "border-white/10 bg-white/[0.04] text-slate-300"
                         }`}>
-                          {proPreview.overageMembers > 0
-                            ? `${proPreview.overageMembers} extra active members adds ${money.format(proPreview.overageAmount)} this month.`
-                            : `Base price includes your first ${proPreview.includedMembers} active members.`}
+                          {planPreview.overageMembers > 0
+                            ? `${planPreview.overageMembers} extra active members adds ${money.format(planPreview.overageAmount)} this month.`
+                            : `Base price includes your first ${planPreview.includedMembers} active members.`}
+                        </div>
+                      )}
+                      {!isPro && (
+                        <div className="mt-3 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2 text-xs font-bold leading-5 text-slate-700">
+                          Total members can be unlimited. Only active members affect billing on this plan.
                         </div>
                       )}
                     </div>
@@ -968,7 +965,7 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                     )}
                     {isStarter && (
                       <div className="mt-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-600">
-                        Lean setup for focused gym operations
+                        Shared revenue dashboard with current-month visibility only
                       </div>
                     )}
                     {(subscription?.gymCoinBalance || 0) > 0 && (
