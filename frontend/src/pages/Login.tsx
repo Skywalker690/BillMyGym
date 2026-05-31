@@ -86,7 +86,9 @@ export default function Login() {
 
     login(accessToken, nextUser);
 
-    if (nextUser.role === "SUPER_ADMIN") {
+    if (nextUser.consentRequired || !nextUser.termsAccepted || !nextUser.privacyAccepted) {
+      navigate("/consent");
+    } else if (nextUser.role === "SUPER_ADMIN") {
       navigate("/app/platform-overview");
     } else {
       navigate("/app/dashboard");

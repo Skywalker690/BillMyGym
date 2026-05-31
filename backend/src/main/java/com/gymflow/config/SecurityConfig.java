@@ -1,6 +1,7 @@
 package com.gymflow.config;
 
 import com.gymflow.security.JwtAuthenticationFilter;
+import com.gymflow.security.LegalConsentGuardFilter;
 import com.gymflow.security.RateLimitingFilter;
 import com.gymflow.security.RestAccessDeniedHandler;
 import com.gymflow.security.RestAuthenticationEntryPoint;
@@ -28,6 +29,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final LegalConsentGuardFilter legalConsentGuardFilter;
     private final RateLimitingFilter rateLimitingFilter;
     private final SubscriptionGuardFilter subscriptionGuardFilter;
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
@@ -49,6 +51,7 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/login",
                     "/api/auth/google-login",
+                    "/api/auth/legal-policy",
                     "/api/auth/forgot-password",
                     "/api/auth/verify-otp",
                     "/api/auth/change-password",
@@ -61,7 +64,8 @@ public class SecurityConfig {
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(subscriptionGuardFilter, JwtAuthenticationFilter.class)
+            .addFilterAfter(legalConsentGuardFilter, JwtAuthenticationFilter.class)
+            .addFilterAfter(subscriptionGuardFilter, LegalConsentGuardFilter.class)
             .addFilterAfter(rateLimitingFilter, SubscriptionGuardFilter.class);
 
         return http.build();

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.SubscriptionPlan;
 
@@ -20,6 +21,17 @@ public class AuthDtos {
     }
 
     public record LoginResponse(String accessToken, String role, Long organizationId, UserDto user, boolean referralsEnabled) {
+    }
+
+    public record LegalPolicyMetadataResponse(
+        String applicationName,
+        String currentVersion,
+        LocalDate effectiveDate,
+        String supportEmail,
+        String legalEmail,
+        String privacyEmail,
+        String companyAddress
+    ) {
     }
 
     public record RegisterOrganizationAdminRequest(

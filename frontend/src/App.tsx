@@ -16,6 +16,9 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Unauthorized from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
+import Consent from "./pages/Consent";
+import TermsAndConditions from "./pages/TermsAndConditions";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 import Dashboard from "./pages/org/Dashboard";
 import MembersList from "./pages/org/MembersList";
@@ -53,6 +56,12 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
+            <Route path="/terms" element={<TermsAndConditions />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+
+            <Route element={<ProtectedRoute allowedRoles={["ORG_ADMIN", "SUPER_ADMIN"]} allowPendingConsent />}>
+              <Route path="/consent" element={<Consent />} />
+            </Route>
 
             <Route element={<ProtectedRoute allowedRoles={["ORG_ADMIN"]} />}>
               <Route path="/app/subscription/recovery" element={<Subscription immersive />} />

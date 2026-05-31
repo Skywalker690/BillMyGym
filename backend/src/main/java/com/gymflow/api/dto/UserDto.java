@@ -23,6 +23,10 @@ public class UserDto {
     private Long clientCrmId;
     private Instant createdAt;
     private Boolean termsAccepted;
+    private Boolean privacyAccepted;
     private String policyVersion;
+    private Instant policyAcceptedAt;
+    private String consentMessage;
+    private Boolean consentRequired;
 
 }

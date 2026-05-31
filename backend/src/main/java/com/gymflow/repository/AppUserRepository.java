@@ -16,6 +16,9 @@ public interface AppUserRepository extends JpaRepository<User, Long> {
     @EntityGraph(attributePaths = "organization")
     Optional<User> findByEmailAndDeletedFalse(String email);
 
+    @EntityGraph(attributePaths = "organization")
+    Optional<User> findByIdAndDeletedFalse(Long id);
+
     long countByOrganizationIdAndRoleAndDeletedFalse(Long organizationId, Role role);
 
     List<User> findByOrganizationIdAndRoleAndDeletedFalse(Long organizationId, Role role);

@@ -297,23 +297,6 @@ INSERT INTO member_credit_ledger (
     (9, 89, 9, 89, 75.00, 'DEBIT', 'MANUAL_ADJUSTMENT', 'Admin wallet debit', 10, 'owner09@billmygym.local', FALSE, TIMESTAMPTZ '2026-05-18 09:00:00+05:30', TIMESTAMPTZ '2026-05-18 09:00:00+05:30'),
     (10, 100, 10, 100, 500.00, 'CREDIT', 'PROMOTION', 'Elite annual promotion', 11, 'owner10@billmygym.local', FALSE, TIMESTAMPTZ '2026-05-19 09:00:00+05:30', TIMESTAMPTZ '2026-05-19 09:00:00+05:30');
 
-INSERT INTO organization_subscriptions (
-    id, organization_id, start_date, end_date, status, amount, razorpay_subscription_id,
-    deleted, created_at, updated_at
-)
-SELECT
-    org_id,
-    org_id,
-    (ARRAY[DATE '2026-05-23', DATE '2026-04-21', DATE '2026-05-18', DATE '2026-04-24', DATE '2026-05-12', DATE '2026-04-01', DATE '2026-05-01', DATE '2026-04-20', DATE '2026-05-07', DATE '2026-04-28'])[org_id],
-    (ARRAY[DATE '2026-06-22', DATE '2026-05-20', DATE '2026-05-31', DATE '2026-05-23', DATE '2026-07-08', DATE '2026-05-10', DATE '2027-05-24', DATE '2026-05-19', DATE '2026-06-05', DATE '2026-05-27'])[org_id],
-    (ARRAY['ACTIVE', 'FAILED', 'PENDING', 'FAILED', 'ACTIVE', 'EXPIRED', 'ACTIVE', 'FAILED', 'ACTIVE', 'ACTIVE'])[org_id],
-    (ARRAY[1499.00, 699.00, 299.00, 1499.00, 1499.00, 299.00, 0.00, 699.00, 299.00, 1499.00])[org_id]::numeric(12, 2),
-    'sub_seed_org_' || LPAD(org_id::text, 2, '0'),
-    FALSE,
-    TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((20 + org_id) || ' days')::interval,
-    TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((org_id % 4 + 1) || ' days')::interval
-FROM generate_series(1, 10) AS org_id;
-
 INSERT INTO organization_subscription_payments (
     id, organization_id, amount, subscription_plan, payment_date, subscription_start, subscription_end, payment_status,
     retry_count, next_retry_date, failure_reason, webhook_event_id, gateway_transaction_id, razorpay_order_id,
@@ -438,20 +421,6 @@ SELECT
     TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - INTERVAL '1 day'
 FROM generate_series(1, 10) AS org_id;
 
-INSERT INTO organization_usage_stats (
-    id, organization_id, year, month, whatsapp_sent_count, email_sent_count, deleted, created_at, updated_at
-)
-SELECT
-    org_id,
-    org_id,
-    2026,
-    5,
-    6 + org_id,
-    4 + org_id,
-    FALSE,
-    TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((org_id + 5) || ' days')::interval,
-    TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - INTERVAL '1 day'
-FROM generate_series(1, 10) AS org_id;
 
 INSERT INTO membership_operation_idempotency (
     id, organization_id, member_id, idempotency_key, operation_type, resource_type, resource_id,
@@ -558,13 +527,11 @@ SELECT setval('organization_settings_id_seq', COALESCE((SELECT MAX(id) FROM orga
 SELECT setval('members_id_seq', COALESCE((SELECT MAX(id) FROM members), 1), TRUE);
 SELECT setval('member_memberships_id_seq', COALESCE((SELECT MAX(id) FROM member_memberships), 1), TRUE);
 SELECT setval('member_payments_id_seq', COALESCE((SELECT MAX(id) FROM member_payments), 1), TRUE);
-SELECT setval('organization_subscriptions_id_seq', COALESCE((SELECT MAX(id) FROM organization_subscriptions), 1), TRUE);
 SELECT setval('organization_subscription_payments_id_seq', COALESCE((SELECT MAX(id) FROM organization_subscription_payments), 1), TRUE);
 SELECT setval('notifications_id_seq', COALESCE((SELECT MAX(id) FROM notifications), 1), TRUE);
 SELECT setval('notification_delivery_logs_id_seq', COALESCE((SELECT MAX(id) FROM notification_delivery_logs), 1), TRUE);
 SELECT setval('whatsapp_reminder_logs_id_seq', COALESCE((SELECT MAX(id) FROM whatsapp_reminder_logs), 1), TRUE);
 SELECT setval('usage_metrics_id_seq', COALESCE((SELECT MAX(id) FROM usage_metrics), 1), TRUE);
-SELECT setval('organization_usage_stats_id_seq', COALESCE((SELECT MAX(id) FROM organization_usage_stats), 1), TRUE);
 SELECT setval('member_credit_ledger_id_seq', COALESCE((SELECT MAX(id) FROM member_credit_ledger), 1), TRUE);
 SELECT setval('membership_operation_idempotency_id_seq', COALESCE((SELECT MAX(id) FROM membership_operation_idempotency), 1), TRUE);
 SELECT setval('processed_webhook_events_id_seq', COALESCE((SELECT MAX(id) FROM processed_webhook_events), 1), TRUE);

@@ -41,6 +41,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Collections;
 
@@ -64,6 +65,7 @@ public class AuthService {
     private final WhatsAppDeliveryService whatsAppDeliveryService;
     private final ReferralService referralService;
     private final PlatformSettingService platformSettingService;
+    private final LegalPolicyService legalPolicyService;
 
     @Value("${google.client.id}")
     private String googleClientId;
@@ -409,23 +411,31 @@ public class AuthService {
     }
 
     public UserDto getCurrentUser(String authenticatedEmail) {
-        User user = userRepository.findByEmail(authenticatedEmail)
+        User user = userRepository.findByEmailAndDeletedFalse(authenticatedEmail)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         return toUserDto(user);
     }
 
     @Transactional
-    public UserDto acceptPolicy(String authenticatedEmail, AcceptPolicyRequest request) {
-        User user = userRepository.findByEmail(authenticatedEmail)
+    public UserDto acceptPolicy(String authenticatedEmail, AcceptPolicyRequest request, HttpServletRequest httpRequest) {
+        User user = userRepository.findByEmailAndDeletedFalse(authenticatedEmail)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        if (!Boolean.TRUE.equals(request.getAccepted())) {
-            throw new IllegalArgumentException("Policy acceptance is required");
+        if (!Boolean.TRUE.equals(request.getTermsAccepted()) || !Boolean.TRUE.equals(request.getPrivacyAccepted())) {
+            throw new IllegalArgumentException("Terms & Conditions and Privacy Policy acceptance are required");
         }
 
         String version = request.getVersion().trim();
+        if (!LegalPolicyService.CURRENT_POLICY_VERSION.equals(version)) {
+            throw new BadRequestException("Please accept the latest legal policy version before continuing");
+        }
+        AuditLogService.RequestAuditContext requestContext = requestAuditContext(httpRequest);
         user.setTermsAccepted(true);
+        user.setPrivacyAccepted(true);
         user.setPolicyVersion(version);
+        user.setPolicyAcceptedAt(OffsetDateTime.now(APP_ZONE));
+        user.setPolicyIpAddress(requestContext.ipAddress());
+        user.setPolicyDeviceInfo(buildPolicyDeviceInfo(requestContext));
         User savedUser = userRepository.save(user);
 
         return toUserDto(savedUser);
@@ -470,8 +480,16 @@ public class AuthService {
             .avatarUrl(user.getAvatarUrl())
             .createdAt(user.getCreatedAt() == null ? null : user.getCreatedAt().toInstant())
             .termsAccepted(user.getTermsAccepted())
+            .privacyAccepted(user.getPrivacyAccepted())
             .policyVersion(user.getPolicyVersion())
+            .policyAcceptedAt(user.getPolicyAcceptedAt() == null ? null : user.getPolicyAcceptedAt().toInstant())
+            .consentRequired(legalPolicyService.requiresConsent(user))
+            .consentMessage(legalPolicyService.consentMessage(user))
             .build();
+    }
+
+    public AuthDtos.LegalPolicyMetadataResponse legalPolicyMetadata() {
+        return legalPolicyService.metadata();
     }
 
     private AuditLogService.RequestAuditContext requestAuditContext(HttpServletRequest request) {
@@ -524,6 +542,15 @@ public class AuthService {
         if (normalized.contains("firefox")) return "Firefox";
         if (normalized.contains("safari")) return "Safari";
         return "Unknown";
+    }
+
+    private String buildPolicyDeviceInfo(AuditLogService.RequestAuditContext requestContext) {
+        if (requestContext == null) {
+            return null;
+        }
+        String device = requestContext.device() == null ? "Unknown device" : requestContext.device();
+        String browser = requestContext.browser() == null ? "Unknown browser" : requestContext.browser();
+        return device + " / " + browser;
     }
 }
 

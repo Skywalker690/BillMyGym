@@ -35,10 +35,14 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const errorCode = error.response?.data?.errorCode;
     const message = String(error.response?.data?.message || "");
+    const consentRequired = status === 403 && errorCode === "LEGAL_CONSENT_REQUIRED";
     const subscriptionInactive =
       status === 402 ||
       (status === 403 && (errorCode === "SUBSCRIPTION_INACTIVE" || message.toLowerCase().includes("subscription")));
 
+    if (consentRequired && window.location.pathname !== "/consent") {
+      window.location.href = "/consent";
+    }
     if (subscriptionInactive && !window.location.pathname.startsWith("/app/subscription/recovery")) {
       window.location.href = "/app/subscription/recovery";
     }

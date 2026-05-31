@@ -68,6 +68,11 @@ public class SubscriptionGuardFilter extends OncePerRequestFilter {
     private boolean isSubscriptionAllowedPath(String path) {
         return path.startsWith("/api/subscription/")
             || path.startsWith("/api/payments/")
+            || "/api/auth/me".equals(path)
+            || "/api/auth/consent".equals(path)
+            || "/api/auth/legal-policy".equals(path)
+            || "/api/auth/password/request-otp".equals(path)
+            || "/api/auth/password/confirm".equals(path)
             || "/api/auth/logout".equals(path);
     }
 

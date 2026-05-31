@@ -11,6 +11,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -49,8 +50,20 @@ public class User extends BaseEntity {
     private UserStatus status = UserStatus.ACTIVE;
 
     @Column(name = "terms_accepted")
-    private Boolean termsAccepted;
+    private Boolean termsAccepted = false;
+
+    @Column(name = "privacy_accepted")
+    private Boolean privacyAccepted = false;
 
     @Column(name = "policy_version", length = 32)
     private String policyVersion;
+
+    @Column(name = "policy_accepted_at")
+    private OffsetDateTime policyAcceptedAt;
+
+    @Column(name = "policy_ip_address", length = 64)
+    private String policyIpAddress;
+
+    @Column(name = "policy_device_info", length = 255)
+    private String policyDeviceInfo;
 }
