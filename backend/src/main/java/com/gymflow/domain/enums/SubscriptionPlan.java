@@ -4,8 +4,8 @@ import java.math.BigDecimal;
 
 public enum SubscriptionPlan {
     STARTER(new BigDecimal("299.00"), 100, true, false, false, false),
-    GROWTH(new BigDecimal("699.00"), 200, true, true, false, false),
-    PRO(new BigDecimal("1499.00"), null, true, true, true, true),
+    GROWTH(new BigDecimal("999.00"), 300, true, true, false, false),
+    PRO(new BigDecimal("2499.00"), 600, true, true, true, true),
     PILOT(new BigDecimal("299.00"), 100, true, true, true, true);
 
     private final BigDecimal monthlyAmount;

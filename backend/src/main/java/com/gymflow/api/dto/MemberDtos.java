@@ -81,4 +81,19 @@ public class MemberDtos {
         boolean last
     ) {
     }
+
+    public record BulkMemberImportIssue(
+        Integer rowNumber,
+        String field,
+        String message
+    ) {
+    }
+
+    public record BulkMemberImportResponse(
+        int totalRows,
+        int importedCount,
+        int limit,
+        List<BulkMemberImportIssue> errors
+    ) {
+    }
 }

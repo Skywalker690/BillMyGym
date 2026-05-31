@@ -155,24 +155,24 @@ const checkoutPlans: PlanCard[] = [
   {
     key: "GROWTH",
     name: "Growth",
-    price: 699,
-    limit: "200 active members included",
+    price: 999,
+    limit: "300 active members included",
     tagline: "Revenue visibility built in",
-    description: "Adds full revenue visibility, report delivery, and a rolling 6-month financial reporting window while keeping total members unlimited.",
+    description: "Adds full revenue visibility, historical analytics, and reports while keeping total members unlimited.",
     icon: BarChart3,
     accent: "from-emerald-600 to-teal-500",
     glow: "bg-emerald-200",
     badge: "Most Popular",
-    features: ["Full revenue dashboard", "Pending revenue", "Historical analytics", "Last 6 months of reports", "WhatsApp monthly reports", "Email monthly reports", "INR 5 per active member above 200"],
-    demos: ["Revenue trends", "6-month reports", "Growth insights"],
+    features: ["Full revenue dashboard", "Pending revenue", "Historical analytics", "Reports page", "WhatsApp monthly reports", "Email monthly reports", "INR 3 per active member above 300"],
+    demos: ["Revenue trends", "Historical reporting", "Growth insights"],
   },
   {
     key: "PRO",
     name: "Pro",
-    price: 1499,
+    price: 2499,
     limit: "Unlimited members",
     tagline: "Operator-grade command center",
-    description: "Unlocks the full workspace with unlimited scale, custom-range reports, exports, member messaging, and premium support.",
+    description: "Unlocks the full workspace with full historical access, advanced analytics, exports, member messaging, and premium support.",
     icon: Crown,
     accent: "from-indigo-700 to-sky-500",
     glow: "bg-indigo-200",
@@ -195,7 +195,7 @@ const implementedDemos = [
   {
     icon: MessageCircle,
     title: "Monthly reports",
-    body: "Growth gets a rolling 6-month report view, while Pro adds custom date ranges and exports.",
+    body: "Growth unlocks historical reports, while Pro adds exports and the deepest analytics experience.",
   },
 ];
 
@@ -206,10 +206,11 @@ const money = new Intl.NumberFormat("en-IN", {
 });
 
 const PRO_INCLUDED_MEMBERS = 600;
-const PRO_OVERAGE_RATE = 3;
+const PRO_OVERAGE_RATE = 2;
 const STARTER_INCLUDED_MEMBERS = 100;
-const GROWTH_INCLUDED_MEMBERS = 200;
-const STARTER_GROWTH_OVERAGE_RATE = 5;
+const GROWTH_INCLUDED_MEMBERS = 300;
+const STARTER_OVERAGE_RATE = 5;
+const GROWTH_OVERAGE_RATE = 3;
 
 const dateText = (value?: string | null) => {
   if (!value) return "Not set";
@@ -261,7 +262,11 @@ function planPricingPreview(plan: CheckoutPlanKey, subscription?: SubscriptionSt
     : plan === "GROWTH"
       ? GROWTH_INCLUDED_MEMBERS
       : PRO_INCLUDED_MEMBERS;
-  const overageRate = plan === "PRO" ? PRO_OVERAGE_RATE : STARTER_GROWTH_OVERAGE_RATE;
+  const overageRate = plan === "STARTER"
+    ? STARTER_OVERAGE_RATE
+    : plan === "GROWTH"
+      ? GROWTH_OVERAGE_RATE
+      : PRO_OVERAGE_RATE;
   const baseAmount = checkoutPlans.find((item) => item.key === plan)?.price ?? 0;
   const overageMembers = Math.max(activeMembers - includedMembers, 0);
   return {
@@ -624,10 +629,10 @@ export default function Subscription({ immersive = false, showPlans = false }: {
               </h1>
               <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-slate-600">
                 {showPlans
-                  ? `${subscription.organizationName} can continue with Starter, unlock rolling 6-month reports with Growth, or move to Pro for custom-range reporting and exports. Compare the plans below and continue when you're ready.`
+                  ? `${subscription.organizationName} can continue with Starter, unlock reports and historical analytics with Growth, or move to Pro for advanced analytics and exports. Compare the plans below and continue when you're ready.`
                   : isDemo
                     ? `${subscription.organizationName} is currently running as a demo workspace. Use this page to review showcase access, usage, and plan guidance.`
-                    : `${subscription.organizationName} can continue with Starter, unlock rolling 6-month reports with Growth, or move to Pro for custom-range reporting and exports. Use this page to review your billing status, usage, and renewal guidance.`}
+                    : `${subscription.organizationName} can continue with Starter, unlock reports and historical analytics with Growth, or move to Pro for advanced analytics and exports. Use this page to review your billing status, usage, and renewal guidance.`}
               </p>
 
               <div className={`mt-6 grid gap-3 ${lifecycleCards.length === 1 ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
@@ -876,8 +881,8 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                             : "border-white/10 bg-white/[0.04] text-slate-300"
                         }`}>
                           {planPreview.overageMembers > 0
-                            ? `${planPreview.overageMembers} extra active members adds ${money.format(planPreview.overageAmount)} this month.`
-                            : `Base price includes your first ${planPreview.includedMembers} active members.`}
+                        ? `${planPreview.overageMembers} extra active members adds ${money.format(planPreview.overageAmount)} this month.`
+                        : `Base price includes your first ${planPreview.includedMembers} active members.`}
                         </div>
                       )}
                       {!isPro && (
@@ -955,12 +960,12 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                     </Button>
                     {isPro && (
                       <div className="mt-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-300">
-                        Premium reporting, exports, and priority workflows
+                        Advanced analytics, exports, and priority workflows
                       </div>
                     )}
                     {!isPro && isGrowth && (
                       <div className="mt-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
-                        Best value for report-driven gyms
+                        Best value for historical reporting and analytics
                       </div>
                     )}
                     {isStarter && (

@@ -27,7 +27,7 @@ declare global {
   }
 }
 
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
+const googleClientId = '387096326869-e7c724kbhg8s3bg7mc3gth36mmhf24mu.apps.googleusercontent.com';
 
 const slideshowImages = [
   "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1200&q=80",
@@ -208,7 +208,7 @@ export default function Login() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="gmail@example.com"
+                    placeholder="billmygym@gmail.com"
                     className="h-12 rounded-none border border-[#ece7df] bg-white px-4 text-[15px] font-medium text-[#282520] shadow-none placeholder:text-[#a6a09a] focus-visible:ring-0"
                   />
                 </div>
@@ -273,11 +273,6 @@ export default function Login() {
                 {isGoogleLoading && (
                   <p className="mt-3 text-center text-sm font-medium text-[#8b857d]">Completing Google sign-in...</p>
                 )}
-              </div>
-
-              <div className="mt-8 text-sm text-[#2a261f]">
-                Don&apos;t have an account?
-                <span className="ml-1 underline underline-offset-2">Registration</span>
               </div>
             </div>
           </section>

@@ -53,12 +53,6 @@ export const getSidebarNavItems = (
         icon: ClipboardList,
         section: "Platform",
       },
-      {
-        label: "Referrals",
-        href: "/app/referrals/analytics",
-        icon: Gift,
-        section: "Platform",
-      },
     ];
   }
 
@@ -123,6 +117,12 @@ export const getProfileNavItems = (
         label: "Audit Logs",
         href: "/app/audit-logs",
         icon: ClipboardList,
+        section: "Account",
+      },
+      {
+        label: "Referrals",
+        href: "/app/referrals/analytics",
+        icon: Gift,
         section: "Account",
       },
     ];

@@ -47,7 +47,6 @@ public class FinancialReportService {
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
     private static final DateTimeFormatter MONTH_LABEL = DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH);
     private static final int MAX_REPORT_MONTHS = 36;
-    private static final int GROWTH_REPORT_MONTHS = 6;
 
     private final OrganizationRepository organizationRepository;
     private final MemberPaymentRepository memberPaymentRepository;
@@ -252,11 +251,6 @@ public class FinancialReportService {
     }
 
     private ReportWindow resolveWindow(Organization organization, String period, String range, LocalDate from, LocalDate to) {
-        SubscriptionPlan plan = planAccessService.resolvePlan(organization);
-        if (plan == SubscriptionPlan.GROWTH) {
-            return growthWindow();
-        }
-
         String normalizedPeriod = normalizePeriod(period);
         String normalizedRange = normalizeRange(range, normalizedPeriod);
         LocalDate today = LocalDate.now(APP_ZONE);
@@ -298,13 +292,6 @@ public class FinancialReportService {
         }
 
         return new ReportWindow(normalizedPeriod, normalizedRange, startDate, endDate);
-    }
-
-    private ReportWindow growthWindow() {
-        LocalDate today = LocalDate.now(APP_ZONE);
-        YearMonth currentMonth = YearMonth.from(today);
-        LocalDate startDate = currentMonth.minusMonths(GROWTH_REPORT_MONTHS - 1L).atDay(1);
-        return new ReportWindow("MONTHLY", "LAST_SIX_MONTHS", startDate, today);
     }
 
     private List<YearMonth> monthsBetween(LocalDate startDate, LocalDate endDate) {

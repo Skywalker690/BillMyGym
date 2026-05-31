@@ -158,19 +158,14 @@ export default function Reports() {
 
   const effectiveAccess = effectivePlanAccess(subscription?.planAccess);
   const previewPlan = isDemoWorkspace ? effectivePlan : subscription?.subscriptionPlan;
-  const isGrowthPlan = previewPlan === "GROWTH";
-
   const params = useMemo(() => {
-    if (isGrowthPlan) {
-      return { period: "monthly", range: "last_six_months" };
-    }
     const next: Record<string, string> = { period, range };
     if (range === "custom") {
       next.from = customFrom;
       next.to = customTo;
     }
     return next;
-  }, [period, range, customFrom, customTo, isGrowthPlan]);
+  }, [period, range, customFrom, customTo]);
 
   const canViewReports = Boolean(effectiveAccess.canReceiveMonthlyReports);
   const canExportReports = Boolean(effectiveAccess.canExportReports);
@@ -307,8 +302,8 @@ export default function Reports() {
               Month-wise revenue clarity for the gym.
             </h1>
             <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">
-              {isGrowthPlan
-                ? "Track admissions, membership collections, due payments, and member health across the last 6 months."
+              {previewPlan === "GROWTH"
+                ? "Track admissions, membership collections, due payments, and member health across your historical report windows."
                 : "Track admissions, membership collections, due payments, and member health in one export-ready workspace."}
             </p>
           </div>
@@ -391,26 +386,7 @@ export default function Reports() {
           </div>
         </div>
 
-        {isGrowthPlan ? (
-          <div className="grid gap-5 p-5 xl:grid-cols-[0.72fr_1.28fr]">
-            <div className="rounded-[1.2rem] border border-emerald-100 bg-emerald-50/80 p-4">
-              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">Growth Access</div>
-              <div className="mt-2 text-lg font-black text-slate-950">Last 6 months only</div>
-              <div className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-                Growth workspaces can review a rolling 6-month financial report window. Custom date ranges and exports are available on Pro.
-              </div>
-            </div>
-            <div className="rounded-[1.2rem] border border-white/80 bg-white/80 p-4">
-              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Report Window</div>
-              <div className="mt-2 text-lg font-black text-slate-950">{reportWindowLabel(report?.startDate, report?.endDate)}</div>
-              <div className="mt-1 text-sm font-semibold text-slate-500">{fullDateLabel(report?.startDate)} to {fullDateLabel(report?.endDate)}</div>
-              <div className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-                This always includes the current month plus the previous 5 months.
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="grid gap-5 p-5 xl:grid-cols-[0.72fr_1.28fr]">
+        <div className="grid gap-5 p-5 xl:grid-cols-[0.72fr_1.28fr]">
             <div>
               <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Period</div>
               <div className="grid grid-cols-2 gap-2 rounded-[1.2rem] border border-white/80 bg-white/80 p-1.5">
@@ -458,9 +434,8 @@ export default function Reports() {
               </div>
             </div>
           </div>
-        )}
 
-        {!isGrowthPlan && range === "custom" && (
+        {range === "custom" && (
           <div className="border-t border-white/70 p-5">
             <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
               <label className="space-y-2">
@@ -498,7 +473,7 @@ export default function Reports() {
 
         {!canExportReports && (
           <div className="border-t border-white/70 px-5 py-4 text-sm font-bold text-amber-900">
-            {isGrowthPlan ? "Upgrade to Pro to unlock custom date ranges and exports" : "Starter includes dashboard analytics, while reports begin on Growth."}
+            {previewPlan === "GROWTH" ? "Upgrade to Pro to unlock report exports." : "Starter includes dashboard analytics, while reports begin on Growth."}
           </div>
         )}
       </section>

@@ -90,8 +90,8 @@ const badgeClasses: Record<string, string> = {
 
 const planMeta: Record<string, string> = {
   STARTER: "Rs. 299/month + Rs. 5 per active member above 100",
-  GROWTH: "Rs. 699/month + Rs. 5 per active member above 200",
-  PRO: "Rs. 1499/month + Rs. 3 per active member above 600",
+  GROWTH: "Rs. 999/month + Rs. 3 per active member above 300",
+  PRO: "Rs. 2499/month + Rs. 2 per active member above 600",
   DEMO: "No subscription fee",
 };
 

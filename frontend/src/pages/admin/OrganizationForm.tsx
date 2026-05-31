@@ -249,7 +249,7 @@ export default function OrganizationForm() {
                     step="0.01"
                     {...register("monthlyMembershipFee", { valueAsNumber: true })}
                     className="h-12 rounded-2xl bg-white/75"
-                    placeholder="1499"
+                    placeholder="299"
                   />
                 </Field>
 

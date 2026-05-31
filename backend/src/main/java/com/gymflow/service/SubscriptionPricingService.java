@@ -14,10 +14,11 @@ import org.springframework.stereotype.Service;
 public class SubscriptionPricingService {
 
     public static final int STARTER_INCLUDED_ACTIVE_MEMBERS = 100;
-    public static final int GROWTH_INCLUDED_ACTIVE_MEMBERS = 200;
+    public static final int GROWTH_INCLUDED_ACTIVE_MEMBERS = 300;
     public static final int PRO_INCLUDED_ACTIVE_MEMBERS = 600;
-    public static final BigDecimal STARTER_GROWTH_OVERAGE_PER_ACTIVE_MEMBER = new BigDecimal("5.00");
-    public static final BigDecimal PRO_OVERAGE_PER_ACTIVE_MEMBER = new BigDecimal("3.00");
+    public static final BigDecimal STARTER_OVERAGE_PER_ACTIVE_MEMBER = new BigDecimal("5.00");
+    public static final BigDecimal GROWTH_OVERAGE_PER_ACTIVE_MEMBER = new BigDecimal("3.00");
+    public static final BigDecimal PRO_OVERAGE_PER_ACTIVE_MEMBER = new BigDecimal("2.00");
 
     private final MemberRepository memberRepository;
     private final PlanAccessService planAccessService;
@@ -40,7 +41,8 @@ public class SubscriptionPricingService {
         Integer includedMembers = includedMembers(plan);
         long overageMembers = includedMembers == null ? 0L : Math.max(activeMembers - includedMembers, 0);
         BigDecimal overageRate = switch (plan) {
-            case STARTER, GROWTH -> STARTER_GROWTH_OVERAGE_PER_ACTIVE_MEMBER;
+            case STARTER -> STARTER_OVERAGE_PER_ACTIVE_MEMBER;
+            case GROWTH -> GROWTH_OVERAGE_PER_ACTIVE_MEMBER;
             case PRO -> PRO_OVERAGE_PER_ACTIVE_MEMBER;
             case PILOT -> BigDecimal.ZERO;
         };

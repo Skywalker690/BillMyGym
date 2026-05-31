@@ -177,6 +177,15 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     long countByOrganizationIdAndDeletedFalse(Long organizationId);
 
+    @Query("""
+        select member.phone
+        from Member member
+        where member.organization.id = :organizationId
+          and member.deleted = false
+          and member.phone is not null
+        """)
+    List<String> findPhonesByOrganizationIdAndDeletedFalse(@Param("organizationId") Long organizationId);
+
     interface MonthlyMemberJoinProjection {
         Integer getYear();
 

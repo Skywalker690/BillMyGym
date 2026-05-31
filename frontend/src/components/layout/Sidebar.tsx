@@ -19,6 +19,27 @@ interface SidebarProps {
   onLogout: () => void;
 }
 
+function BillMyGymMark({ collapsed }: { collapsed: boolean }) {
+  return (
+    <div className="flex items-center gap-4 text-white">
+      <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.55rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(236,253,245,0.92))] p-[7px] shadow-[0_18px_44px_-22px_rgba(255,255,255,0.95)] ring-1 ring-white/65">
+        <div className="absolute inset-[7px] rounded-[1.15rem] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.92),rgba(220,252,231,0.55)_60%,rgba(255,255,255,0.4))]" />
+        <img
+          src="/web-app-manifest-512x512.png"
+          alt="BillMyGym"
+          className="relative z-10 h-full w-full rounded-[1.1rem] object-contain drop-shadow-[0_10px_18px_rgba(15,23,42,0.18)]"
+        />
+      </div>
+      {!collapsed && (
+        <div className="min-w-0">
+          <div className="text-[1.72rem] font-black tracking-[-0.04em] leading-none text-white">BillMyGym</div>
+          <div className="mt-2 text-[10px] font-black uppercase tracking-[0.34em] text-emerald-300/95">Revenue OS</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NavItem({
   icon: Icon,
   label,
@@ -95,17 +116,7 @@ export function Sidebar({
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.12),transparent_46%),radial-gradient(circle_at_bottom_left,rgba(251,191,36,0.08),transparent_34%)] pointer-events-none" />
 
           <div className={cn("relative z-10 flex items-center pt-9 pb-7", collapsed ? "justify-center px-0" : "justify-between px-7")}>
-            <div className="flex items-center gap-4 text-white">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.35rem] bg-white shadow-sm">
-                <span className="text-lg font-black tracking-tight text-slate-900">BM</span>
-              </div>
-              {!collapsed && (
-                <div className="min-w-0">
-                  <div className="text-2xl font-black tracking-tight leading-none">BillMyGym</div>
-                  <div className="mt-2 text-[10px] font-black uppercase tracking-[0.34em] text-emerald-300">Revenue OS</div>
-                </div>
-              )}
-            </div>
+            <BillMyGymMark collapsed={collapsed} />
             {!collapsed && (
               <button onClick={onCloseMobile} className="rounded-xl p-2 text-slate-400 hover:text-white lg:hidden">
                 <X className="h-5 w-5" />

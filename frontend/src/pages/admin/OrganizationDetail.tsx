@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  AlertCircle,
   ArrowLeft,
   Building2,
   CalendarDays,
+  CheckCircle2,
   CreditCard,
+  Download,
+  FileSpreadsheet,
   Info,
   IndianRupee,
   Mail,
@@ -16,6 +20,7 @@ import {
   ShieldCheck,
   Sparkles,
   Trash2,
+  Upload,
   User2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -79,6 +84,22 @@ type SubscriptionStatus = {
   paymentHistoryPage?: PaymentHistoryPage;
 };
 
+type BulkImportIssue = {
+  field: string;
+  message: string;
+};
+
+type BulkImportResponse = {
+  totalRows: number;
+  importedCount: number;
+  limit: number;
+  errors: Array<{
+    rowNumber?: number | null;
+    field: string;
+    message: string;
+  }>;
+};
+
 type FormValues = {
   name: string;
   place: string;
@@ -125,6 +146,11 @@ export default function OrganizationDetail() {
   const queryClient = useQueryClient();
   const [paymentHistory, setPaymentHistory] = useState<SubscriptionPayment[]>([]);
   const [paymentHistoryPage, setPaymentHistoryPage] = useState<PaymentHistoryPage | null>(null);
+  const [selectedImportFile, setSelectedImportFile] = useState<File | null>(null);
+  const [bulkImportSummary, setBulkImportSummary] = useState<BulkImportResponse | null>(null);
+  const [bulkImportIssues, setBulkImportIssues] = useState<BulkImportIssue[]>([]);
+  const [bulkImportMessage, setBulkImportMessage] = useState<string | null>(null);
+  const bulkImportInputRef = useRef<HTMLInputElement | null>(null);
 
   const { data: organization, isLoading } = useQuery<Organization>({
     queryKey: ["organization", id],
@@ -238,6 +264,33 @@ export default function OrganizationDetail() {
     onError: () => toast.error("Could not load older subscription payments"),
   });
 
+  const bulkImportMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await api.post(`/organizations/${id}/members/bulk-upload`, formData);
+      return res.data as BulkImportResponse;
+    },
+    onSuccess: (data) => {
+      setBulkImportSummary(data);
+      setBulkImportIssues([]);
+      setBulkImportMessage(`${data.importedCount} members were imported into this gym.`);
+      setSelectedImportFile(null);
+      if (bulkImportInputRef.current) {
+        bulkImportInputRef.current.value = "";
+      }
+      toast.success(`${data.importedCount} members imported successfully`);
+    },
+    onError: (error: any) => {
+      const responseData = error?.response?.data;
+      const issues = Array.isArray(responseData?.errors) ? responseData.errors : [];
+      setBulkImportSummary(null);
+      setBulkImportIssues(issues);
+      setBulkImportMessage(responseData?.message ?? "Bulk member upload failed.");
+      toast.error(responseData?.message ?? "Bulk member upload failed.");
+    },
+  });
+
   const onSubmit = (data: FormValues) => updateMutation.mutate(data);
 
   const needsRenewalAttention = useMemo(() => {
@@ -253,6 +306,8 @@ export default function OrganizationDetail() {
     return new Date(targetDate) <= limit;
   }, [organization]);
 
+  const visibleBulkImportIssues = useMemo(() => bulkImportIssues.slice(0, 8), [bulkImportIssues]);
+
   if (isLoading) return <div className="p-8 text-sm font-semibold text-slate-500">Loading organization...</div>;
   if (!organization) return <div className="p-8 text-sm font-semibold text-slate-500">Organization not found.</div>;
 
@@ -261,6 +316,27 @@ export default function OrganizationDetail() {
     currency: "INR",
     maximumFractionDigits: 0,
   });
+
+  function downloadSampleCsv() {
+    const csv = "fullName,phone\nAarav Nair,9876543210\nDiya Joseph,9123456789\n";
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "billmygym-members-sample.csv";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function issueLabel(field: string) {
+    const match = /^rows\[(\d+)\]\.(.+)$/.exec(field);
+    if (!match) {
+      return field === "file" ? "CSV file" : field;
+    }
+    const [, rowNumber, rowField] = match;
+    const fieldLabel = rowField === "fullName" ? "Full name" : rowField === "phone" ? "Phone number" : rowField;
+    return `Row ${rowNumber} - ${fieldLabel}`;
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
@@ -443,6 +519,144 @@ export default function OrganizationDetail() {
         </div>
 
         <div className="space-y-6">
+          <section className="glass-panel overflow-hidden rounded-[2rem]">
+            <div className="border-b border-black/5 p-6">
+              <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-slate-950">
+                <FileSpreadsheet className="h-6 w-6 text-emerald-700" />
+                Bulk Member Import
+              </h2>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                Super admins can import up to 200 members into this gym at a time with a simple CSV containing only full name and phone number.
+              </p>
+            </div>
+            <div className="space-y-5 p-6">
+              <div className="rounded-[1.6rem] border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-sky-50 p-5 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">CSV Rules</div>
+                    <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-slate-600">
+                      Use only `fullName` and `phone`. Phone numbers must be unique inside this gym for bulk import, including against existing members.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={downloadSampleCsv}
+                    className="rounded-full border-emerald-200 bg-white px-5 font-black text-emerald-700 hover:bg-emerald-50"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Sample
+                  </Button>
+                </div>
+                <div className="mt-4 rounded-[1.3rem] border border-white/80 bg-slate-950 p-4 text-xs font-semibold text-emerald-100 shadow-inner">
+                  <div>fullName,phone</div>
+                  <div>Aarav Nair,9876543210</div>
+                  <div>Diya Joseph,9123456789</div>
+                </div>
+              </div>
+
+              <div className="rounded-[1.7rem] border border-dashed border-slate-300 bg-slate-50/80 p-5">
+                <input
+                  ref={bulkImportInputRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    setSelectedImportFile(file);
+                    setBulkImportSummary(null);
+                    setBulkImportIssues([]);
+                    setBulkImportMessage(null);
+                  }}
+                />
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <div className="text-sm font-black text-slate-950">Upload file for {organization.name}</div>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      Maximum 200 member rows per upload. Blank phone numbers are not allowed in this importer.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Badge className="border-slate-200 bg-white text-slate-700">2 columns only</Badge>
+                      <Badge className="border-slate-200 bg-white text-slate-700">200 row limit</Badge>
+                      <Badge className="border-slate-200 bg-white text-slate-700">Org-specific phone uniqueness</Badge>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => bulkImportInputRef.current?.click()}
+                      className="rounded-full border-white/80 bg-white px-5 font-black"
+                    >
+                      <FileSpreadsheet className="mr-2 h-4 w-4" />
+                      Choose CSV
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (!selectedImportFile) {
+                          toast.error("Choose a CSV file first.");
+                          return;
+                        }
+                        bulkImportMutation.mutate(selectedImportFile);
+                      }}
+                      disabled={!selectedImportFile || bulkImportMutation.isPending}
+                      className="rounded-full bg-emerald-600 px-5 font-black text-white hover:bg-emerald-700"
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      {bulkImportMutation.isPending ? "Importing..." : "Import Members"}
+                    </Button>
+                  </div>
+                </div>
+                <div className="mt-4 rounded-[1.2rem] border border-white/80 bg-white/90 px-4 py-3 text-sm font-semibold text-slate-700">
+                  {selectedImportFile ? `Selected file: ${selectedImportFile.name}` : "No CSV selected yet."}
+                </div>
+              </div>
+
+              {bulkImportSummary && (
+                <div className="rounded-[1.6rem] border border-emerald-200 bg-emerald-50/90 p-5 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600 text-white">
+                      <CheckCircle2 className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-black text-emerald-900">Import completed successfully</div>
+                      <p className="mt-1 text-sm font-semibold text-emerald-800">
+                        {bulkImportSummary.importedCount} members were added from {bulkImportSummary.totalRows} CSV rows.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {bulkImportMessage && bulkImportIssues.length > 0 && (
+                <div className="rounded-[1.6rem] border border-rose-200 bg-rose-50/90 p-5 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-600 text-white">
+                      <AlertCircle className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-black text-rose-900">{bulkImportMessage}</div>
+                      <div className="mt-3 space-y-2">
+                        {visibleBulkImportIssues.map((issue, index) => (
+                          <div key={`${issue.field}-${index}`} className="rounded-[1.1rem] border border-rose-200 bg-white/90 px-4 py-3">
+                            <div className="text-xs font-black uppercase tracking-[0.22em] text-rose-700">{issueLabel(issue.field)}</div>
+                            <div className="mt-1 text-sm font-semibold text-slate-700">{issue.message}</div>
+                          </div>
+                        ))}
+                        {bulkImportIssues.length > visibleBulkImportIssues.length && (
+                          <div className="text-xs font-bold text-rose-700">
+                            Showing {visibleBulkImportIssues.length} of {bulkImportIssues.length} issues. Fix the file and upload again.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
           <section className="glass-panel rounded-[2rem] p-6">
             <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Quick View</div>
             <div className="mt-5 space-y-4">

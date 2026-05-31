@@ -622,7 +622,7 @@ function PlanBillingPanel({
               ? `Starter includes ${includedMembers} active members and keeps total members unlimited. Every active member above that adds ${money(overageRate)} to the next monthly subscription payment.`
               : planName === "GROWTH"
                 ? `Growth includes ${includedMembers} active members and keeps total members unlimited. Every active member above that adds ${money(overageRate)} to the next monthly subscription payment.`
-                : `Pro includes ${includedMembers} active members. Every active member above that adds ${money(overageRate)} to the next monthly subscription payment.`}
+                : `Pro includes ${includedMembers} active members and keeps total members unlimited. Every active member above that adds ${money(overageRate)} to the next monthly subscription payment.`}
           </p>
         </div>
 
