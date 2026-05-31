@@ -31,7 +31,13 @@ public class OrganizationMapper {
             organization.getTrialEndDate(),
             organization.getSubscriptionDueDate(),
             organization.getPausedAt(),
-            organization.getDeactivatedAt()
+            organization.getDeactivatedAt(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
         );
     }
 

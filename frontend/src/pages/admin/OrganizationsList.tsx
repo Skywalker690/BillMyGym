@@ -38,6 +38,12 @@ type Organization = {
   subscriptionPlan?: "STARTER" | "GROWTH" | "PRO" | "PILOT";
   subscriptionDueDate?: string | null;
   trialEndDate?: string | null;
+  activeMembers?: number | null;
+  includedActiveMembers?: number | null;
+  overageMembers?: number | null;
+  overageRate?: number | null;
+  overageAmount?: number | null;
+  estimatedMonthlyBill?: number | null;
 };
 
 type DirectoryScope = "ALL" | "REGULAR" | "DEMO" | "REGULAR_TRIAL";
@@ -54,6 +60,7 @@ type DirectorySummary = {
   totalActiveOrganizations: number;
   totalRenewalPendingOrganizations: number;
   totalPilotOrganizations: number;
+  totalTrialOrganizations: number;
   subscriptionDistribution: DistributionItem[];
 };
 
@@ -88,12 +95,11 @@ const badgeClasses: Record<string, string> = {
   PRO: "border-indigo-200 bg-indigo-100 text-indigo-800",
 };
 
-const planMeta: Record<string, string> = {
-  STARTER: "Rs. 299/month + Rs. 5 per active member above 100",
-  GROWTH: "Rs. 999/month + Rs. 3 per active member above 300",
-  PRO: "Rs. 2499/month + Rs. 2 per active member above 600",
-  DEMO: "No subscription fee",
-};
+const money = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
 
 function formatDate(value?: string | null) {
   if (!value) return "Not scheduled";
@@ -139,6 +145,18 @@ function lifecycleMeta(org: Organization) {
     return { label: "Active Subscription", value: `Next Renewal: ${formatDate(org.subscriptionDueDate)}` };
   }
   return { label: organizationStatusLabel(org.status), value: `Renewal Date: ${formatDate(org.subscriptionDueDate)}` };
+}
+
+function formatMoney(value?: number | null) {
+  return money.format(Number(value ?? 0));
+}
+
+function usageLabel(org: Organization) {
+  const activeMembers = Number(org.activeMembers ?? 0);
+  if (org.includedActiveMembers == null) {
+    return `${activeMembers} active members`;
+  }
+  return `${activeMembers}/${org.includedActiveMembers} active members`;
 }
 
 export default function OrganizationsList() {
@@ -276,7 +294,7 @@ export default function OrganizationsList() {
                   <div>
                     <div className="text-sm font-black text-slate-950">{item.label}</div>
                     <div className="mt-1 text-xs font-bold text-slate-500">
-                      {item.count} organizations · {planMeta[item.key] ?? "Custom plan"}
+                      {item.count} gyms
                     </div>
                   </div>
                   <Badge className={badgeClasses[item.key] ?? badgeClasses.STARTER}>{item.percentage}%</Badge>
@@ -288,7 +306,7 @@ export default function OrganizationsList() {
                         ? "bg-indigo-500"
                         : item.key === "GROWTH"
                           ? "bg-emerald-500"
-                          : item.key === "DEMO"
+                          : item.key === "TRIAL"
                             ? "bg-sky-500"
                             : "bg-slate-500"
                     }`}
@@ -383,10 +401,10 @@ export default function OrganizationsList() {
             Refreshing organizations...
           </div>
         )}
-        <div className="hidden grid-cols-[1.15fr_0.8fr_0.8fr_0.95fr_auto] gap-4 border-b border-slate-100 px-5 py-4 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 lg:grid">
+        <div className="hidden grid-cols-[1.2fr_0.9fr_1.15fr_1fr_auto] gap-4 border-b border-slate-100 px-5 py-4 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 lg:grid">
           <div>Organization</div>
           <div>Admin</div>
-          <div>Plan & Access</div>
+          <div>Members & Overage</div>
           <div>Renewal & Lifecycle</div>
           <div className="text-right">Actions</div>
         </div>
@@ -405,7 +423,7 @@ export default function OrganizationsList() {
               const plan = org.subscriptionPlan ?? (org.organizationType === "DEMO" ? "PRO" : "STARTER");
 
               return (
-                <div key={org.id} className="grid gap-4 p-5 transition hover:bg-white/90 lg:grid-cols-[1.15fr_0.8fr_0.8fr_0.95fr_auto] lg:items-center">
+                <div key={org.id} className="grid gap-4 p-5 transition hover:bg-white/90 lg:grid-cols-[1.2fr_0.9fr_1.15fr_1fr_auto] lg:items-center">
                   <div className="min-w-0">
                     <div className="flex items-start gap-3">
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-sm">
@@ -432,12 +450,30 @@ export default function OrganizationsList() {
                     <div className="mt-1 truncate text-xs font-semibold text-slate-400">{org.adminPhoneNumber || "No phone"}</div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    <Badge className={badgeClasses[plan]}>{organizationPlanLabel(plan)}</Badge>
-                    <Badge className={badgeClasses[org.status]}>{organizationStatusLabel(org.status)}</Badge>
-                    {org.organizationType === "DEMO" && (
-                      <Badge className={badgeClasses[org.organizationType]}>{organizationTypeLabel(org.organizationType)}</Badge>
-                    )}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Usage</div>
+                    <div className="mt-1 text-sm font-black text-slate-950">{usageLabel(org)}</div>
+                    <div className="mt-2 text-xs font-semibold text-slate-600">
+                      {Number(org.overageMembers ?? 0) > 0
+                        ? `${org.overageMembers} extra members at ${formatMoney(org.overageRate)} each`
+                        : "No extra member charges"}
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <Badge className={Number(org.overageMembers ?? 0) > 0 ? "border-rose-200 bg-rose-100 text-rose-800" : "border-emerald-200 bg-emerald-100 text-emerald-800"}>
+                        {Number(org.overageMembers ?? 0) > 0 ? `+${org.overageMembers} extra` : "Within plan"}
+                      </Badge>
+                      <span className="text-xs font-black text-slate-700">Extra: {formatMoney(org.overageAmount)}</span>
+                    </div>
+                    <div className="mt-2 text-xs font-bold text-slate-600">
+                      Estimated bill: <span className="text-slate-950">{formatMoney(org.estimatedMonthlyBill)}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Badge className={badgeClasses[plan]}>{organizationPlanLabel(plan)}</Badge>
+                      <Badge className={badgeClasses[org.status]}>{organizationStatusLabel(org.status)}</Badge>
+                      {org.organizationType === "DEMO" && (
+                        <Badge className={badgeClasses[org.organizationType]}>{organizationTypeLabel(org.organizationType)}</Badge>
+                      )}
+                    </div>
                   </div>
 
                   <div className={`rounded-2xl border p-3 ${attention ? "border-rose-200 bg-rose-50/80" : "border-emerald-100 bg-emerald-50/70"}`}>

@@ -50,6 +50,12 @@ type Organization = {
   trialStartDate?: string | null;
   trialEndDate?: string | null;
   subscriptionDueDate?: string | null;
+  activeMembers?: number | null;
+  includedActiveMembers?: number | null;
+  overageMembers?: number | null;
+  overageRate?: number | null;
+  overageAmount?: number | null;
+  estimatedMonthlyBill?: number | null;
 };
 
 type SubscriptionPayment = {
@@ -80,6 +86,16 @@ type SubscriptionStatus = {
   subscriptionDueDate?: string | null;
   whatsappUsage?: number;
   emailUsage?: number;
+  activeMembers?: number;
+  pricing?: {
+    baseAmount?: number;
+    totalAmount?: number;
+    activeMembers?: number;
+    includedMembers?: number | null;
+    overageMembers?: number;
+    overageRate?: number;
+    overageAmount?: number;
+  };
   paymentHistory?: SubscriptionPayment[];
   paymentHistoryPage?: PaymentHistoryPage;
 };
@@ -111,8 +127,6 @@ type FormValues = {
   adminEmail: string;
   monthlyMembershipFee: number;
   admissionFee: number;
-  organizationType: "REGULAR" | "DEMO";
-  status: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
 };
 
 const paymentBadgeClasses: Record<SubscriptionPayment["paymentStatus"], string> = {
@@ -205,8 +219,6 @@ export default function OrganizationDetail() {
       adminEmail: organization.adminEmail ?? "",
       monthlyMembershipFee: Number(organization.monthlyMembershipFee ?? 0),
       admissionFee: Number(organization.admissionFee ?? 0),
-      organizationType: organization.organizationType ?? "REGULAR",
-      status: organization.status,
     });
   }, [organization, reset]);
 
@@ -224,9 +236,9 @@ export default function OrganizationDetail() {
       adminEmail: data.adminEmail,
       monthlyMembershipFee: data.monthlyMembershipFee,
       admissionFee: data.admissionFee,
-      organizationType: data.organizationType,
+      organizationType: organization?.organizationType,
       subscriptionPlan: organization?.subscriptionPlan,
-      status: data.status,
+      status: organization?.status,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organization", id] });
@@ -316,6 +328,14 @@ export default function OrganizationDetail() {
     currency: "INR",
     maximumFractionDigits: 0,
   });
+  const pricing = subscriptionStatus?.pricing;
+  const activeMembersUsed = Number(pricing?.activeMembers ?? organization.activeMembers ?? 0);
+  const includedActiveMembers = pricing?.includedMembers ?? organization.includedActiveMembers ?? null;
+  const overageMembers = Number(pricing?.overageMembers ?? organization.overageMembers ?? 0);
+  const overageRate = Number(pricing?.overageRate ?? organization.overageRate ?? 0);
+  const overageAmount = Number(pricing?.overageAmount ?? organization.overageAmount ?? 0);
+  const estimatedMonthlyBill = Number(subscriptionStatus?.monthlyAmount ?? organization.estimatedMonthlyBill ?? 0);
+  const basePlanAmount = Number(pricing?.baseAmount ?? 0);
 
   function downloadSampleCsv() {
     const csv = "fullName,phone\nAarav Nair,9876543210\nDiya Joseph,9123456789\n";
@@ -460,20 +480,6 @@ export default function OrganizationDetail() {
               <p className="mt-1 text-sm font-semibold text-slate-500">Manage subscription state, workspace type, and visible renewal signals.</p>
             </div>
             <div className="grid gap-5 p-6 md:grid-cols-2">
-              <Field label="Subscription Status">
-                <select {...register("status")} className="h-11 w-full rounded-xl border border-black/5 bg-white/75 px-4 text-sm font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/40">
-                  <option value="TRIAL">Free Trial Access</option>
-                  <option value="ACTIVE">Active Subscription</option>
-                  <option value="PAUSED">Subscription Renewal Required</option>
-                  <option value="DEACTIVATED">Account Inactive</option>
-                </select>
-              </Field>
-              <Field label="Workspace Type">
-                <select {...register("organizationType")} className="h-11 w-full rounded-xl border border-black/5 bg-white/75 px-4 text-sm font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/40">
-                  <option value="REGULAR">Regular</option>
-                  <option value="DEMO">Demo Workspace</option>
-                </select>
-              </Field>
               <Field label="Monthly Membership Fee (INR)">
                 <Input type="number" min="0" step="0.01" {...register("monthlyMembershipFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-white/70" />
               </Field>
@@ -685,6 +691,39 @@ export default function OrganizationDetail() {
               <MiniMetric label="WhatsApp Usage" value={String(subscriptionStatus?.whatsappUsage ?? 0)} />
               <MiniMetric label="Email Usage" value={String(subscriptionStatus?.emailUsage ?? 0)} />
               <MiniMetric label="Renewal Date" value={formatDate(subscriptionStatus?.subscriptionDueDate ?? organization.subscriptionDueDate)} />
+              <MiniMetric
+                label="Active Members"
+                value={includedActiveMembers == null ? `${activeMembersUsed}` : `${activeMembersUsed}/${includedActiveMembers}`}
+              />
+              <MiniMetric
+                label="Extra Members"
+                value={overageMembers > 0 ? `${overageMembers}` : "0"}
+              />
+              <MiniMetric
+                label="Extra Member Cost"
+                value={money.format(overageAmount)}
+              />
+              <MiniMetric
+                label="Base Plan Amount"
+                value={money.format(basePlanAmount)}
+              />
+              <MiniMetric
+                label="Estimated Monthly Bill"
+                value={money.format(estimatedMonthlyBill)}
+              />
+            </div>
+            <div className="border-t border-black/5 px-6 py-5">
+              <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
+                <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Member Billing Snapshot</div>
+                <div className="mt-2 text-sm font-black text-slate-950">
+                  {includedActiveMembers == null ? `${activeMembersUsed} active members in this workspace.` : `${activeMembersUsed}/${includedActiveMembers} active members are currently used.`}
+                </div>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+                  {overageMembers > 0
+                    ? `${overageMembers} extra active members are billed at ${money.format(overageRate)} each, adding ${money.format(overageAmount)} on top of the ${money.format(basePlanAmount)} base plan.`
+                    : `This gym is still within its included active-member limit, so there is no extra member charge beyond the ${money.format(basePlanAmount)} base plan.`}
+                </p>
+              </div>
             </div>
             <div className="divide-y divide-slate-100 border-t border-black/5">
               {paymentHistory.length ? (

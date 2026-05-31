@@ -49,17 +49,18 @@ public class OrganizationService {
     private final AuditLogService auditLogService;
     private final PasswordEncoder passwordEncoder;
     private final BillingLifecycleService billingLifecycleService;
+    private final SubscriptionPricingService subscriptionPricingService;
 
     public List<OrganizationResponse> listOrganizations() {
         AuthenticatedUser user = SecurityUtils.currentUser();
         if (user.role() == Role.SUPER_ADMIN) {
-            return organizationRepository.findAllByDeletedFalse().stream().map(organizationMapper::toResponse).toList();
+            return organizationRepository.findAllByDeletedFalse().stream().map(this::toResponse).toList();
         }
         if (user.organizationId() == null) {
             return List.of();
         }
         return organizationRepository.findByIdAndDeletedFalse(user.organizationId())
-            .map(organizationMapper::toResponse)
+            .map(this::toResponse)
             .stream()
             .toList();
     }
@@ -70,7 +71,7 @@ public class OrganizationService {
             throw new ForbiddenException("Forbidden organization access");
         }
         return organizationRepository.findByIdAndDeletedFalse(id)
-            .map(organizationMapper::toResponse)
+            .map(this::toResponse)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
     }
 
@@ -107,7 +108,7 @@ public class OrganizationService {
             organization.getId(),
             organization.getName()
         );
-        return organizationMapper.toResponse(organization);
+        return toResponse(organization);
     }
 
     @Transactional
@@ -162,7 +163,7 @@ public class OrganizationService {
             PageRequest.of(safePage, safeSize)
         );
         return new OrganizationDirectoryResponse(
-            result.getContent().stream().map(organizationMapper::toResponse).toList(),
+            result.getContent().stream().map(this::toResponse).toList(),
             result.getNumber(),
             result.getSize(),
             result.getTotalElements(),
@@ -210,7 +211,7 @@ public class OrganizationService {
             organization.getId(),
             organization.getName()
         );
-        return organizationMapper.toResponse(organization);
+        return toResponse(organization);
     }
 
     private void validateAdminUniqueness(String adminEmail, String adminPhoneNumber, Long organizationId) {
@@ -229,6 +230,7 @@ public class OrganizationService {
             List.of(OrganizationStatus.PAUSED, OrganizationStatus.DEACTIVATED)
         );
         long totalDemoOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.DEMO);
+        long totalTrialOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.TRIAL);
         List<OrganizationPlanSummary> subscriptionDistribution = new ArrayList<>(Arrays.stream(com.gymflow.domain.enums.SubscriptionPlan.values())
             .filter(plan -> plan != com.gymflow.domain.enums.SubscriptionPlan.PILOT)
             .map(plan -> {
@@ -244,16 +246,17 @@ public class OrganizationService {
             })
             .toList());
         subscriptionDistribution.add(new OrganizationPlanSummary(
-            "DEMO",
-            "Demo",
-            totalDemoOrganizations,
-            totalOrganizations <= 0 ? 0 : (int) Math.round((totalDemoOrganizations * 100.0) / totalOrganizations)
+            "TRIAL",
+            "Free Trial Gyms",
+            totalTrialOrganizations,
+            totalOrganizations <= 0 ? 0 : (int) Math.round((totalTrialOrganizations * 100.0) / totalOrganizations)
         ));
         return new OrganizationDirectorySummary(
             totalOrganizations,
             totalActiveOrganizations,
             totalRenewalPendingOrganizations,
             totalDemoOrganizations,
+            totalTrialOrganizations,
             subscriptionDistribution
         );
     }
@@ -334,5 +337,39 @@ public class OrganizationService {
             return 1;
         }
         return left.compareTo(right);
+    }
+
+    private OrganizationResponse toResponse(Organization organization) {
+        OrganizationResponse base = organizationMapper.toResponse(organization);
+        SubscriptionPricingService.SubscriptionPriceBreakdown pricing = subscriptionPricingService.currentPrice(organization);
+        return new OrganizationResponse(
+            base.id(),
+            base.name(),
+            base.district(),
+            base.place(),
+            base.logoUrl(),
+            base.mapLocationLink(),
+            base.address(),
+            base.adminFullName(),
+            base.adminPhoneNumber(),
+            base.adminEmail(),
+            base.description(),
+            base.monthlyMembershipFee(),
+            base.admissionFee(),
+            base.organizationType(),
+            base.subscriptionPlan(),
+            base.status(),
+            base.trialStartDate(),
+            base.trialEndDate(),
+            base.subscriptionDueDate(),
+            base.pausedAt(),
+            base.deactivatedAt(),
+            pricing.activeMembers(),
+            pricing.includedMembers(),
+            pricing.overageMembers(),
+            pricing.overageRate(),
+            pricing.overageAmount(),
+            pricing.totalAmount()
+        );
     }
 }

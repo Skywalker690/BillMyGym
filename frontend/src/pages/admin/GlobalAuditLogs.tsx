@@ -82,7 +82,6 @@ function paymentStatusClass(status: SubscriptionAuditRow["status"]) {
 export default function GlobalAuditLogs() {
   const [activeTab, setActiveTab] = useState<AuditTab>("LOGIN");
   const [page, setPage] = useState(0);
-  const [hasRequested, setHasRequested] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
 
   const auditQuery = useQuery<LoginAuditResponse | SubscriptionAuditResponse>({
@@ -96,7 +95,7 @@ export default function GlobalAuditLogs() {
       });
       return res.data;
     },
-    enabled: hasRequested,
+    enabled: true,
     staleTime: Number.POSITIVE_INFINITY,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -115,17 +114,11 @@ export default function GlobalAuditLogs() {
   function switchTab(tab: AuditTab) {
     setActiveTab(tab);
     setPage(0);
-    if (hasRequested) {
-      setRefreshToken((current) => current + 1);
-    }
+    setRefreshToken((current) => current + 1);
   }
 
   function requestAuditRefresh(nextPage = 0) {
     setPage(nextPage);
-    if (!hasRequested) {
-      setHasRequested(true);
-      return;
-    }
     if (nextPage === page) {
       setRefreshToken((current) => current + 1);
     }
@@ -156,7 +149,7 @@ export default function GlobalAuditLogs() {
             className="rounded-full border-white/80 bg-white px-5 font-black"
           >
             <RefreshCcw className={`mr-2 h-4 w-4 ${auditQuery.isFetching ? "animate-spin" : ""}`} />
-            {hasRequested ? "Refresh" : "Load Audit Logs"}
+            Refresh
           </Button>
         </div>
 
@@ -187,7 +180,7 @@ export default function GlobalAuditLogs() {
       </section>
 
       <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-        {activeTab === "SUBSCRIPTIONS" && hasRequested && (
+        {activeTab === "SUBSCRIPTIONS" && (
           <div className="grid gap-3 border-b border-slate-100 bg-slate-50/80 p-4 sm:grid-cols-4">
             <AuditMetric label="Paid on page" value={paidOnPage} tone="emerald" />
             <AuditMetric label="Pending on page" value={pendingOnPage} tone="amber" />
@@ -210,9 +203,9 @@ export default function GlobalAuditLogs() {
         )}
 
         {activeTab === "LOGIN" ? (
-          <LoginAuditTable rows={rows as LoginAuditRow[]} hasRequested={hasRequested} />
+          <LoginAuditTable rows={rows as LoginAuditRow[]} />
         ) : (
-          <SubscriptionAuditTable rows={rows as SubscriptionAuditRow[]} hasRequested={hasRequested} />
+          <SubscriptionAuditTable rows={rows as SubscriptionAuditRow[]} />
         )}
 
         <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-sm">
@@ -224,7 +217,7 @@ export default function GlobalAuditLogs() {
               type="button"
               variant="outline"
               onClick={() => requestAuditRefresh(Math.max((meta?.page ?? 0) - 1, 0))}
-              disabled={!hasRequested || (meta?.page ?? 0) <= 0}
+              disabled={(meta?.page ?? 0) <= 0}
             >
               Previous
             </Button>
@@ -235,7 +228,7 @@ export default function GlobalAuditLogs() {
               type="button"
               variant="outline"
               onClick={() => requestAuditRefresh((meta?.page ?? 0) + 1)}
-              disabled={!hasRequested || !meta?.hasNext}
+              disabled={!meta?.hasNext}
             >
               Next
             </Button>
@@ -246,7 +239,7 @@ export default function GlobalAuditLogs() {
   );
 }
 
-function LoginAuditTable({ rows, hasRequested }: { rows: LoginAuditRow[]; hasRequested: boolean }) {
+function LoginAuditTable({ rows }: { rows: LoginAuditRow[] }) {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full text-left">
@@ -263,7 +256,7 @@ function LoginAuditTable({ rows, hasRequested }: { rows: LoginAuditRow[]; hasReq
           {rows.length === 0 && (
             <tr>
               <td className="px-4 py-8 text-center text-sm font-semibold text-slate-500" colSpan={5}>
-                {hasRequested ? "No login audit rows found." : "Click load audit logs to fetch records."}
+                No login audit rows found.
               </td>
             </tr>
           )}
@@ -287,7 +280,7 @@ function LoginAuditTable({ rows, hasRequested }: { rows: LoginAuditRow[]; hasReq
   );
 }
 
-function SubscriptionAuditTable({ rows, hasRequested }: { rows: SubscriptionAuditRow[]; hasRequested: boolean }) {
+function SubscriptionAuditTable({ rows }: { rows: SubscriptionAuditRow[] }) {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-[1240px] w-full text-left">
@@ -308,7 +301,7 @@ function SubscriptionAuditTable({ rows, hasRequested }: { rows: SubscriptionAudi
           {rows.length === 0 && (
             <tr>
               <td className="px-4 py-8 text-center text-sm font-semibold text-slate-500" colSpan={9}>
-                {hasRequested ? "No subscription rows found." : "Click load audit logs to fetch records."}
+                No subscription rows found.
               </td>
             </tr>
           )}

@@ -81,7 +81,6 @@ export default function OrganizationAuditLogs() {
   const [appliedFromDate, setAppliedFromDate] = useState("");
   const [appliedToDate, setAppliedToDate] = useState("");
   const [page, setPage] = useState(0);
-  const [hasRequested, setHasRequested] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
 
   const organizationQuery = useQuery({
@@ -113,7 +112,7 @@ export default function OrganizationAuditLogs() {
       });
       return res.data;
     },
-    enabled: Boolean(id) && hasRequested && appliedTab !== "NOTIFICATION_ACTIVITY",
+    enabled: Boolean(id) && appliedTab !== "NOTIFICATION_ACTIVITY",
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
@@ -132,7 +131,7 @@ export default function OrganizationAuditLogs() {
       });
       return res.data;
     },
-    enabled: Boolean(id) && hasRequested && appliedTab === "NOTIFICATION_ACTIVITY",
+    enabled: Boolean(id) && appliedTab === "NOTIFICATION_ACTIVITY",
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
@@ -155,10 +154,6 @@ export default function OrganizationAuditLogs() {
     setAppliedSearch(search);
     setAppliedFromDate(fromDate);
     setAppliedToDate(toDate);
-    if (!hasRequested) {
-      setHasRequested(true);
-      return;
-    }
     if (
       nextPage === page &&
       appliedTab === tab &&
@@ -224,12 +219,12 @@ export default function OrganizationAuditLogs() {
         <div className="mt-4 flex justify-end">
           <Button type="button" variant="outline" onClick={() => applyAuditFilters(0)} disabled={memberActivityQuery.isFetching || notificationQuery.isFetching}>
             <RefreshCcw className={`mr-2 h-4 w-4 ${memberActivityQuery.isFetching || notificationQuery.isFetching ? "animate-spin" : ""}`} />
-            {hasRequested ? "Refresh Audit Logs" : "Load Audit Logs"}
+            Refresh Audit Logs
           </Button>
         </div>
       </section>
 
-      {appliedTab === "NOTIFICATION_ACTIVITY" && hasRequested && (
+      {appliedTab === "NOTIFICATION_ACTIVITY" && (
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <MetricCard label="WhatsApp sent" value={notificationQuery.data?.summary.whatsappSent ?? 0} />
           <MetricCard label="Email sent" value={notificationQuery.data?.summary.emailSent ?? 0} />
@@ -241,9 +236,7 @@ export default function OrganizationAuditLogs() {
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          {!hasRequested ? (
-            <div className="px-4 py-8 text-center text-sm font-semibold text-slate-500">Click load audit logs to fetch records.</div>
-          ) : appliedTab === "NOTIFICATION_ACTIVITY" ? (
+          {appliedTab === "NOTIFICATION_ACTIVITY" ? (
             <table className="min-w-full text-left">
               <thead className="bg-slate-50">
                 <tr className="text-xs uppercase tracking-wide text-slate-500">
@@ -372,7 +365,7 @@ export default function OrganizationAuditLogs() {
               type="button"
               variant="outline"
               onClick={() => applyAuditFilters(Math.max((pageMeta?.page ?? 0) - 1, 0))}
-              disabled={!hasRequested || (pageMeta?.page ?? 0) <= 0}
+              disabled={(pageMeta?.page ?? 0) <= 0}
             >
               Previous
             </Button>
@@ -383,7 +376,7 @@ export default function OrganizationAuditLogs() {
               type="button"
               variant="outline"
               onClick={() => applyAuditFilters((pageMeta?.page ?? 0) + 1)}
-              disabled={!hasRequested || !pageMeta?.hasNext}
+              disabled={!pageMeta?.hasNext}
             >
               Next
             </Button>

@@ -34,7 +34,13 @@ public class OrganizationDtos {
         LocalDate trialEndDate,
         LocalDate subscriptionDueDate,
         OffsetDateTime pausedAt,
-        OffsetDateTime deactivatedAt
+        OffsetDateTime deactivatedAt,
+        Long activeMembers,
+        Integer includedActiveMembers,
+        Long overageMembers,
+        BigDecimal overageRate,
+        BigDecimal overageAmount,
+        BigDecimal estimatedMonthlyBill
     ) {
     }
 
@@ -54,6 +60,7 @@ public class OrganizationDtos {
         long totalActiveOrganizations,
         long totalRenewalPendingOrganizations,
         long totalPilotOrganizations,
+        long totalTrialOrganizations,
         List<OrganizationPlanSummary> subscriptionDistribution
     ) {
     }

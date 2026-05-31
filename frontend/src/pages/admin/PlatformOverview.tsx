@@ -94,13 +94,6 @@ const compact = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
-const planMeta: Record<string, string> = {
-  STARTER: "Rs. 299/month + Rs. 5 per active member above 100",
-  GROWTH: "Rs. 999/month + Rs. 3 per active member above 300",
-  PRO: "Rs. 2499/month + Rs. 2 per active member above 600",
-  DEMO: "No subscription fee",
-};
-
 const statusTone: Record<string, string> = {
   ACTIVE: "bg-emerald-100 text-emerald-800 border-emerald-200",
   TRIAL: "bg-amber-100 text-amber-800 border-amber-200",
@@ -123,9 +116,7 @@ function BreakdownBar({ item, amount = false }: { key?: string; item: PlatformBr
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-black text-slate-950">{item.label}</div>
-          <div className="mt-1 text-xs font-bold text-slate-500">
-            {item.count} orgs{amount ? ` - ${planMeta[item.key] ?? "Custom plan"}` : ""}
-          </div>
+          <div className="mt-1 text-xs font-bold text-slate-500">{item.count} orgs</div>
         </div>
         <Badge className={statusTone[item.key] ?? "border-slate-200 bg-slate-100 text-slate-700"}>{item.percentage}%</Badge>
       </div>
@@ -414,7 +405,7 @@ export default function PlatformOverview() {
               <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Subscription Distribution</div>
               <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Plan mix and MRR shape</h2>
             </div>
-            <Badge className="w-fit border-emerald-200 bg-emerald-100 text-emerald-800">{data.pilotOrganizations} founding partner workspaces</Badge>
+            <Badge className="w-fit border-amber-200 bg-amber-100 text-amber-800">{data.trialOrganizations} free trial gyms</Badge>
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             {data.organizationsBySubscriptionPlan.map((item) => (

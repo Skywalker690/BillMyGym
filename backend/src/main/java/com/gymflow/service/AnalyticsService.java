@@ -139,7 +139,7 @@ public class AnalyticsService {
                 breakdown("RENEWALS_DUE", "Renewals due in 7 days", renewalsDueInSevenDays, BigDecimal.ZERO, totalOrganizations),
                 breakdown("EXPIRED", "Expired or overdue organizations", expiredOrganizations, BigDecimal.ZERO, totalOrganizations),
                 breakdown("PAYMENT_ATTENTION", "Failed or pending payments", paymentFailures + pendingPayments, BigDecimal.ZERO, Math.max(paymentFailures + pendingPayments, totalOrganizations)),
-                breakdown("DEMO", "Demo workspaces", demoOrganizations, BigDecimal.ZERO, totalOrganizations)
+                breakdown("TRIAL", "Free trial gyms", trialOrganizations, BigDecimal.ZERO, totalOrganizations)
             )
         );
     }
@@ -205,9 +205,9 @@ public class AnalyticsService {
             })
             .toList());
         items.add(breakdown(
-            "DEMO",
-            "Demo",
-            organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.DEMO),
+            "TRIAL",
+            "Free Trial Gyms",
+            organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.TRIAL),
             BigDecimal.ZERO,
             totalOrganizations
         ));
