@@ -99,14 +99,14 @@ public class SubscriptionBillingService {
         for (Organization organization : organizationRepository.findAllByDeletedFalseAndOrganizationTypeInAndStatusAndSubscriptionDueDateBefore(
             BILLABLE_TYPES,
             OrganizationStatus.ACTIVE,
-            today
+            today.plusDays(1)
         )) {
             pauseOrganization(organization, today);
         }
         for (Organization organization : organizationRepository.findAllByDeletedFalseAndOrganizationTypeInAndStatusAndSubscriptionDueDateBefore(
             BILLABLE_TYPES,
             OrganizationStatus.TRIAL,
-            today
+            today.plusDays(1)
         )) {
             pauseOrganization(organization, today);
         }

@@ -16,7 +16,6 @@ import com.gymflow.domain.enums.PaymentStatus;
 import com.gymflow.domain.enums.PaymentType;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberPaymentRepository;
-import com.gymflow.repository.MemberRepository;
 import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.security.SecurityUtils;
 import java.math.BigDecimal;
@@ -48,7 +47,6 @@ public class RevenueService {
     );
 
     private final OrganizationRepository organizationRepository;
-    private final MemberRepository memberRepository;
     private final MemberMembershipRepository memberMembershipRepository;
     private final MemberPaymentRepository memberPaymentRepository;
     private final MembershipLifecycleService membershipLifecycleService;
@@ -122,7 +120,7 @@ public class RevenueService {
         }
 
         BigDecimal expectedRevenue = currentRevenue.add(overdueRevenue);
-        long activeMembers = memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(organization.getId(), MemberStatus.ACTIVE);
+        long activeMembers = memberMembershipRepository.countBillableActiveMembers(organization.getId(), LocalDate.now(APP_ZONE));
         long activeMembersCollected = Math.max(activeMembers - activeMembersPendingCollection, 0);
 
         return new RevenueSummaryResponse(

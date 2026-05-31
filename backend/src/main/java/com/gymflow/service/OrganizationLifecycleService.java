@@ -35,8 +35,7 @@ public class OrganizationLifecycleService {
 
         if (organization.getOrganizationType() == com.gymflow.domain.enums.OrganizationType.REGULAR
             && (organization.getStatus() == OrganizationStatus.ACTIVE || organization.getStatus() == OrganizationStatus.TRIAL)
-            && organization.getSubscriptionDueDate() != null
-            && !organization.getSubscriptionDueDate().isAfter(today)) {
+            && !billingLifecycleService.hasCurrentAccessWindow(organization, today)) {
             if (organization.getStatus() == OrganizationStatus.TRIAL) {
                 billingLifecycleService.expireRegularTrial(organization, today);
             } else {

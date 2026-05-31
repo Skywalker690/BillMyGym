@@ -18,9 +18,7 @@ public class BillingLifecycleService {
     public void startRegularTrial(Organization organization, LocalDate startDate) {
         LocalDate trialEndDate = trialEndDate(startDate);
         organization.setOrganizationType(OrganizationType.REGULAR);
-        if (organization.getSubscriptionPlan() == null || organization.getSubscriptionPlan() == SubscriptionPlan.PILOT) {
-            organization.setSubscriptionPlan(SubscriptionPlan.STARTER);
-        }
+        organization.setSubscriptionPlan(SubscriptionPlan.BILLMYGYM);
         organization.setStatus(OrganizationStatus.TRIAL);
         organization.setTrialStartDate(startDate);
         organization.setTrialEndDate(trialEndDate);
@@ -31,9 +29,7 @@ public class BillingLifecycleService {
 
     public void startDemoAccess(Organization organization, LocalDate startDate) {
         organization.setOrganizationType(OrganizationType.DEMO);
-        if (organization.getSubscriptionPlan() == null || organization.getSubscriptionPlan() == SubscriptionPlan.PILOT) {
-            organization.setSubscriptionPlan(SubscriptionPlan.PRO);
-        }
+        organization.setSubscriptionPlan(SubscriptionPlan.BILLMYGYM);
         organization.setStatus(OrganizationStatus.ACTIVE);
         organization.setTrialStartDate(null);
         organization.setTrialEndDate(null);
@@ -48,9 +44,7 @@ public class BillingLifecycleService {
             return;
         }
         organization.setOrganizationType(OrganizationType.REGULAR);
-        if (organization.getSubscriptionPlan() == SubscriptionPlan.PILOT) {
-            organization.setSubscriptionPlan(SubscriptionPlan.STARTER);
-        }
+        organization.setSubscriptionPlan(SubscriptionPlan.BILLMYGYM);
         organization.setStatus(OrganizationStatus.ACTIVE);
         organization.setTrialStartDate(null);
         organization.setTrialEndDate(null);
@@ -61,9 +55,7 @@ public class BillingLifecycleService {
 
     public void expireRegularTrial(Organization organization, LocalDate today) {
         organization.setOrganizationType(OrganizationType.REGULAR);
-        if (organization.getSubscriptionPlan() == null || organization.getSubscriptionPlan() == SubscriptionPlan.PILOT) {
-            organization.setSubscriptionPlan(SubscriptionPlan.STARTER);
-        }
+        organization.setSubscriptionPlan(SubscriptionPlan.BILLMYGYM);
         organization.setStatus(OrganizationStatus.PAUSED);
         organization.setSubscriptionDueDate(today);
         if (organization.getPausedAt() == null) {
@@ -77,6 +69,16 @@ public class BillingLifecycleService {
             && organization.getOrganizationType() != OrganizationType.DEMO
             && organization.getSubscriptionDueDate() != null
             && organization.getSubscriptionDueDate().isAfter(today);
+    }
+
+    public boolean hasCurrentAccessWindow(Organization organization, LocalDate today) {
+        if (organization == null || organization.getOrganizationType() == OrganizationType.DEMO) {
+            return true;
+        }
+        if (organization.getStatus() != OrganizationStatus.ACTIVE && organization.getStatus() != OrganizationStatus.TRIAL) {
+            return false;
+        }
+        return organization.getSubscriptionDueDate() != null && organization.getSubscriptionDueDate().isAfter(today);
     }
 
     public boolean isDeactivated(Organization organization) {
@@ -97,9 +99,13 @@ public class BillingLifecycleService {
     }
 
     public void markPaused(Organization organization) {
+        if (organization.getSubscriptionDueDate() == null) {
+            organization.setSubscriptionDueDate(LocalDate.now(APP_ZONE));
+        }
         organization.setStatus(OrganizationStatus.PAUSED);
         if (organization.getPausedAt() == null) {
             organization.setPausedAt(OffsetDateTime.now(APP_ZONE));
         }
+        organization.setDeactivatedAt(null);
     }
 }

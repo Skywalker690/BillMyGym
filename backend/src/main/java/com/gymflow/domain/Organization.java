@@ -67,7 +67,7 @@ public class Organization extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "subscription_plan", nullable = false)
-    private SubscriptionPlan subscriptionPlan = SubscriptionPlan.STARTER;
+    private SubscriptionPlan subscriptionPlan = SubscriptionPlan.BILLMYGYM;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

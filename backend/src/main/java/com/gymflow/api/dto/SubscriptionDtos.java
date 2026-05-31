@@ -79,6 +79,17 @@ public class SubscriptionDtos {
     ) {
     }
 
+    public record SubscriptionInvoiceResponse(
+        BigDecimal baseAmount,
+        Integer includedActiveMembers,
+        long currentActiveMembers,
+        long additionalActiveMembers,
+        BigDecimal overageRate,
+        BigDecimal overageAmount,
+        BigDecimal totalAmount
+    ) {
+    }
+
     public record MemberLimitResponse(
         SubscriptionPlan plan,
         long usedMembers,
@@ -109,7 +120,8 @@ public class SubscriptionDtos {
         String gatewayTransactionId,
         String razorpayOrderId,
         String razorpayPaymentId,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        SubscriptionInvoiceResponse invoice
     ) {
     }
 

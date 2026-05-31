@@ -36,7 +36,7 @@ const schema = z.object({
   monthlyMembershipFee: z.coerce.number().min(0, "Monthly membership fee must be zero or more"),
   admissionFee: z.coerce.number().min(0, "Admission fee must be zero or more"),
   organizationType: z.enum(["REGULAR", "DEMO"]),
-  subscriptionPlan: z.enum(["STARTER", "GROWTH", "PRO"]),
+  subscriptionPlan: z.literal("BILLMYGYM"),
   adminName: z.string().min(1, "Admin name is required"),
   adminEmail: z.string().email("Enter a valid admin email"),
   adminPhone: z.string().min(1, "Admin phone is required"),
@@ -73,7 +73,7 @@ export default function OrganizationForm() {
     resolver: zodResolver(schema),
     defaultValues: {
       organizationType: "REGULAR",
-      subscriptionPlan: "STARTER",
+      subscriptionPlan: "BILLMYGYM",
       password: "password123",
       monthlyMembershipFee: 0,
       admissionFee: 0,
@@ -118,7 +118,7 @@ export default function OrganizationForm() {
         monthlyMembershipFee: data.monthlyMembershipFee,
         admissionFee: data.admissionFee,
         organizationType: data.organizationType,
-        subscriptionPlan: data.organizationType === "REGULAR" ? data.subscriptionPlan : "PRO",
+        subscriptionPlan: "BILLMYGYM",
         password: data.password,
       }),
     onSuccess: () => {

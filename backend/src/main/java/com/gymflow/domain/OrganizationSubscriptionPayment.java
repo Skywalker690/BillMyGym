@@ -45,6 +45,21 @@ public class OrganizationSubscriptionPayment extends BaseEntity {
     @Column(precision = 12, scale = 2)
     private BigDecimal gymCoinsUsed = BigDecimal.ZERO;
 
+    @Column(precision = 12, scale = 2)
+    private BigDecimal baseAmount = BigDecimal.ZERO;
+
+    private Integer includedActiveMembers;
+
+    private Long billedActiveMembers;
+
+    private Long additionalActiveMembers;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal overageRate = BigDecimal.ZERO;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal overageAmount = BigDecimal.ZERO;
+
     private LocalDate paymentDate;
 
     @Column(nullable = false)

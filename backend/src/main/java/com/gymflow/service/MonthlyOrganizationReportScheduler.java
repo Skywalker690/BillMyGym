@@ -22,7 +22,6 @@ public class MonthlyOrganizationReportScheduler {
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final OrganizationRepository organizationRepository;
-    private final PlanAccessService planAccessService;
     private final MonthlyOrganizationReportService reportService;
     private final EmailService emailService;
     private final WhatsAppDeliveryService whatsAppDeliveryService;
@@ -38,9 +37,6 @@ public class MonthlyOrganizationReportScheduler {
         );
         for (Organization organization : organizations) {
             if (organization.getOrganizationType() == com.gymflow.domain.enums.OrganizationType.DEMO) {
-                continue;
-            }
-            if (!planAccessService.canReceiveMonthlyReports(organization)) {
                 continue;
             }
             if (notificationDeliveryLogService.hasSuccessfulDeliveryForDay(

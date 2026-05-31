@@ -109,9 +109,9 @@ public class ReferralService {
         reward.setOrganization(referrer);
 
         if (milestone == 6) {
-            reward.setRewardType(RewardType.SIX_MONTH_PRO);
+            reward.setRewardType(RewardType.SIX_MONTH_BILLMYGYM);
             reward.setMonthsRewarded(6);
-            referral.setRewardType(RewardType.SIX_MONTH_PRO);
+            referral.setRewardType(RewardType.SIX_MONTH_BILLMYGYM);
             referrer.setSixMonthRewardClaimed(true);
         } else {
             reward.setRewardType(RewardType.GYM_COIN);
@@ -203,7 +203,7 @@ public class ReferralService {
             .reduce(BigDecimal.ZERO, BigDecimal::add);
             
         long totalSixMonths = allRewards.stream()
-            .filter(r -> r.getRewardType() == RewardType.SIX_MONTH_PRO)
+            .filter(r -> r.getRewardType() == RewardType.SIX_MONTH_BILLMYGYM)
             .count();
 
         return new AdminReferralAnalyticsResponse(

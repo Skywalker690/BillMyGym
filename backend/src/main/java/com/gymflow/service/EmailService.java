@@ -26,7 +26,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class EmailService {
 
-    private static final String PLAN_NAME = "BillMyGym Launch";
+    private static final String PLAN_NAME = "BillMyGym Plan";
     private static final String SENDER_NAME = "BillMyGym";
     private static final String APP_URL = "https://gymmax.com";
     private static final String FONT_STACK = "Arial,Helvetica,sans-serif";
@@ -717,7 +717,7 @@ public class EmailService {
             content,
             "Open Dashboard",
             "/app/dashboard",
-            "Monthly reports are included with Growth and Pro access."
+            "Monthly reports are included with every BillMyGym subscription."
         );
     }
 

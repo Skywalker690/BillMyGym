@@ -45,7 +45,7 @@ type Organization = {
   monthlyMembershipFee?: number | null;
   admissionFee?: number | null;
   organizationType?: "REGULAR" | "DEMO";
-  subscriptionPlan?: "STARTER" | "GROWTH" | "PRO" | "PILOT";
+  subscriptionPlan?: "BILLMYGYM";
   status: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
   trialStartDate?: string | null;
   trialEndDate?: string | null;
@@ -142,16 +142,7 @@ function formatDate(value?: string | null) {
 }
 
 function planLabel(plan?: Organization["subscriptionPlan"]) {
-  switch (plan) {
-    case "STARTER":
-      return "Starter";
-    case "GROWTH":
-      return "Growth";
-    case "PRO":
-      return "Pro";
-    default:
-      return plan === "PRO" ? "Pro" : plan === "GROWTH" ? "Growth" : "Starter";
-  }
+  return plan === "BILLMYGYM" ? "BillMyGym" : "BillMyGym";
 }
 
 export default function OrganizationDetail() {
@@ -335,7 +326,7 @@ export default function OrganizationDetail() {
   const overageRate = Number(pricing?.overageRate ?? organization.overageRate ?? 0);
   const overageAmount = Number(pricing?.overageAmount ?? organization.overageAmount ?? 0);
   const estimatedMonthlyBill = Number(subscriptionStatus?.monthlyAmount ?? organization.estimatedMonthlyBill ?? 0);
-  const basePlanAmount = Number(pricing?.baseAmount ?? 0);
+  const basePlanAmount = Number(pricing?.baseAmount ?? 299);
 
   function downloadSampleCsv() {
     const csv = "fullName,phone\nAarav Nair,9876543210\nDiya Joseph,9123456789\n";

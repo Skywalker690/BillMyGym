@@ -21,6 +21,7 @@ import com.gymflow.domain.enums.AuditActivityScope;
 import com.gymflow.domain.enums.AuditEventStatus;
 import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.MembershipStatus;
+import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.PaymentStatus;
 import com.gymflow.domain.enums.Role;
 import com.gymflow.repository.MemberMembershipRepository;
@@ -287,11 +288,13 @@ public class MemberService {
         }
 
         MemberLimitService.MemberLimitSummary usage = memberLimitService.usage(organization);
-        if (!usage.unlimited() && usage.usedMembers() + parseResult.rows().size() > usage.memberLimit()) {
+        if (organization.getOrganizationType() == OrganizationType.DEMO
+            && !usage.unlimited()
+            && usage.usedMembers() + parseResult.rows().size() > usage.memberLimit()) {
             issues.add(new BulkMemberImportIssue(
                 null,
                 "file",
-                "This import would exceed the gym member limit. Available slots: "
+                "This import would exceed the demo member sandbox limit. Available slots: "
                     + Math.max(usage.remainingSlots(), 0)
                     + "."
             ));

@@ -1,6 +1,6 @@
 export type OrganizationStatus = "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
 export type OrganizationType = "REGULAR" | "DEMO";
-export type SubscriptionPlan = "STARTER" | "GROWTH" | "PRO" | "PILOT";
+export type SubscriptionPlan = "BILLMYGYM";
 
 export function organizationStatusLabel(status: OrganizationStatus): string {
   switch (status) {
@@ -21,9 +21,7 @@ export function organizationTypeLabel(type?: OrganizationType): string {
 }
 
 export function subscriptionPlanLabel(plan?: SubscriptionPlan): string {
-  if (!plan) return "Starter";
-  if (plan === "PILOT") return "Legacy";
-  return plan.charAt(0) + plan.slice(1).toLowerCase();
+  return "BillMyGym";
 }
 
 export function organizationStatusDescription(status: OrganizationStatus): string {

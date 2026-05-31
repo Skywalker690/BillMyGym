@@ -1,8 +1,6 @@
 package com.gymflow.service;
 
-import com.gymflow.api.error.ForbiddenException;
 import com.gymflow.domain.Organization;
-import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.security.SecurityUtils;
@@ -28,11 +26,11 @@ public class PlanAccessService {
     }
 
     public boolean canViewAdvancedAnalytics(Organization organization) {
-        return resolvePlan(organization).advancedAnalytics();
+        return true;
     }
 
     public boolean canReceiveMonthlyReports(Organization organization) {
-        return resolvePlan(organization).monthlyReports();
+        return true;
     }
 
     public boolean canReceiveMonthlyReports() {
@@ -40,7 +38,7 @@ public class PlanAccessService {
     }
 
     public boolean canExportReports(Organization organization) {
-        return resolvePlan(organization).exportReports();
+        return true;
     }
 
     public boolean canExportReports() {
@@ -48,7 +46,7 @@ public class PlanAccessService {
     }
 
     public boolean canUsePremiumFeatures(Organization organization) {
-        return resolvePlan(organization).premiumFeatures();
+        return true;
     }
 
     public boolean canUsePremiumFeatures() {
@@ -66,25 +64,13 @@ public class PlanAccessService {
     }
 
     public void requireAdvancedAnalytics() {
-        if (!canViewAdvancedAnalytics()) {
-            throw new ForbiddenException("Advanced analytics are available on Starter, Growth, and Pro plans.");
-        }
     }
 
     public void requireMonthlyReports(Organization organization) {
-        if (!canReceiveMonthlyReports(organization)) {
-            throw new ForbiddenException("Monthly reports are available on Growth and Pro plans.");
-        }
     }
 
     public SubscriptionPlan resolvePlan(Organization organization) {
-        if (organization == null) {
-            return SubscriptionPlan.STARTER;
-        }
-        if (organization.getOrganizationType() == OrganizationType.DEMO) {
-            return organization.getSubscriptionPlan() == null ? SubscriptionPlan.PRO : organization.getSubscriptionPlan();
-        }
-        return organization.getSubscriptionPlan() == null ? SubscriptionPlan.STARTER : organization.getSubscriptionPlan();
+        return SubscriptionPlan.BILLMYGYM;
     }
 
     private Organization currentOrganization() {

@@ -9,14 +9,13 @@ import com.gymflow.api.dto.AnalyticsDtos.PlatformYearlyReportResponse;
 import com.gymflow.api.error.BadRequestException;
 import com.gymflow.api.error.ForbiddenException;
 import com.gymflow.domain.Organization;
-import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.NotificationType;
 import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.Role;
 import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.domain.enums.SubscriptionPaymentStatus;
-import com.gymflow.repository.MemberRepository;
+import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.NotificationLogRepository;
 import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.repository.OrganizationSubscriptionPaymentRepository;
@@ -48,8 +47,9 @@ public class AnalyticsService {
     private final OrganizationSubscriptionRepository subscriptionRepository;
     private final OrganizationSubscriptionPaymentRepository subscriptionPaymentRepository;
     private final UsageMetricRepository usageMetricRepository;
-    private final MemberRepository memberRepository;
+    private final MemberMembershipRepository memberMembershipRepository;
     private final NotificationLogRepository notificationLogRepository;
+    private final SubscriptionPricingService subscriptionPricingService;
 
     public PlatformAnalyticsResponse platformAnalytics() {
         ensureSuperAdmin();
@@ -86,9 +86,7 @@ public class AnalyticsService {
             .filter(organization -> !organization.isDeleted())
             .filter(organization -> organization.getStatus() == OrganizationStatus.ACTIVE)
             .filter(organization -> organization.getOrganizationType() == OrganizationType.REGULAR)
-            .map(organization -> organization.getSubscriptionPlan() == null
-                ? BigDecimal.ZERO
-                : organization.getSubscriptionPlan().monthlyAmount())
+            .map(organization -> subscriptionPricingService.currentPrice(organization).totalAmount())
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         var usage = usageMetricRepository.findByYearAndMonthAndDeletedFalse(
             currentMonth.getYear(),
@@ -192,7 +190,6 @@ public class AnalyticsService {
 
     private List<PlatformBreakdownResponse> organizationsByPlan(long totalOrganizations) {
         List<PlatformBreakdownResponse> items = new ArrayList<>(Arrays.stream(SubscriptionPlan.values())
-            .filter(plan -> plan != SubscriptionPlan.PILOT)
             .map(plan -> {
                 long count = organizationRepository.countByDeletedFalseAndSubscriptionPlan(plan);
                 return breakdown(
@@ -327,6 +324,7 @@ public class AnalyticsService {
 
     private String label(String value) {
         return switch (value) {
+            case "BILLMYGYM" -> "BillMyGym Plan";
             case "DEMO" -> "Demo Workspace";
             case "TRIAL" -> "Free Trial Access";
             case "ACTIVE" -> "Active Subscription";
@@ -345,7 +343,7 @@ public class AnalyticsService {
             throw new BadRequestException("Organization context is required");
         }
         return new OrganizationAnalyticsResponse(
-            memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(organizationId, MemberStatus.ACTIVE),
+            memberMembershipRepository.countBillableActiveMembers(organizationId, LocalDate.now(APP_ZONE)),
             notificationLogRepository.countByOrganizationIdAndTypeAndDeletedFalse(
                 organizationId,
                 NotificationType.ORGANIZATION_RENEWAL_DIGEST

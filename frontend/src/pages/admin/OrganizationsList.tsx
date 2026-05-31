@@ -35,7 +35,7 @@ type Organization = {
   adminPhoneNumber?: string | null;
   status: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
   organizationType?: "REGULAR" | "DEMO";
-  subscriptionPlan?: "STARTER" | "GROWTH" | "PRO" | "PILOT";
+  subscriptionPlan?: "BILLMYGYM";
   subscriptionDueDate?: string | null;
   trialEndDate?: string | null;
   activeMembers?: number | null;
@@ -77,22 +77,13 @@ type DirectoryResponse = {
 const lifecycleStatuses = ["ALL", "TRIAL", "ACTIVE", "PAUSED", "DEACTIVATED"] as const;
 const pageSize = 20;
 
-const planFilters = [
-  { key: "ALL", label: "All" },
-  { key: "STARTER", label: "Starter" },
-  { key: "GROWTH", label: "Growth" },
-  { key: "PRO", label: "Pro" },
-] as const;
-
 const badgeClasses: Record<string, string> = {
   ACTIVE: "border-emerald-200 bg-emerald-100 text-emerald-800",
   TRIAL: "border-amber-200 bg-amber-100 text-amber-800",
   PAUSED: "border-rose-200 bg-rose-100 text-rose-800",
   DEACTIVATED: "border-slate-300 bg-slate-200 text-slate-800",
   DEMO: "border-cyan-200 bg-cyan-100 text-cyan-800",
-  STARTER: "border-slate-200 bg-slate-100 text-slate-800",
-  GROWTH: "border-emerald-200 bg-emerald-100 text-emerald-800",
-  PRO: "border-indigo-200 bg-indigo-100 text-indigo-800",
+  BILLMYGYM: "border-emerald-200 bg-emerald-100 text-emerald-800",
 };
 
 const money = new Intl.NumberFormat("en-IN", {
@@ -107,16 +98,7 @@ function formatDate(value?: string | null) {
 }
 
 function organizationPlanLabel(plan?: Organization["subscriptionPlan"]) {
-  switch (plan) {
-    case "STARTER":
-      return "Starter";
-    case "GROWTH":
-      return "Growth";
-    case "PRO":
-      return "Pro";
-    default:
-      return "Starter";
-  }
+  return plan === "BILLMYGYM" ? "BillMyGym" : "BillMyGym";
 }
 
 function isRenewalAttention(org: Organization) {
@@ -164,16 +146,15 @@ export default function OrganizationsList() {
   const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [scope, setScope] = useState<DirectoryScope>("ALL");
-  const [planFilter, setPlanFilter] = useState<(typeof planFilters)[number]["key"]>("ALL");
   const [statusFilter, setStatusFilter] = useState<(typeof lifecycleStatuses)[number]>("ALL");
   const deferredSearch = useDeferredValue(searchTerm);
 
   useEffect(() => {
     setPage(0);
-  }, [deferredSearch, scope, planFilter, statusFilter]);
+  }, [deferredSearch, scope, statusFilter]);
 
   const directoryQuery = useQuery<DirectoryResponse>({
-    queryKey: ["organizationsDirectory", page, deferredSearch, scope, planFilter, statusFilter],
+    queryKey: ["organizationsDirectory", page, deferredSearch, scope, statusFilter],
     queryFn: async () => {
       const res = await api.get("/organizations/directory", {
         params: {
@@ -188,7 +169,6 @@ export default function OrganizationsList() {
               : scope === "REGULAR" || scope === "REGULAR_TRIAL"
               ? "REGULAR"
               : "DEMO",
-          plan: scope === "REGULAR" && planFilter !== "ALL" ? planFilter : undefined,
           status: scope === "REGULAR_TRIAL" ? "TRIAL" : statusFilter !== "ALL" ? statusFilter : undefined,
         },
       });
@@ -283,7 +263,7 @@ export default function OrganizationsList() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Subscription Distribution</div>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Plan mix across the platform</h2>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">BillMyGym adoption across the platform</h2>
             </div>
             <Sparkles className="h-6 w-6 text-amber-400" />
           </div>
@@ -297,18 +277,16 @@ export default function OrganizationsList() {
                       {item.count} gyms
                     </div>
                   </div>
-                  <Badge className={badgeClasses[item.key] ?? badgeClasses.STARTER}>{item.percentage}%</Badge>
+                  <Badge className={badgeClasses[item.key] ?? badgeClasses.BILLMYGYM}>{item.percentage}%</Badge>
                 </div>
                 <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-slate-100">
                   <div
                     className={`h-full rounded-full ${
-                      item.key === "PRO"
-                        ? "bg-indigo-500"
-                        : item.key === "GROWTH"
-                          ? "bg-emerald-500"
-                          : item.key === "TRIAL"
-                            ? "bg-sky-500"
-                            : "bg-slate-500"
+                      item.key === "BILLMYGYM"
+                        ? "bg-emerald-500"
+                        : item.key === "TRIAL"
+                          ? "bg-sky-500"
+                          : "bg-slate-500"
                     }`}
                     style={{ width: `${Math.min(Math.max(item.percentage, 0), 100)}%` }}
                   />
@@ -350,23 +328,6 @@ export default function OrganizationsList() {
               Free Trial Gyms
             </button>
           </div>
-
-          {scope === "REGULAR" && (
-            <div className="mt-5 flex flex-wrap gap-2">
-              {planFilters.map((filter) => (
-                <button
-                  key={filter.key}
-                  type="button"
-                  onClick={() => setPlanFilter(filter.key)}
-                  className={`rounded-full px-4 py-2 text-sm font-black transition ${
-                    planFilter === filter.key ? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-800"
-                  }`}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </div>
-          )}
 
           <div className="mt-5 space-y-3">
             <div className="relative">
@@ -413,14 +374,14 @@ export default function OrganizationsList() {
           <div className="p-14 text-center">
             <AlertTriangle className="mx-auto h-8 w-8 text-slate-300" />
             <p className="mt-4 text-sm font-bold text-slate-500">No organizations match the current view.</p>
-            <p className="mt-2 text-xs font-semibold text-slate-400">Try changing the tab, subscription filter, or search term.</p>
+            <p className="mt-2 text-xs font-semibold text-slate-400">Try changing the tab, lifecycle filter, or search term.</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
             {organizations.map((org) => {
               const lifecycle = lifecycleMeta(org);
               const attention = isRenewalAttention(org);
-              const plan = org.subscriptionPlan ?? (org.organizationType === "DEMO" ? "PRO" : "STARTER");
+              const plan = org.subscriptionPlan ?? "BILLMYGYM";
 
               return (
                 <div key={org.id} className="grid gap-4 p-5 transition hover:bg-white/90 lg:grid-cols-[1.2fr_0.9fr_1.15fr_1fr_auto] lg:items-center">
@@ -460,7 +421,7 @@ export default function OrganizationsList() {
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <Badge className={Number(org.overageMembers ?? 0) > 0 ? "border-rose-200 bg-rose-100 text-rose-800" : "border-emerald-200 bg-emerald-100 text-emerald-800"}>
-                        {Number(org.overageMembers ?? 0) > 0 ? `+${org.overageMembers} extra` : "Within plan"}
+                        {Number(org.overageMembers ?? 0) > 0 ? `+${org.overageMembers} extra` : "Within included limit"}
                       </Badge>
                       <span className="text-xs font-black text-slate-700">Extra: {formatMoney(org.overageAmount)}</span>
                     </div>

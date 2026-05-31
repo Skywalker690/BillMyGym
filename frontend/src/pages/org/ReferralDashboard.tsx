@@ -63,7 +63,7 @@ export default function ReferralDashboard() {
         <div className="p-8 sm:p-10 relative z-10">
           <h2 className="text-3xl font-black tracking-tight mb-4">Invite & Earn GymCoins</h2>
           <p className="text-emerald-100/90 text-lg max-w-2xl font-medium leading-relaxed mb-8">
-            Get <span className="font-bold text-white">300 GymCoins</span> for every organization you refer that completes their first subscription payment. Reach 6 successful referrals and unlock a massive <span className="font-bold text-white">6 Months Free Pro Subscription</span>!
+            Get <span className="font-bold text-white">300 GymCoins</span> for every organization you refer that completes their first subscription payment. Reach 6 successful referrals and unlock a massive <span className="font-bold text-white">6 Months Free BillMyGym Subscription</span>!
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 max-w-md">
@@ -109,7 +109,7 @@ export default function ReferralDashboard() {
           />
         </div>
         <p className="mt-3 text-sm font-medium text-slate-500">
-          Unlock 6 months of Pro for free on your 6th successful referral!
+          Unlock 6 months of BillMyGym for free on your 6th successful referral!
         </p>
       </div>
 
@@ -138,6 +138,16 @@ function StatCard({ title, value, icon: Icon, suffix, color }: any) {
   );
 }
 
+function rewardLabel(rewardType?: string | null) {
+  if (rewardType === "SIX_MONTH_BILLMYGYM") {
+    return "6 months BillMyGym";
+  }
+  if (rewardType === "GYM_COIN") {
+    return "GymCoins";
+  }
+  return rewardType?.replace(/_/g, " ") || "REWARD";
+}
+
 function ActivityList({ title, items, emptyMsg, isReward }: any) {
   return (
     <div className="glass-panel rounded-[1.5rem] p-6 shadow-sm border border-slate-200 bg-white">
@@ -149,7 +159,7 @@ function ActivityList({ title, items, emptyMsg, isReward }: any) {
           {items.map((item: any, i: number) => (
             <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition">
               <div>
-                <p className="font-bold text-slate-900 text-sm">{isReward ? item.rewardType?.replace(/_/g, " ") || 'REWARD' : item.organizationName}</p>
+                <p className="font-bold text-slate-900 text-sm">{isReward ? rewardLabel(item.rewardType) : item.organizationName}</p>
                 <p className="text-xs font-semibold text-slate-500">{item.date ? format(new Date(item.date), "MMM d, yyyy") : 'N/A'}</p>
               </div>
               <div className="text-right">

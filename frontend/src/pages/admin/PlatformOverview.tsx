@@ -99,9 +99,7 @@ const statusTone: Record<string, string> = {
   TRIAL: "bg-amber-100 text-amber-800 border-amber-200",
   PAUSED: "bg-orange-100 text-orange-800 border-orange-200",
   DEACTIVATED: "bg-rose-100 text-rose-800 border-rose-200",
-  STARTER: "bg-slate-100 text-slate-800 border-slate-200",
-  GROWTH: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  PRO: "bg-indigo-100 text-indigo-800 border-indigo-200",
+  BILLMYGYM: "bg-emerald-100 text-emerald-800 border-emerald-200",
   DEMO: "bg-cyan-100 text-cyan-800 border-cyan-200",
 };
 
@@ -285,7 +283,7 @@ export default function PlatformOverview() {
               Platform visibility without digging through tables.
             </h1>
             <p className="mt-5 max-w-2xl text-base font-semibold leading-7 text-slate-300">
-              Revenue, lifecycle risk, subscription mix, growth momentum, communication load, and payment health are all computed server-side for the whole SaaS fleet.
+              Revenue, lifecycle risk, BillMyGym billing shape, growth momentum, communication load, and payment health are all computed server-side for the whole SaaS fleet.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link to="/app/organizations/new">
@@ -403,7 +401,7 @@ export default function PlatformOverview() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Subscription Distribution</div>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Plan mix and MRR shape</h2>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">BillMyGym MRR shape</h2>
             </div>
             <Badge className="w-fit border-amber-200 bg-amber-100 text-amber-800">{data.trialOrganizations} free trial gyms</Badge>
           </div>
@@ -489,7 +487,7 @@ export default function PlatformOverview() {
                 </div>
                 <h2 className="mt-6 max-w-xl text-3xl font-black tracking-tight text-slate-950">Manage every organization from the redesigned command directory.</h2>
                 <p className="mt-3 max-w-xl text-sm font-bold leading-6 text-slate-600">
-                  Filter by lifecycle, plan, owner, district, and risk. The list is optimized for quick scanning instead of heavy card browsing.
+                  Filter by lifecycle, active-member usage, owner, district, and risk. The list is optimized for quick scanning instead of heavy card browsing.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">

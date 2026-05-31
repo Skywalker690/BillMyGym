@@ -3,11 +3,11 @@ package com.gymflow.service;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationUsageStats;
 import com.gymflow.domain.UsageMetric;
-import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.repository.AppUserRepository;
-import com.gymflow.repository.MemberRepository;
+import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.OrganizationUsageStatsRepository;
 import com.gymflow.repository.UsageMetricRepository;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,7 @@ public class UsageMetricService {
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final UsageMetricRepository usageMetricRepository;
-    private final MemberRepository memberRepository;
+    private final MemberMembershipRepository memberMembershipRepository;
     private final AppUserRepository appUserRepository;
     private final OrganizationUsageStatsRepository organizationUsageStatsRepository;
 
@@ -69,9 +69,9 @@ public class UsageMetricService {
 
     private void refreshSnapshot(UsageMetric metric) {
         Organization organization = metric.getOrganization();
-        metric.setActiveMembers((int) memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(
+        metric.setActiveMembers((int) memberMembershipRepository.countBillableActiveMembers(
             organization.getId(),
-            MemberStatus.ACTIVE
+            LocalDate.now(APP_ZONE)
         ));
         metric.setActiveAdmins((int) appUserRepository.countByOrganizationIdAndRoleAndDeletedFalse(
             organization.getId(),

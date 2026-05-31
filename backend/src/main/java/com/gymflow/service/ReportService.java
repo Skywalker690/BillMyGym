@@ -79,12 +79,8 @@ public class ReportService {
         List<MemberDirectoryItem> overdueItems = toDirectoryItems(overdue, DUE_TODAY_WINDOW_DAYS);
         var organization = organizationRepository.findByIdAndDeletedFalse(organizationId)
             .orElseThrow(() -> new BadRequestException("Organization not found"));
-        RevenueSummaryResponse revenueSummary = planAccessService.canViewAdvancedAnalytics(organization)
-            ? revenueService.revenueSummary()
-            : null;
-        RevenueSegmentationResponse revenueSegmentation = planAccessService.canViewAdvancedAnalytics(organization)
-            ? revenueService.revenueSegmentationSummary()
-            : null;
+        RevenueSummaryResponse revenueSummary = revenueService.revenueSummary();
+        RevenueSegmentationResponse revenueSegmentation = revenueService.revenueSegmentationSummary();
         MemberDirectorySummary memberSummary = memberService.memberDirectorySummary(organizationId, DUE_TODAY_WINDOW_DAYS);
         String planName = planAccessService.resolvePlan(organization).name();
 
@@ -213,27 +209,6 @@ public class ReportService {
     }
 
     private List<MonthlyMemberJoinResponse> monthlyMemberJoins(Long organizationId) {
-        Organization organization = organizationRepository.findByIdAndDeletedFalse(organizationId)
-            .orElseThrow(() -> new BadRequestException("Organization not found"));
-        if (planAccessService.resolvePlan(organization) == com.gymflow.domain.enums.SubscriptionPlan.STARTER) {
-            YearMonth currentMonth = YearMonth.now(APP_ZONE);
-            OffsetDateTime startAt = currentMonth.atDay(1).atStartOfDay(APP_ZONE).toOffsetDateTime();
-            OffsetDateTime endAt = currentMonth.plusMonths(1).atDay(1).atStartOfDay(APP_ZONE).toOffsetDateTime();
-            long joinedMembers = memberRepository.countJoinedMembersByMonth(
-                    organizationId,
-                    startAt,
-                    endAt
-                )
-                .stream()
-                .findFirst()
-                .map(row -> row.getTotal() == null ? 0L : row.getTotal())
-                .orElse(0L);
-            return List.of(new MonthlyMemberJoinResponse(
-                currentMonth.toString(),
-                currentMonth.format(DateTimeFormatter.ofPattern("MMM")),
-                joinedMembers
-            ));
-        }
         YearMonth currentMonth = YearMonth.now(APP_ZONE);
         YearMonth startMonth = currentMonth.minusMonths(5);
         DateTimeFormatter labelFormatter = DateTimeFormatter.ofPattern("MMM");

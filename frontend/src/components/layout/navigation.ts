@@ -25,7 +25,6 @@ export interface NavItemConfig {
 export const getSidebarNavItems = (
   role: AppRole | null | undefined,
   referralsEnabled: boolean = true,
-  canViewReports: boolean = true,
 ): NavItemConfig[] => {
   if (role === "SUPER_ADMIN") {
     return [
@@ -70,6 +69,12 @@ export const getSidebarNavItems = (
       section: "Operations",
     },
     {
+      label: "Reports",
+      href: "/app/reports",
+      icon: BarChart3,
+      section: "Operations",
+    },
+    {
       label: "Reminders",
       href: "/app/reminders",
       icon: Clock3,
@@ -82,15 +87,6 @@ export const getSidebarNavItems = (
       section: "Billing",
     },
   ];
-
-  if (canViewReports) {
-    orgAdminItems.splice(2, 0, {
-      label: "Reports",
-      href: "/app/reports",
-      icon: BarChart3,
-      section: "Operations",
-    });
-  }
 
   return orgAdminItems;
 };

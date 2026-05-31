@@ -84,13 +84,16 @@ public class OrganizationService {
 
         Organization organization = organizationRepository.findByIdAndDeletedFalse(id)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
+        User primaryAdmin = resolvePrimaryOrganizationAdmin(organization);
         if (user.role() != Role.SUPER_ADMIN) {
             validateDemoSelfServiceUpdate(organization, request);
         }
-        validateAdminUniqueness(request.adminEmail(), request.adminPhoneNumber(), organization.getId());
+        validateAdminUniqueness(request.adminEmail(), request.adminPhoneNumber(), organization.getId(), primaryAdmin);
         OrganizationType previousType = organization.getOrganizationType();
         OrganizationStatus previousStatus = organization.getStatus();
+        String previousAdminEmail = organization.getAdminEmail();
         organizationMapper.applyUpdate(organization, request);
+        syncPrimaryAdminCredentials(primaryAdmin, previousAdminEmail, request.adminEmail());
         normalizeLifecycleAfterUpdate(organization, previousType, previousStatus);
 
         auditLogService.log(
@@ -178,7 +181,7 @@ public class OrganizationService {
         SecurityUtils.requireRole(Role.SUPER_ADMIN);
         Organization organization = organizationRepository.findByIdAndDeletedFalse(id)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
-        validateAdminUniqueness(request.adminEmail(), request.adminPhoneNumber(), organization.getId());
+        validateAdminUniqueness(request.adminEmail(), request.adminPhoneNumber(), organization.getId(), null);
 
         for (User existingAdmin : appUserRepository.findByOrganizationIdAndRoleAndDeletedFalse(id, Role.ORG_ADMIN)) {
             existingAdmin.setStatus(UserStatus.INACTIVE);
@@ -214,13 +217,50 @@ public class OrganizationService {
         return toResponse(organization);
     }
 
-    private void validateAdminUniqueness(String adminEmail, String adminPhoneNumber, Long organizationId) {
+    private void validateAdminUniqueness(String adminEmail, String adminPhoneNumber, Long organizationId, User primaryAdmin) {
         if (organizationRepository.existsByAdminEmailAndDeletedFalseAndIdNot(adminEmail, organizationId)) {
             throw new BadRequestException("Admin email already exists");
         }
         if (organizationRepository.existsByAdminPhoneNumberAndDeletedFalseAndIdNot(adminPhoneNumber, organizationId)) {
             throw new BadRequestException("Admin phone number already exists");
         }
+        boolean emailExistsOnAnotherUser = primaryAdmin == null
+            ? appUserRepository.existsByEmailAndDeletedFalse(adminEmail)
+            : appUserRepository.existsByEmailAndDeletedFalseAndIdNot(adminEmail, primaryAdmin.getId());
+        if (emailExistsOnAnotherUser) {
+            throw new BadRequestException("Admin email already exists");
+        }
+    }
+
+    private User resolvePrimaryOrganizationAdmin(Organization organization) {
+        List<User> organizationAdmins = appUserRepository.findByOrganizationIdAndRoleAndDeletedFalse(
+            organization.getId(),
+            Role.ORG_ADMIN
+        );
+        User matchingEmailAdmin = organizationAdmins.stream()
+            .filter(admin -> Objects.equals(admin.getEmail(), organization.getAdminEmail()))
+            .findFirst()
+            .orElse(null);
+        if (matchingEmailAdmin != null) {
+            return matchingEmailAdmin;
+        }
+        List<User> activeAdmins = organizationAdmins.stream()
+            .filter(admin -> admin.getStatus() == UserStatus.ACTIVE)
+            .toList();
+        if (activeAdmins.size() == 1) {
+            return activeAdmins.getFirst();
+        }
+        if (organizationAdmins.size() == 1) {
+            return organizationAdmins.getFirst();
+        }
+        return null;
+    }
+
+    private void syncPrimaryAdminCredentials(User primaryAdmin, String previousAdminEmail, String requestedAdminEmail) {
+        if (primaryAdmin == null || Objects.equals(previousAdminEmail, requestedAdminEmail)) {
+            return;
+        }
+        primaryAdmin.setEmail(requestedAdminEmail);
     }
 
     private OrganizationDirectorySummary buildDirectorySummary() {
@@ -232,16 +272,10 @@ public class OrganizationService {
         long totalDemoOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.DEMO);
         long totalTrialOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.TRIAL);
         List<OrganizationPlanSummary> subscriptionDistribution = new ArrayList<>(Arrays.stream(com.gymflow.domain.enums.SubscriptionPlan.values())
-            .filter(plan -> plan != com.gymflow.domain.enums.SubscriptionPlan.PILOT)
             .map(plan -> {
                 long count = organizationRepository.countByDeletedFalseAndSubscriptionPlan(plan);
                 int percentage = totalOrganizations <= 0 ? 0 : (int) Math.round((count * 100.0) / totalOrganizations);
-                String label = switch (plan) {
-                    case STARTER -> "Starter";
-                    case GROWTH -> "Growth";
-                    case PRO -> "Pro";
-                    case PILOT -> "Pilot";
-                };
+                String label = "BillMyGym Plan";
                 return new OrganizationPlanSummary(plan.name(), label, count, percentage);
             })
             .toList());

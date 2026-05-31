@@ -3,7 +3,6 @@ package com.gymflow.service;
 import com.gymflow.api.dto.ReminderDtos.WhatsappReminderPreviewResponse;
 import com.gymflow.api.dto.ReminderDtos.WhatsappReminderSendResponse;
 import com.gymflow.api.error.BadRequestException;
-import com.gymflow.api.error.ForbiddenException;
 import com.gymflow.api.error.NotFoundException;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
@@ -18,8 +17,6 @@ import com.gymflow.domain.enums.NotificationChannel;
 import com.gymflow.domain.enums.NotificationDeliveryStatus;
 import com.gymflow.domain.enums.NotificationStatus;
 import com.gymflow.domain.enums.NotificationType;
-import com.gymflow.domain.enums.OrganizationType;
-import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.domain.enums.WhatsappReminderStatus;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberRepository;
@@ -129,9 +126,6 @@ public class IndividualWhatsappReminderService {
         Long organizationId = requireOrganizationId();
         Organization organization = organizationRepository.findByIdAndDeletedFalse(organizationId)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
-        if (!planAccessService.canUsePremiumFeatures(organization)) {
-            throw new ForbiddenException("Upgrade to Pro to unlock this feature");
-        }
 
         memberMembershipService.refreshMembershipStatuses(organizationId);
         Member member = memberRepository.findByIdAndOrganizationIdAndDeletedFalse(memberId, organizationId)
@@ -195,11 +189,7 @@ public class IndividualWhatsappReminderService {
     }
 
     public Integer monthlyCustomReminderLimit(Organization organization) {
-        if (organization.getOrganizationType() == OrganizationType.DEMO) {
-            return CUSTOM_REMINDER_LIMIT;
-        }
-        SubscriptionPlan plan = planAccessService.resolvePlan(organization);
-        return plan == SubscriptionPlan.PRO ? CUSTOM_REMINDER_LIMIT : null;
+        return CUSTOM_REMINDER_LIMIT;
     }
 
     public int currentMonthCustomReminderUsage(Organization organization) {

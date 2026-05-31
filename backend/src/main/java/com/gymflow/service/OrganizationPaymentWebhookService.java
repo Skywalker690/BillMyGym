@@ -171,6 +171,8 @@ public class OrganizationPaymentWebhookService {
         Organization organization = payment.getOrganization();
         if (payment.getSubscriptionPlan() != null) {
             organization.setSubscriptionPlan(payment.getSubscriptionPlan());
+        } else {
+            organization.setSubscriptionPlan(SubscriptionPlan.BILLMYGYM);
         }
 
         if (payment.getGymCoinsUsed() != null && payment.getGymCoinsUsed().compareTo(BigDecimal.ZERO) > 0) {
@@ -250,14 +252,16 @@ public class OrganizationPaymentWebhookService {
         }
         SubscriptionPlan selectedPlan = resolveSubscriptionPlan(root);
         if (selectedPlan == null) {
-            selectedPlan = planAccessService.resolvePlan(organization);
+            selectedPlan = SubscriptionPlan.BILLMYGYM;
         }
+        SubscriptionPricingService.SubscriptionPriceBreakdown pricing = subscriptionPricingService.priceFor(organization, selectedPlan);
 
         LocalDate today = LocalDate.now(APP_ZONE);
         OrganizationSubscriptionPayment payment = new OrganizationSubscriptionPayment();
         payment.setOrganization(organization);
-        payment.setAmount(subscriptionPricingService.priceFor(organization, selectedPlan).totalAmount());
+        payment.setAmount(pricing.totalAmount());
         payment.setSubscriptionPlan(selectedPlan);
+        applyInvoiceSnapshot(payment, pricing);
         payment.setSubscriptionStart(today);
         payment.setSubscriptionEnd(billingLifecycleService.billingPeriodEnd(today));
         payment.setPaymentStatus(SubscriptionPaymentStatus.PENDING);
@@ -364,6 +368,18 @@ public class OrganizationPaymentWebhookService {
         } catch (IllegalArgumentException ex) {
             return null;
         }
+    }
+
+    private void applyInvoiceSnapshot(
+        OrganizationSubscriptionPayment payment,
+        SubscriptionPricingService.SubscriptionPriceBreakdown pricing
+    ) {
+        payment.setBaseAmount(MoneyUtils.normalize(pricing.baseAmount()));
+        payment.setIncludedActiveMembers(pricing.includedMembers());
+        payment.setBilledActiveMembers(pricing.activeMembers());
+        payment.setAdditionalActiveMembers(pricing.overageMembers());
+        payment.setOverageRate(MoneyUtils.normalize(pricing.overageRate()));
+        payment.setOverageAmount(MoneyUtils.normalize(pricing.overageAmount()));
     }
 
     private void notifyPaymentFailure(OrganizationSubscriptionPayment payment) {

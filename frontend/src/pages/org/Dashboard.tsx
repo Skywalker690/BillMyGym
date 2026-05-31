@@ -166,8 +166,6 @@ export default function Dashboard() {
   const recentReminderLogs = report?.recentReminderLogs ?? [];
   const monthlyMemberJoins = report?.monthlyMemberJoins ?? [];
   const joinedThisMonth = monthlyMemberJoins.at(-1)?.joinedMembers ?? 0;
-  const isStarterPlan = (isDemoWorkspace ? effectivePlan : report?.planName) === "STARTER";
-  const isProPlan = (isDemoWorkspace ? effectivePlan : report?.planName) === "PRO";
   const isDemoGym = subscriptionStatus?.organizationType === "DEMO";
   const subscriptionValidity = report?.subscriptionValidity;
   const subscriptionPricing = report?.subscriptionPricing;
@@ -239,15 +237,13 @@ export default function Dashboard() {
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">Revenue OS</Badge>
               <Badge className="border-slate-200 bg-white/80 text-slate-700">Live backend snapshot</Badge>
-              {isStarterPlan && <Badge className="border-amber-200 bg-amber-100 text-amber-800">Starter: Current month only</Badge>}
+              <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">BillMyGym: All features included</Badge>
             </div>
             <h1 className="max-w-3xl text-4xl font-black tracking-tight text-slate-950 lg:text-5xl">
-              {isStarterPlan ? "Run your gym with a focused revenue view." : "Run your gym like a premium membership SaaS, not a spreadsheet."}
+              Run your gym like a premium membership SaaS, not a spreadsheet.
             </h1>
             <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">
-              {isStarterPlan
-                ? "Starter uses the same revenue dashboard experience, but keeps the view constrained to the current month and current operational snapshot."
-                : "Collections, upcoming dues, and reminder health are surfaced in one operator view so you can protect revenue before memberships slip into overdue territory."}
+              Collections, upcoming dues, and reminder health are surfaced in one operator view so you can protect revenue before memberships slip into overdue territory.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
@@ -257,9 +253,9 @@ export default function Dashboard() {
                   Add Member
                 </Button>
               </Link>
-              <Link to={isStarterPlan ? "/app/members" : "/app/reminders"}>
+              <Link to="/app/reminders">
                 <Button variant="outline" className="h-12 rounded-full border-white/80 bg-white/75 px-6 font-bold text-slate-800 hover:bg-white">
-                  {isStarterPlan ? "Open Members" : "Open Reminders"}
+                  Open Reminders
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
@@ -296,7 +292,7 @@ export default function Dashboard() {
       </section>
 
       {subscriptionPricing && (
-        <PlanBillingPanel planName={(isDemoWorkspace ? effectivePlan : report?.planName) ?? "STARTER"} pricing={subscriptionPricing} />
+        <PlanBillingPanel planName={(isDemoWorkspace ? effectivePlan : report?.planName) ?? "BILLMYGYM"} pricing={subscriptionPricing} />
       )}
 
       <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -422,10 +418,10 @@ export default function Dashboard() {
 
           <div className="glass-panel overflow-hidden rounded-[1.9rem]">
             <div className="border-b border-white/70 p-7">
-              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-sky-700">Growth Track</div>
+              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-sky-700">Member Growth</div>
               <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Members Joined By Month</h2>
               <p className="mt-2 text-sm font-medium text-slate-500">
-                {isStarterPlan ? "Starter keeps this trend limited to the current month." : "A quick read on how many new members joined in each of the last 6 months."}
+                A quick read on how many new members joined in each of the last 6 months.
               </p>
             </div>
             <div className="p-7">
@@ -498,7 +494,7 @@ function DemoWorkspaceBanner({
   previewPlan,
 }: {
   organizationName?: string;
-  previewPlan: "STARTER" | "GROWTH" | "PRO";
+  previewPlan: "BILLMYGYM";
 }) {
   return (
     <section className="relative overflow-hidden rounded-[1.9rem] border border-sky-200 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(255,255,255,0.92)_45%,rgba(34,197,94,0.12))] p-6 shadow-sm">
@@ -520,7 +516,7 @@ function DemoWorkspaceBanner({
             Demo gym clearly marked
           </div>
           <div className="rounded-[1.3rem] border border-slate-900/5 bg-slate-950 px-4 py-3 text-sm font-black uppercase tracking-[0.18em] text-white shadow-sm">
-            Previewing {previewPlan}
+            {previewPlan}
           </div>
         </div>
       </div>
@@ -589,10 +585,10 @@ function PlanBillingPanel({
     overageAmount?: number;
   };
 }) {
-  const includedMembers = pricing.includedMembers ?? 600;
+  const includedMembers = pricing.includedMembers ?? 100;
   const activeMembers = pricing.activeMembers ?? 0;
   const overageMembers = pricing.overageMembers ?? Math.max(activeMembers - includedMembers, 0);
-  const overageRate = pricing.overageRate ?? 3;
+  const overageRate = pricing.overageRate ?? 4;
   const overageAmount = pricing.overageAmount ?? overageMembers * overageRate;
   const totalAmount = pricing.totalAmount ?? (pricing.baseAmount ?? 0) + overageAmount;
   const includedPercent = activeMembers > 0
@@ -618,11 +614,7 @@ function PlanBillingPanel({
             </div>
           </div>
           <p className="mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-300">
-            {planName === "STARTER"
-              ? `Starter includes ${includedMembers} active members and keeps total members unlimited. Every active member above that adds ${money(overageRate)} to the next monthly subscription payment.`
-              : planName === "GROWTH"
-                ? `Growth includes ${includedMembers} active members and keeps total members unlimited. Every active member above that adds ${money(overageRate)} to the next monthly subscription payment.`
-                : `Pro includes ${includedMembers} active members and keeps total members unlimited. Every active member above that adds ${money(overageRate)} to the next monthly subscription payment.`}
+            BillMyGym includes {includedMembers} active members and keeps total members unlimited. Every active member above that adds {money(overageRate)} to the next monthly subscription payment.
           </p>
         </div>
 

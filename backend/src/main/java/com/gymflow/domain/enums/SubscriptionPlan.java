@@ -3,32 +3,20 @@ package com.gymflow.domain.enums;
 import java.math.BigDecimal;
 
 public enum SubscriptionPlan {
-    STARTER(new BigDecimal("299.00"), 100, true, false, false, false),
-    GROWTH(new BigDecimal("999.00"), 300, true, true, false, false),
-    PRO(new BigDecimal("2499.00"), 600, true, true, true, true),
-    PILOT(new BigDecimal("299.00"), 100, true, true, true, true);
+    BILLMYGYM(new BigDecimal("299.00"), 100, new BigDecimal("4.00"));
 
     private final BigDecimal monthlyAmount;
-    private final Integer memberLimit;
-    private final boolean advancedAnalytics;
-    private final boolean monthlyReports;
-    private final boolean exportReports;
-    private final boolean premiumFeatures;
+    private final int includedActiveMembers;
+    private final BigDecimal overageRate;
 
     SubscriptionPlan(
         BigDecimal monthlyAmount,
-        Integer memberLimit,
-        boolean advancedAnalytics,
-        boolean monthlyReports,
-        boolean exportReports,
-        boolean premiumFeatures
+        int includedActiveMembers,
+        BigDecimal overageRate
     ) {
         this.monthlyAmount = monthlyAmount;
-        this.memberLimit = memberLimit;
-        this.advancedAnalytics = advancedAnalytics;
-        this.monthlyReports = monthlyReports;
-        this.exportReports = exportReports;
-        this.premiumFeatures = premiumFeatures;
+        this.includedActiveMembers = includedActiveMembers;
+        this.overageRate = overageRate;
     }
 
     public BigDecimal monthlyAmount() {
@@ -36,26 +24,34 @@ public enum SubscriptionPlan {
     }
 
     public Integer memberLimit() {
-        return memberLimit;
+        return includedActiveMembers;
     }
 
     public boolean hasMemberLimit() {
-        return memberLimit != null;
+        return false;
+    }
+
+    public int includedActiveMembers() {
+        return includedActiveMembers;
+    }
+
+    public BigDecimal overageRate() {
+        return overageRate;
     }
 
     public boolean advancedAnalytics() {
-        return advancedAnalytics;
+        return true;
     }
 
     public boolean monthlyReports() {
-        return monthlyReports;
+        return true;
     }
 
     public boolean exportReports() {
-        return exportReports;
+        return true;
     }
 
     public boolean premiumFeatures() {
-        return premiumFeatures;
+        return true;
     }
 }

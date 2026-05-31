@@ -5,7 +5,10 @@ import com.gymflow.domain.Organization;
 import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.SubscriptionPlan;
+import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberRepository;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -13,7 +16,10 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class MemberLimitService {
 
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
+
     private final MemberRepository memberRepository;
+    private final MemberMembershipRepository memberMembershipRepository;
     private final PlanAccessService planAccessService;
 
     public void validateCanCreateMember(Organization organization, MemberStatus requestedStatus) {
@@ -43,16 +49,16 @@ public class MemberLimitService {
         SubscriptionPlan plan = planAccessService.resolvePlan(organization);
         long usedMembers = organization.getOrganizationType() == OrganizationType.DEMO
             ? memberRepository.countByOrganizationIdAndDeletedFalse(organization.getId())
-            : memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(organization.getId(), MemberStatus.ACTIVE);
+            : memberMembershipRepository.countBillableActiveMembers(organization.getId(), LocalDate.now(APP_ZONE));
         Integer limit;
         if (organization.getOrganizationType() == OrganizationType.DEMO) {
             limit = Integer.valueOf(50);
         } else {
-            limit = plan.memberLimit();
+            limit = SubscriptionPricingService.INCLUDED_ACTIVE_MEMBERS;
         }
-        boolean unlimited = organization.getOrganizationType() != OrganizationType.DEMO;
-        long remaining = unlimited ? Long.MAX_VALUE : Math.max(limit - usedMembers, 0);
-        int usagePercent = unlimited || limit == 0
+        boolean unlimited = false;
+        long remaining = Math.max(limit - usedMembers, 0);
+        int usagePercent = limit == 0
             ? 0
             : (int) Math.min(Math.round((usedMembers * 100.0) / limit), 100);
         return new MemberLimitSummary(plan, usedMembers, limit, unlimited, remaining, usagePercent);

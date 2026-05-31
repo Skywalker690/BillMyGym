@@ -19,6 +19,7 @@ import com.gymflow.repository.OrganizationRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -97,6 +98,7 @@ class ReminderServiceTest {
             org.mockito.ArgumentMatchers.any(),
             org.mockito.ArgumentMatchers.any()
         )).thenReturn(0L);
+        when(organizationRepository.findByIdAndDeletedFalse(11L)).thenReturn(Optional.of(organization));
         when(organizationSettingService.getOrCreateSettings(11L)).thenReturn(setting);
         when(organizationDigestBuilderService.buildDigest(org.mockito.ArgumentMatchers.eq(organization), org.mockito.ArgumentMatchers.eq(setting), org.mockito.ArgumentMatchers.anyList()))
             .thenReturn(new OrganizationDigestBuilderService.DigestContent("Brand", "wa", "subject", "email", 1));

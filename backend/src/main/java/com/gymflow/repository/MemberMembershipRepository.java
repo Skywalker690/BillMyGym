@@ -204,6 +204,22 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
     long countByOrganizationIdAndDeletedFalseAndStatus(Long organizationId, MembershipStatus status);
 
     @Query("""
+        select count(distinct membership.member.id)
+        from MemberMembership membership
+        where membership.deleted = false
+          and membership.member.deleted = false
+          and membership.member.status = 'ACTIVE'
+          and membership.organization.id = :organizationId
+          and membership.status = 'ACTIVE'
+          and membership.startDate <= :today
+          and membership.endDate >= :today
+        """)
+    long countBillableActiveMembers(
+        @Param("organizationId") Long organizationId,
+        @Param("today") java.time.LocalDate today
+    );
+
+    @Query("""
         select count(membership)
         from MemberMembership membership
         where membership.deleted = false

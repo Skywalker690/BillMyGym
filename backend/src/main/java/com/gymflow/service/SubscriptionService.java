@@ -3,6 +3,7 @@ package com.gymflow.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gymflow.api.dto.SubscriptionDtos.CreateSubscriptionOrderRequest;
 import com.gymflow.api.dto.SubscriptionDtos.CreateSubscriptionOrderResponse;
+import com.gymflow.api.dto.SubscriptionDtos.SubscriptionInvoiceResponse;
 import com.gymflow.api.dto.SubscriptionDtos.MemberLimitResponse;
 import com.gymflow.api.dto.SubscriptionDtos.PaymentHistoryPageResponse;
 import com.gymflow.api.dto.SubscriptionDtos.PlanAccessResponse;
@@ -144,6 +145,7 @@ public class SubscriptionService {
         payment.setAmount(monthlyAmount);
         payment.setGymCoinsUsed(gymCoinsUsed);
         payment.setSubscriptionPlan(selectedPlan);
+        applyInvoiceSnapshot(payment, pricing);
         payment.setSubscriptionStart(start);
         payment.setSubscriptionEnd(end);
         payment.setPaymentStatus(SubscriptionPaymentStatus.PENDING);
@@ -364,22 +366,69 @@ public class SubscriptionService {
             payment.getGatewayTransactionId(),
             payment.getRazorpayOrderId(),
             payment.getRazorpayPaymentId(),
-            payment.getCreatedAt()
+            payment.getCreatedAt(),
+            toInvoiceResponse(payment)
         );
     }
 
     private SubscriptionPlan resolveCheckoutPlan(CreateSubscriptionOrderRequest request, Organization organization) {
-        SubscriptionPlan selectedPlan = request == null || request.subscriptionPlan() == null
-            ? planAccessService.resolvePlan(organization)
-            : request.subscriptionPlan();
-        if (selectedPlan == SubscriptionPlan.PILOT) {
-            throw new BadRequestException("Pilot billing is no longer available");
-        }
-        return selectedPlan;
+        return SubscriptionPlan.BILLMYGYM;
     }
 
     private SubscriptionPlan resolvePaymentPlan(OrganizationSubscriptionPayment payment, Organization organization) {
-        return payment.getSubscriptionPlan() == null ? planAccessService.resolvePlan(organization) : payment.getSubscriptionPlan();
+        return payment.getSubscriptionPlan() == null ? SubscriptionPlan.BILLMYGYM : payment.getSubscriptionPlan();
+    }
+
+    private void applyInvoiceSnapshot(
+        OrganizationSubscriptionPayment payment,
+        SubscriptionPricingService.SubscriptionPriceBreakdown pricing
+    ) {
+        payment.setBaseAmount(MoneyUtils.normalize(pricing.baseAmount()));
+        payment.setIncludedActiveMembers(pricing.includedMembers());
+        payment.setBilledActiveMembers(pricing.activeMembers());
+        payment.setAdditionalActiveMembers(pricing.overageMembers());
+        payment.setOverageRate(MoneyUtils.normalize(pricing.overageRate()));
+        payment.setOverageAmount(MoneyUtils.normalize(pricing.overageAmount()));
+    }
+
+    private SubscriptionInvoiceResponse toInvoiceResponse(OrganizationSubscriptionPayment payment) {
+        BigDecimal baseAmount = payment.getBaseAmount() == null
+            ? SubscriptionPricingService.BASE_MONTHLY_AMOUNT
+            : payment.getBaseAmount();
+        Integer includedMembers = payment.getIncludedActiveMembers() == null
+            ? SubscriptionPricingService.INCLUDED_ACTIVE_MEMBERS
+            : payment.getIncludedActiveMembers();
+        BigDecimal overageRate = payment.getOverageRate() == null
+            ? SubscriptionPricingService.OVERAGE_PER_ACTIVE_MEMBER
+            : payment.getOverageRate();
+        BigDecimal overageAmount = payment.getOverageAmount() == null
+            ? payment.getAmount().subtract(baseAmount).max(BigDecimal.ZERO)
+            : payment.getOverageAmount();
+        long additionalMembers = payment.getAdditionalActiveMembers() == null
+            ? inferAdditionalMembers(overageAmount, overageRate)
+            : payment.getAdditionalActiveMembers();
+        long currentActiveMembers = payment.getBilledActiveMembers() == null
+            ? includedMembers + additionalMembers
+            : payment.getBilledActiveMembers();
+        BigDecimal totalAmount = baseAmount.add(overageAmount);
+        return new SubscriptionInvoiceResponse(
+            baseAmount,
+            includedMembers,
+            currentActiveMembers,
+            additionalMembers,
+            overageRate,
+            overageAmount,
+            totalAmount
+        );
+    }
+
+    private long inferAdditionalMembers(BigDecimal overageAmount, BigDecimal overageRate) {
+        if (overageAmount == null || overageRate == null || overageRate.compareTo(BigDecimal.ZERO) <= 0) {
+            return 0L;
+        }
+        return overageAmount
+            .divide(overageRate, 0, java.math.RoundingMode.CEILING)
+            .longValue();
     }
 
     private LocalDate resolveNextSubscriptionStart(Organization organization) {

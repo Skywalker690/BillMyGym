@@ -7,19 +7,13 @@ import {
   CalendarDays,
   Check,
   CreditCard,
-  Crown,
   FileDown,
-  Info,
   IndianRupee,
-  LifeBuoy,
-  LockKeyhole,
+  LogOut,
   Mail,
   MessageCircle,
-  LogOut,
   ShieldCheck,
   Users,
-  Zap,
-  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +28,6 @@ import {
   organizationTypeLabel,
   subscriptionPlanLabel,
 } from "@/lib/subscriptionLabels";
-import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
 
 declare global {
   interface Window {
@@ -42,29 +35,7 @@ declare global {
   }
 }
 
-type CheckoutPlanKey = "STARTER" | "GROWTH" | "PRO";
-type SubscriptionPlanKey = CheckoutPlanKey | "PILOT";
-
-type SubscriptionPayment = {
-  id: number;
-  amount: number;
-  paymentDate?: string | null;
-  subscriptionStart?: string | null;
-  subscriptionEnd?: string | null;
-  paymentStatus: "PAID" | "PENDING" | "FAILED" | "REFUNDED";
-  razorpayOrderId?: string | null;
-  razorpayPaymentId?: string | null;
-  createdAt?: string | null;
-};
-
-type PaymentHistoryPage = {
-  items: SubscriptionPayment[];
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
-  hasNext: boolean;
-};
+type SubscriptionPlanKey = "BILLMYGYM";
 
 type SubscriptionPricing = {
   baseAmount: number;
@@ -76,6 +47,38 @@ type SubscriptionPricing = {
   overageAmount: number;
 };
 
+type SubscriptionInvoice = {
+  baseAmount: number;
+  includedActiveMembers?: number | null;
+  currentActiveMembers: number;
+  additionalActiveMembers: number;
+  overageRate: number;
+  overageAmount: number;
+  totalAmount: number;
+};
+
+type SubscriptionPayment = {
+  id: number;
+  amount: number;
+  paymentDate?: string | null;
+  subscriptionStart?: string | null;
+  subscriptionEnd?: string | null;
+  paymentStatus: "PAID" | "PENDING" | "FAILED" | "REFUNDED";
+  razorpayOrderId?: string | null;
+  razorpayPaymentId?: string | null;
+  createdAt?: string | null;
+  invoice?: SubscriptionInvoice | null;
+};
+
+type PaymentHistoryPage = {
+  items: SubscriptionPayment[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+};
+
 type SubscriptionStatus = {
   organizationId: number;
   organizationName: string;
@@ -83,6 +86,7 @@ type SubscriptionStatus = {
   organizationStatus: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
   subscriptionPlan: SubscriptionPlanKey;
   monthlyAmount: number;
+  lifetimeSubscriptionRevenue?: number;
   trialEndsAt?: string | null;
   subscriptionDueDate?: string | null;
   currentPeriodStart?: string | null;
@@ -90,6 +94,8 @@ type SubscriptionStatus = {
   whatsappUsage: number;
   emailUsage: number;
   activeMembers: number;
+  customReminderUsage?: number;
+  customReminderLimit?: number | null;
   memberLimit?: {
     usedMembers: number;
     deactivatedMembers: number;
@@ -108,7 +114,7 @@ type CreateOrderResponse = {
   razorpayOrderId: string;
   keyId?: string | null;
   paymentsEnabled: boolean;
-  subscriptionPlan: CheckoutPlanKey;
+  subscriptionPlan: SubscriptionPlanKey;
   amount: number;
   pricing?: SubscriptionPricing;
   amountInPaise: number;
@@ -119,103 +125,14 @@ type CreateOrderResponse = {
 };
 
 type PurchaseSuccessState = {
-  plan: CheckoutPlanKey;
   amount: number;
 };
-
-type PlanCard = {
-  key: CheckoutPlanKey;
-  name: string;
-  price: number;
-  limit: string;
-  tagline: string;
-  description: string;
-  icon: LucideIcon;
-  accent: string;
-  glow: string;
-  badge?: string;
-  features: string[];
-  demos: string[];
-};
-
-const checkoutPlans: PlanCard[] = [
-  {
-    key: "STARTER",
-    name: "Starter",
-    price: 299,
-    limit: "100 active members included",
-    tagline: "Essential front-desk control",
-    description: "A clean operating system for memberships, reminders, payment tracking, and a focused current-month revenue dashboard.",
-    icon: Users,
-    accent: "from-slate-900 to-slate-700",
-    glow: "bg-slate-200",
-    features: ["Member management", "Membership renewals", "Reminders", "Current-month revenue dashboard", "WhatsApp and email digest", "Payment tracking", "INR 5 per active member above 100"],
-    demos: ["Member desk", "Current-month revenue", "Core operations"],
-  },
-  {
-    key: "GROWTH",
-    name: "Growth",
-    price: 999,
-    limit: "300 active members included",
-    tagline: "Revenue visibility built in",
-    description: "Adds full revenue visibility, historical analytics, and reports while keeping total members unlimited.",
-    icon: BarChart3,
-    accent: "from-emerald-600 to-teal-500",
-    glow: "bg-emerald-200",
-    badge: "Most Popular",
-    features: ["Full revenue dashboard", "Pending revenue", "Historical analytics", "Reports page", "WhatsApp monthly reports", "Email monthly reports", "INR 3 per active member above 300"],
-    demos: ["Revenue trends", "Historical reporting", "Growth insights"],
-  },
-  {
-    key: "PRO",
-    name: "Pro",
-    price: 2499,
-    limit: "Unlimited members",
-    tagline: "Operator-grade command center",
-    description: "Unlocks the full workspace with full historical access, advanced analytics, exports, member messaging, and premium support.",
-    icon: Crown,
-    accent: "from-indigo-700 to-sky-500",
-    glow: "bg-indigo-200",
-    features: ["Everything in Growth", "Unlimited members", "Multi-admin support", "Custom date range reports", "Report exports", "Member messaging", "Premium support", "Future integrations"],
-    demos: ["Unlimited scale", "Custom-range reporting", "Priority workflow"],
-  },
-];
-
-const implementedDemos = [
-  {
-    icon: ShieldCheck,
-    title: "Plan gates",
-    body: "Advanced analytics, exports, monthly reports, and premium features are shown only for eligible plans.",
-  },
-  {
-    icon: Users,
-    title: "Member limits",
-    body: "Member creation checks the active member count before allowing a new member.",
-  },
-  {
-    icon: MessageCircle,
-    title: "Monthly reports",
-    body: "Growth unlocks historical reports, while Pro adds exports and the deepest analytics experience.",
-  },
-];
 
 const money = new Intl.NumberFormat("en-IN", {
   style: "currency",
   currency: "INR",
   maximumFractionDigits: 0,
 });
-
-const PRO_INCLUDED_MEMBERS = 600;
-const PRO_OVERAGE_RATE = 2;
-const STARTER_INCLUDED_MEMBERS = 100;
-const GROWTH_INCLUDED_MEMBERS = 300;
-const STARTER_OVERAGE_RATE = 5;
-const GROWTH_OVERAGE_RATE = 3;
-
-const dateText = (value?: string | null) => {
-  if (!value) return "Not set";
-  return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
-};
 
 const statusStyles: Record<string, string> = {
   ACTIVE: "border-emerald-200 bg-emerald-100 text-emerald-800",
@@ -224,9 +141,25 @@ const statusStyles: Record<string, string> = {
   DEACTIVATED: "border-rose-200 bg-rose-100 text-rose-800",
   DEMO: "border-cyan-200 bg-cyan-100 text-cyan-800",
   REGULAR: "border-slate-200 bg-slate-100 text-slate-800",
-  STARTER: "border-slate-200 bg-slate-100 text-slate-800",
-  GROWTH: "border-emerald-200 bg-emerald-100 text-emerald-800",
-  PRO: "border-indigo-200 bg-indigo-100 text-indigo-800",
+  PAID: "border-emerald-200 bg-emerald-100 text-emerald-800",
+  PENDING: "border-amber-200 bg-amber-100 text-amber-800",
+  FAILED: "border-rose-200 bg-rose-100 text-rose-800",
+  REFUNDED: "border-slate-200 bg-slate-100 text-slate-700",
+  BILLMYGYM: "border-emerald-200 bg-emerald-100 text-emerald-800",
+};
+
+const includedFeatures = [
+  { icon: Users, label: "Member and membership management" },
+  { icon: CalendarDays, label: "Attendance and expiry tracking" },
+  { icon: BarChart3, label: "Revenue dashboards, reports, analytics" },
+  { icon: FileDown, label: "Custom date ranges and report exports" },
+  { icon: MessageCircle, label: "WhatsApp reminders and renewal digests" },
+  { icon: Mail, label: "Email reminders and monthly reports" },
+];
+
+const dateText = (value?: string | null) => {
+  if (!value) return "Not set";
+  return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
 };
 
 function loadRazorpayScript() {
@@ -244,47 +177,39 @@ function loadRazorpayScript() {
   });
 }
 
-function preferredCheckoutPlan(subscription?: SubscriptionStatus): CheckoutPlanKey {
-  if (!subscription || subscription.organizationType === "DEMO") {
-    return "GROWTH";
-  }
-  return subscription.subscriptionPlan;
-}
-
-function estimatedPlanPrice(plan: PlanCard, subscription?: SubscriptionStatus) {
-  return planPricingPreview(plan.key, subscription).totalAmount;
-}
-
-function planPricingPreview(plan: CheckoutPlanKey, subscription?: SubscriptionStatus) {
-  const activeMembers = subscription?.pricing?.activeMembers ?? subscription?.activeMembers ?? 0;
-  const includedMembers = plan === "STARTER"
-    ? STARTER_INCLUDED_MEMBERS
-    : plan === "GROWTH"
-      ? GROWTH_INCLUDED_MEMBERS
-      : PRO_INCLUDED_MEMBERS;
-  const overageRate = plan === "STARTER"
-    ? STARTER_OVERAGE_RATE
-    : plan === "GROWTH"
-      ? GROWTH_OVERAGE_RATE
-      : PRO_OVERAGE_RATE;
-  const baseAmount = checkoutPlans.find((item) => item.key === plan)?.price ?? 0;
+function fallbackPricing(subscription: SubscriptionStatus): SubscriptionPricing {
+  const activeMembers = Number(subscription.activeMembers ?? 0);
+  const includedMembers = 100;
+  const overageRate = 4;
   const overageMembers = Math.max(activeMembers - includedMembers, 0);
+  const overageAmount = overageMembers * overageRate;
   return {
+    baseAmount: 299,
+    totalAmount: 299 + overageAmount,
     activeMembers,
     includedMembers,
     overageMembers,
     overageRate,
-    overageAmount: overageMembers * overageRate,
-    totalAmount: baseAmount + overageMembers * overageRate,
+    overageAmount,
   };
 }
 
-export default function Subscription({ immersive = false, showPlans = false }: { immersive?: boolean; showPlans?: boolean }) {
-  const { effectivePlan, isDemoWorkspace } = useDemoPlanPreview();
+function invoiceFromPricing(pricing: SubscriptionPricing): SubscriptionInvoice {
+  return {
+    baseAmount: pricing.baseAmount,
+    includedActiveMembers: pricing.includedMembers ?? 100,
+    currentActiveMembers: pricing.activeMembers,
+    additionalActiveMembers: pricing.overageMembers,
+    overageRate: pricing.overageRate,
+    overageAmount: pricing.overageAmount,
+    totalAmount: pricing.totalAmount,
+  };
+}
+
+export default function Subscription({ immersive = false }: { immersive?: boolean; showPlans?: boolean }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { logout } = useAuth();
-  const [selectedPlan, setSelectedPlan] = useState<CheckoutPlanKey>("GROWTH");
   const [manualOrder, setManualOrder] = useState<CreateOrderResponse | null>(null);
   const [manualPaymentId, setManualPaymentId] = useState("");
   const [manualSignature, setManualSignature] = useState("");
@@ -301,13 +226,6 @@ export default function Subscription({ immersive = false, showPlans = false }: {
     },
     staleTime: 60_000,
   });
-
-  useEffect(() => {
-    if (!subscription) {
-      return;
-    }
-    setSelectedPlan(isDemoWorkspace ? effectivePlan : preferredCheckoutPlan(subscription));
-  }, [effectivePlan, isDemoWorkspace, subscription]);
 
   useEffect(() => {
     if (!subscription) {
@@ -334,17 +252,9 @@ export default function Subscription({ immersive = false, showPlans = false }: {
     }
     const redirectTimer = window.setTimeout(() => {
       navigate("/app/dashboard", { replace: true });
-    }, 2600);
+    }, 2200);
     return () => window.clearTimeout(redirectTimer);
   }, [navigate, purchaseSuccess]);
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login", { replace: true });
-  };
-
-  const planRoute = immersive ? "/app/subscription/recovery/plans" : "/app/subscription/plans";
-  const overviewRoute = immersive ? "/app/subscription/recovery" : "/app/subscription";
 
   const verifyMutation = useMutation({
     mutationFn: (payload: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) =>
@@ -354,16 +264,72 @@ export default function Subscription({ immersive = false, showPlans = false }: {
         },
       }),
     onSuccess: () => {
-      const completedPlan = manualOrder?.subscriptionPlan ?? selectedPlan;
-      const completedAmount = manualOrder?.amount ?? checkoutPlans.find((plan) => plan.key === completedPlan)?.price ?? 0;
       toast.success("Subscription payment verified.");
-      setPurchaseSuccess({ plan: completedPlan, amount: completedAmount });
+      setPurchaseSuccess({ amount: manualOrder?.amount ?? 0 });
       setManualOrder(null);
       setManualPaymentId("");
       setManualSignature("");
       queryClient.invalidateQueries({ queryKey: ["subscriptionStatus"] });
     },
     onError: (error: any) => toast.error(error?.response?.data?.message || "Payment verification failed."),
+  });
+
+  const createOrderMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post(
+        "/subscription/create",
+        { subscriptionPlan: "BILLMYGYM", useGymCoins },
+        {
+          headers: {
+            "X-Idempotency-Key": crypto.randomUUID(),
+          },
+        }
+      );
+      return res.data as CreateOrderResponse;
+    },
+    onSuccess: async (order) => {
+      setManualOrder(order);
+
+      if (!order.paymentsEnabled) {
+        toast.success("BillMyGym activated in local payment mode.");
+        setPurchaseSuccess({ amount: order.amount });
+        setManualOrder(null);
+        queryClient.invalidateQueries({ queryKey: ["subscriptionStatus"] });
+        return;
+      }
+
+      if (!order.keyId || order.razorpayOrderId.startsWith("order_local_")) {
+        toast.info("Subscription order created. Checkout keys are not configured, so manual verification is available.");
+        return;
+      }
+
+      const loaded = await loadRazorpayScript();
+      if (!loaded || !window.Razorpay) {
+        toast.error("Unable to load secure checkout. Manual verification is available after payment.");
+        return;
+      }
+
+      const checkout = new window.Razorpay({
+        key: order.keyId,
+        amount: order.amountInPaise,
+        currency: order.currency,
+        name: "BillMyGym",
+        description: "BillMyGym monthly subscription",
+        order_id: order.razorpayOrderId,
+        handler: (response: any) => {
+          verifyMutation.mutate({
+            razorpayOrderId: response.razorpay_order_id,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpaySignature: response.razorpay_signature,
+          });
+        },
+        theme: {
+          color: "#16a34a",
+        },
+      });
+      checkout.open();
+    },
+    onError: (error: any) => toast.error(error?.response?.data?.message || "Failed to create subscription order."),
   });
 
   const loadMoreHistoryMutation = useMutation({
@@ -383,63 +349,10 @@ export default function Subscription({ immersive = false, showPlans = false }: {
     onError: () => toast.error("Could not load older subscription payments."),
   });
 
-  const createOrderMutation = useMutation({
-    mutationFn: async (plan: CheckoutPlanKey) => {
-      const res = await api.post(
-        "/subscription/create",
-        { subscriptionPlan: plan, useGymCoins },
-        {
-          headers: {
-            "X-Idempotency-Key": crypto.randomUUID(),
-          },
-        }
-      );
-      return res.data as CreateOrderResponse;
-    },
-    onSuccess: async (order) => {
-      setManualOrder(order);
-
-      if (!order.paymentsEnabled) {
-        toast.success(`${subscriptionPlanLabel(order.subscriptionPlan)} activated in local payment mode.`);
-        setPurchaseSuccess({ plan: order.subscriptionPlan, amount: order.amount });
-        setManualOrder(null);
-        queryClient.invalidateQueries({ queryKey: ["subscriptionStatus"] });
-        return;
-      }
-
-      if (!order.keyId || order.razorpayOrderId.startsWith("order_local_")) {
-        toast.info("Subscription order created. Checkout keys are not configured, so manual verification is available.");
-        return;
-      }
-
-      const loaded = await loadRazorpayScript();
-      if (!loaded || !window.Razorpay) {
-        toast.error("Unable to load secure checkout. You can verify the payment manually after collecting payment details.");
-        return;
-      }
-
-      const checkout = new window.Razorpay({
-        key: order.keyId,
-        amount: order.amountInPaise,
-        currency: order.currency,
-        name: "BillMyGym",
-        description: `${subscriptionPlanLabel(order.subscriptionPlan)} monthly SaaS subscription`,
-        order_id: order.razorpayOrderId,
-        handler: (response: any) => {
-          verifyMutation.mutate({
-            razorpayOrderId: response.razorpay_order_id,
-            razorpayPaymentId: response.razorpay_payment_id,
-            razorpaySignature: response.razorpay_signature,
-          });
-        },
-        theme: {
-          color: "#16a34a",
-        },
-      });
-      checkout.open();
-    },
-    onError: (error: any) => toast.error(error?.response?.data?.message || "Failed to create subscription order."),
-  });
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   if (isLoading) {
     return <div className="min-h-screen overflow-x-hidden p-8">Loading subscription...</div>;
@@ -449,603 +362,195 @@ export default function Subscription({ immersive = false, showPlans = false }: {
     return <div className="min-h-screen overflow-x-hidden p-8">Subscription status is unavailable.</div>;
   }
 
+  const pricing = subscription.pricing ?? fallbackPricing(subscription);
+  const invoice = invoiceFromPricing(pricing);
+  const isDemo = subscription.organizationType === "DEMO";
+  const isActive = subscription.organizationStatus === "ACTIVE" && !isDemo;
+  const isTrial = subscription.organizationStatus === "TRIAL";
+  const hasInactiveSubscription = subscription.organizationStatus === "PAUSED" || subscription.organizationStatus === "DEACTIVATED";
+  const canCheckout = !isDemo && !isActive;
+  const latestPayment = paymentHistory[0];
+  const paymentStatus = latestPayment?.paymentStatus ?? (isDemo ? "DEMO" : isTrial ? "TRIAL" : subscription.organizationStatus);
+  const includedActiveMembers = invoice.includedActiveMembers ?? 100;
+  const includedUsagePercent = includedActiveMembers > 0
+    ? Math.min(Math.round((Math.min(invoice.currentActiveMembers, includedActiveMembers) / includedActiveMembers) * 100), 100)
+    : 0;
+  const gymCoins = Number(subscription.gymCoinBalance ?? 0);
+  const estimatedCheckoutAmount = useGymCoins ? Math.max(pricing.totalAmount - gymCoins, 0) : pricing.totalAmount;
+  const currentPeriod = subscription.currentPeriodStart && subscription.currentPeriodEnd
+    ? `${dateText(subscription.currentPeriodStart)} - ${dateText(subscription.currentPeriodEnd)}`
+    : isTrial
+      ? `Trial through ${dateText(subscription.trialEndsAt ?? subscription.subscriptionDueDate)}`
+      : `Renews on ${dateText(subscription.subscriptionDueDate)}`;
+
   if (purchaseSuccess) {
-    if (!immersive) {
-      return (
-        <div className="space-y-8">
-          <div className="relative overflow-hidden rounded-[2rem] border border-emerald-100 bg-white/90 p-8 text-center shadow-sm backdrop-blur md:p-10">
-            <div className="absolute -left-16 top-10 h-32 w-32 rounded-full bg-emerald-200/70 blur-3xl" />
-            <div className="absolute -right-10 bottom-8 h-36 w-36 rounded-full bg-amber-200/70 blur-3xl" />
-            <div className="relative z-10">
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-emerald-100 text-emerald-700 shadow-sm">
-                <ShieldCheck className="h-10 w-10" />
-              </div>
-              <Badge className="mt-6 border-emerald-200 bg-emerald-100 text-emerald-800">Payment Successful</Badge>
-              <h1 className="mt-5 text-4xl font-black tracking-tight text-slate-950">Congratulations, your plan is live.</h1>
-              <p className="mx-auto mt-4 max-w-2xl text-base font-semibold leading-7 text-slate-600">
-                Your {purchaseSuccess.plan} subscription has been activated successfully for {money.format(purchaseSuccess.amount)} per month.
-                We&apos;re taking you back into BillMyGym now.
-              </p>
-              <Button onClick={() => navigate("/app/dashboard", { replace: true })} className="mt-8 h-12 rounded-full bg-slate-950 px-8 font-black text-white hover:bg-slate-800">
-                Enter BillMyGym
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
     return (
-      <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.24),_transparent_28rem),radial-gradient(circle_at_bottom_right,_rgba(251,191,36,0.18),_transparent_26rem),linear-gradient(180deg,_#ecfdf5_0%,_#f8fafc_100%)] px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
-          <div className="rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-sm font-black tracking-[0.18em] text-emerald-700 shadow-sm">
-            BILLMYGYM
+      <div className={immersive ? "min-h-screen bg-slate-950 px-4 py-8 text-white" : "space-y-8"}>
+        <div className={immersive ? "mx-auto max-w-3xl rounded-[2rem] border border-white/10 bg-white/8 p-8 text-center shadow-2xl" : "rounded-[2rem] border border-emerald-100 bg-white/90 p-8 text-center shadow-sm"}>
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+            <ShieldCheck className="h-8 w-8" />
           </div>
-          <Button onClick={handleLogout} variant="outline" className="rounded-full border-white/80 bg-white/80 px-4 font-bold text-slate-700">
-            <LogOut className="mr-2 h-4 w-4" />
-            Log out
+          <Badge className="mt-6 border-emerald-200 bg-emerald-100 text-emerald-800">Payment Successful</Badge>
+          <h1 className={immersive ? "mt-5 text-4xl font-black tracking-tight text-white" : "mt-5 text-4xl font-black tracking-tight text-slate-950"}>
+            BillMyGym is active.
+          </h1>
+          <p className={immersive ? "mx-auto mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-300" : "mx-auto mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-600"}>
+            Your subscription payment of {money.format(purchaseSuccess.amount)} has been processed. You are being returned to the dashboard.
+          </p>
+          <Button onClick={() => navigate("/app/dashboard", { replace: true })} className="mt-8 h-12 rounded-full bg-emerald-600 px-8 font-black text-white hover:bg-emerald-700">
+            Enter BillMyGym
+            <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
-        </div>
-
-        <div className="mx-auto flex min-h-[calc(100vh-6rem)] max-w-4xl items-center justify-center">
-          <div className="relative w-full overflow-hidden rounded-[2.2rem] border border-white/80 bg-white/88 p-8 text-center shadow-[0_32px_90px_rgba(15,23,42,0.14)] backdrop-blur md:p-12">
-            <div className="absolute -left-16 top-10 h-32 w-32 rounded-full bg-emerald-200/70 blur-3xl" />
-            <div className="absolute -right-10 bottom-8 h-36 w-36 rounded-full bg-amber-200/70 blur-3xl" />
-            <div className="relative z-10">
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-emerald-100 text-emerald-700 shadow-sm">
-                <ShieldCheck className="h-10 w-10" />
-              </div>
-              <Badge className="mt-6 border-emerald-200 bg-emerald-100 text-emerald-800">Payment Successful</Badge>
-              <h1 className="mt-5 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">Congratulations, your plan is live.</h1>
-              <p className="mx-auto mt-4 max-w-2xl text-base font-semibold leading-7 text-slate-600">
-                Your {purchaseSuccess.plan} subscription has been activated successfully for {money.format(purchaseSuccess.amount)} per month.
-                We&apos;re taking you back into BillMyGym now.
-              </p>
-
-              <div className="mx-auto mt-8 grid max-w-2xl gap-4 md:grid-cols-3">
-                <div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50 p-5">
-                  <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Plan</div>
-                  <div className="mt-2 text-2xl font-black text-slate-950">{purchaseSuccess.plan}</div>
-                </div>
-                <div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50 p-5">
-                  <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Amount</div>
-                  <div className="mt-2 text-2xl font-black text-slate-950">{money.format(purchaseSuccess.amount)}</div>
-                </div>
-                <div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50 p-5">
-                  <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Redirect</div>
-                  <div className="mt-2 text-2xl font-black text-slate-950">2s</div>
-                </div>
-              </div>
-
-              <Button onClick={() => navigate("/app/dashboard", { replace: true })} className="mt-8 h-12 rounded-full bg-slate-950 px-8 font-black text-white hover:bg-slate-800">
-                Enter BillMyGym
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
     );
   }
 
-  const isDemo = subscription.organizationType === "DEMO";
-  const isActive = subscription.organizationStatus === "ACTIVE" && !isDemo;
-  const isTrial = subscription.organizationStatus === "TRIAL";
-  const isPaused = subscription.organizationStatus === "PAUSED";
-  const isDeactivated = subscription.organizationStatus === "DEACTIVATED";
-  const hasInactiveSubscription = isPaused || isDeactivated;
-  const canCheckout = !isDemo && !isActive;
-  const selectedPlanDetails = checkoutPlans.find((plan) => plan.key === selectedPlan) ?? checkoutPlans[1];
-  const selectedPlanEstimatedPrice = estimatedPlanPrice(selectedPlanDetails, subscription);
-  const selectedPlanPreview = planPricingPreview(selectedPlanDetails.key, subscription);
-  const currentShowcasePlan = isDemoWorkspace ? effectivePlan : subscription.subscriptionPlan;
-  const currentPlanPreview = planPricingPreview(currentShowcasePlan, subscription);
-  const memberLimitLabel = subscription.memberLimit?.unlimited
-    ? `${subscription.memberLimit.usedMembers} / Unlimited`
-    : `${subscription.memberLimit?.usedMembers ?? subscription.activeMembers} / ${subscription.memberLimit?.memberLimit ?? 0}`;
-  const lifecycleCards = isDemo
-    ? [{ label: "Demo Workspace", value: "This workspace is for product showcases and workflow walkthroughs.", emphasis: "text-sky-700" }]
-    : isActive
-      ? [
-          {
-            label: "Current Billing Period",
-            value: `${dateText(subscription.currentPeriodStart)} - ${dateText(subscription.currentPeriodEnd)}`,
-            emphasis: "text-emerald-700",
-          },
-          { label: "Next Renewal", value: dateText(subscription.subscriptionDueDate), emphasis: "text-emerald-700" },
-        ]
-      : hasInactiveSubscription
-        ? [
-            { label: organizationStatusLabel(subscription.organizationStatus), value: dateText(subscription.subscriptionDueDate), emphasis: "text-orange-700" },
-            { label: "Select A Plan", value: "Choose below to restore access", emphasis: "text-orange-700" },
-          ]
-        : [{ label: "Free Trial Access", value: `Access Ends: ${dateText(subscription.trialEndsAt)}`, emphasis: "text-amber-700" }];
-
-  const handlePlanCheckout = (plan: CheckoutPlanKey) => {
-    setSelectedPlan(plan);
-    if (!canCheckout) {
-      return;
-    }
-    createOrderMutation.mutate(plan);
-  };
-
-  const buttonText = (plan: PlanCard) => {
-    if (createOrderMutation.isPending && selectedPlan === plan.key) {
-      return "Opening checkout...";
-    }
-    if (isDemo) {
-      return "Billing disabled for demo workspace";
-    }
-    if (isActive) {
-      return subscription.subscriptionPlan === plan.key ? "Active plan" : "Available at renewal";
-    }
-    if (isTrial) {
-      return `Start ${plan.name}`;
-    }
-    return "Select & Pay";
-  };
-
   return (
-    <div
-      className={`${
-        immersive
-          ? "bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.16),_transparent_32rem),linear-gradient(180deg,_#f8fafc_0%,_#ecfdf5_48%,_#f8fafc_100%)]"
-          : "bg-transparent"
-      } overflow-x-hidden pb-8 pt-4 sm:px-6 sm:pb-10 sm:pt-6 lg:px-8 lg:pb-12 lg:pt-8`}
-    >
-      <div className="mx-auto w-full max-w-7xl space-y-8">
-        {immersive && (
-          <div className="flex items-center justify-between gap-3">
-            <div className="rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-sm font-black tracking-[0.18em] text-emerald-700 shadow-sm">
-              BILLMYGYM
-            </div>
-            <Button onClick={handleLogout} variant="outline" className="rounded-full border-white/80 bg-white/80 px-4 font-bold text-slate-700">
-              <LogOut className="mr-2 h-4 w-4" />
-              Log out
-            </Button>
+    <div className={immersive ? "min-h-screen overflow-x-hidden bg-slate-950 px-4 py-6 text-white sm:px-6 lg:px-8" : "space-y-8"}>
+      {immersive && (
+        <div className="mx-auto mb-8 flex max-w-7xl items-center justify-between gap-3">
+          <div className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-black tracking-[0.18em] text-emerald-100">
+            BILLMYGYM
           </div>
-        )}
-
-        <div className="relative overflow-hidden rounded-[2rem] border border-white/75 bg-white/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur md:p-8">
-          <div className={`absolute -right-24 -top-24 h-72 w-72 rounded-full ${selectedPlanDetails.glow} blur-3xl`} />
-          <div className="relative z-10 grid gap-8 lg:grid-cols-[1.25fr_0.75fr] lg:items-center">
-            <div>
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <Badge className={statusStyles[subscription.organizationStatus]}>{organizationStatusLabel(subscription.organizationStatus)}</Badge>
-                {subscription.organizationType === "DEMO" && (
-                  <Badge className={statusStyles[subscription.organizationType]}>{organizationTypeLabel(subscription.organizationType)}</Badge>
-                )}
-                <Badge className={statusStyles[subscription.subscriptionPlan]}>{subscriptionPlanLabel(subscription.subscriptionPlan)}</Badge>
-              </div>
-              <h1 className="max-w-3xl text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
-                {showPlans
-                  ? "Choose the BillMyGym plan that fits your gym."
-                  : hasInactiveSubscription
-                  ? "Your subscription expired. Pick a plan to restore access."
-                  : isTrial
-                    ? "Choose the plan that fits your gym before the trial ends."
-                    : "Manage your BillMyGym subscription."}
-              </h1>
-              <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-slate-600">
-                {showPlans
-                  ? `${subscription.organizationName} can continue with Starter, unlock reports and historical analytics with Growth, or move to Pro for advanced analytics and exports. Compare the plans below and continue when you're ready.`
-                  : isDemo
-                    ? `${subscription.organizationName} is currently running as a demo workspace. Use this page to review showcase access, usage, and plan guidance.`
-                    : `${subscription.organizationName} can continue with Starter, unlock reports and historical analytics with Growth, or move to Pro for advanced analytics and exports. Use this page to review your billing status, usage, and renewal guidance.`}
-              </p>
-
-              <div className={`mt-6 grid gap-3 ${lifecycleCards.length === 1 ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
-                {lifecycleCards.map((card) => (
-                  <div key={card.label} className="rounded-2xl border border-white/80 bg-white/70 p-4 shadow-sm">
-                    <div className={`text-[10px] font-black uppercase tracking-[0.24em] ${card.emphasis}`}>{card.label}</div>
-                    <div className="mt-2 text-lg font-black text-slate-950">{card.value}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {showPlans ? (
-              <div className="rounded-[1.8rem] border border-slate-900/5 bg-slate-950 p-6 text-white shadow-xl">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-emerald-200">
-                    <LockKeyhole className="h-7 w-7" />
-                  </div>
-                  <Badge className="border-emerald-300/30 bg-emerald-300/10 text-emerald-100">Plan selection</Badge>
-                </div>
-                <div className="mt-6 text-sm font-black uppercase tracking-[0.24em] text-emerald-200">Selected Plan</div>
-                <div className="mt-2 flex items-end gap-2">
-                  <span className="text-4xl font-black">{selectedPlanDetails.name}</span>
-                  <span className="pb-1 text-sm font-bold text-slate-300">{selectedPlanDetails.limit}</span>
-                </div>
-                <div className="mt-3 flex items-end gap-1">
-                  <span className="text-3xl font-black">{money.format(selectedPlanEstimatedPrice)}</span>
-                  <span className="pb-1 text-sm font-bold text-slate-300">/ month</span>
-                </div>
-                {selectedPlanDetails.key === "PRO" && (
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-sm font-semibold text-slate-200">
-                    <div className="flex items-center justify-between gap-3">
-                      <span>Included active members</span>
-                      <span className="font-black text-white">{selectedPlanPreview.includedMembers}</span>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between gap-3">
-                      <span>Billable overage</span>
-                      <span className="font-black text-white">
-                        {selectedPlanPreview.overageMembers} x {money.format(selectedPlanPreview.overageRate)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                <p className="mt-6 text-sm font-semibold leading-6 text-slate-200">
-                  Pick the plan that fits your gym now. Once payment is verified, access is restored and the workspace is updated automatically.
-                </p>
-                <Button
-                  onClick={() => navigate(overviewRoute)}
-                  variant="outline"
-                  className="mt-6 h-11 rounded-full border-white/15 bg-white/10 px-5 font-bold text-white hover:bg-white/15"
-                >
-                  Back to Billing Overview
-                </Button>
-              </div>
-            ) : (
-              <div className="rounded-[1.9rem] border border-emerald-100/80 bg-[linear-gradient(145deg,rgba(15,23,42,0.04),rgba(16,185,129,0.12)),linear-gradient(180deg,rgba(255,255,255,0.92),rgba(240,253,250,0.92))] p-6 shadow-[0_20px_55px_rgba(15,23,42,0.08)] backdrop-blur">
-                <div className="rounded-[1.5rem] border border-emerald-200/80 bg-white/80 p-4 shadow-sm">
-                  <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Active Member Billing</div>
-                  <div className="mt-2 flex items-end gap-2">
-                    <span className="text-3xl font-black text-slate-950">
-                      {money.format(subscription.pricing?.totalAmount ?? subscription.monthlyAmount)}
-                    </span>
-                    {!isDemo && <span className="pb-1 text-sm font-bold text-slate-500">current monthly total</span>}
-                  </div>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-                    {isDemo
-                      ? "This workspace is currently running in demo mode with billing disabled."
-                      : `${currentPlanPreview.includedMembers} active members are included, then ${money.format(currentPlanPreview.overageRate)} per extra active member.`}
-                  </p>
-                </div>
-                {!isDemo && (
-                  <div className="mt-4 rounded-[1.5rem] border border-sky-100 bg-white/80 p-4 shadow-sm">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-[10px] font-black uppercase tracking-[0.22em] text-sky-700">Current Overage</div>
-                        <div className="mt-1 text-sm font-semibold text-slate-600">
-                          Extra active members are added automatically to the next monthly subscription payment.
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-black text-slate-950">{money.format(subscription.pricing?.overageAmount ?? currentPlanPreview.overageAmount)}</div>
-                        <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-                          {subscription.pricing?.overageMembers ?? currentPlanPreview.overageMembers} extra active members
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <Button
-                  onClick={() => navigate(planRoute)}
-                  className="mt-6 h-12 rounded-full bg-emerald-600 px-6 font-black text-white shadow-[0_16px_35px_rgba(5,150,105,0.24)] hover:bg-emerald-700"
-                >
-                  View Subscription Plans
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </div>
+          <Button onClick={handleLogout} variant="outline" className="rounded-full border-white/20 bg-white/10 px-4 font-bold text-white hover:bg-white/15 hover:text-white">
+            <LogOut className="mr-2 h-4 w-4" />
+            Log out
+          </Button>
         </div>
+      )}
 
-        {!showPlans && (
-          <div className="grid gap-5 md:grid-cols-3">
-          <div className="rounded-[1.75rem] border border-white/80 bg-white/80 p-6 shadow-sm backdrop-blur">
-            <Users className="h-6 w-6 text-emerald-700" />
-            <div className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
-              <span>Members Used</span>
-              <div className="group relative">
-                <button
-                  type="button"
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-emerald-200 bg-white/85 text-emerald-700 shadow-sm"
-                  aria-label="Member usage info"
+      <div className={immersive ? "mx-auto max-w-7xl space-y-6" : "space-y-8"}>
+        <section className={immersive ? "rounded-[2rem] border border-white/10 bg-white/[0.06] p-6 shadow-2xl sm:p-8" : "billmygym-shell overflow-hidden rounded-[2rem] p-6 sm:p-8"}>
+          <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className={statusStyles[subscription.organizationStatus]}>{organizationStatusLabel(subscription.organizationStatus)}</Badge>
+                <Badge className={statusStyles[subscription.organizationType]}>{organizationTypeLabel(subscription.organizationType)}</Badge>
+                <Badge className={statusStyles.BILLMYGYM}>{subscriptionPlanLabel(subscription.subscriptionPlan)}</Badge>
+              </div>
+              <h1 className={immersive ? "mt-5 max-w-3xl text-4xl font-black tracking-tight text-white sm:text-5xl" : "mt-5 max-w-3xl text-4xl font-black tracking-tight text-slate-950 sm:text-5xl"}>
+                One plan. Full product access. Pricing follows active members.
+              </h1>
+              <p className={immersive ? "mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-300" : "mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-600"}>
+                {organizationStatusDescription(subscription.organizationStatus)} BillMyGym includes every feature for every organization. Expired, inactive, frozen, cancelled, and deactivated members do not add to the subscription bill.
+              </p>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <Button
+                  onClick={() => createOrderMutation.mutate()}
+                  disabled={!canCheckout || createOrderMutation.isPending || verifyMutation.isPending}
+                  className="h-12 rounded-full bg-emerald-600 px-6 font-black text-white hover:bg-emerald-700"
                 >
-                  <Info className="h-3.5 w-3.5" />
-                </button>
-                <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-3 w-56 -translate-x-1/2 rounded-2xl border border-emerald-100 bg-slate-950 px-4 py-3 text-left text-[11px] font-bold normal-case tracking-normal text-white opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100">
-                  {subscription.memberLimit.deactivatedMembers} deactivated members remain in your directory, but only active members affect Starter and Growth billing.
-                </div>
+                  {isDemo
+                    ? "Billing disabled for demo"
+                    : isActive
+                      ? "Subscription is active"
+                      : createOrderMutation.isPending
+                        ? "Opening checkout..."
+                        : hasInactiveSubscription
+                          ? `Pay ${money.format(estimatedCheckoutAmount)} and restore access`
+                          : `Start for ${money.format(estimatedCheckoutAmount)}`}
+                  {canCheckout && <ArrowRight className="ml-2 h-4 w-4" />}
+                </Button>
+                {!immersive && (
+                  <Button variant="outline" onClick={() => navigate("/app/dashboard")} className="h-12 rounded-full border-white/80 bg-white/75 px-6 font-black text-slate-800 hover:bg-white">
+                    Back to dashboard
+                  </Button>
+                )}
               </div>
             </div>
-            <div className="mt-2 text-3xl font-black text-slate-950">{memberLimitLabel}</div>
-              {subscription.memberLimit && !subscription.memberLimit.unlimited && (
-                <>
-                  <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full rounded-full bg-emerald-600"
-                      style={{ width: `${Math.min(Math.max(subscription.memberLimit.usagePercent, 0), 100)}%` }}
-                    />
-                  </div>
-                  <p className="mt-2 text-sm font-bold text-slate-500">{subscription.memberLimit.remainingSlots} active members included before overage</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-500">Total members can be unlimited. Billing responds only to active members.</p>
-                </>
+
+            <div className={immersive ? "rounded-[1.7rem] border border-white/10 bg-slate-900/80 p-5" : "rounded-[1.7rem] border border-white/80 bg-white/80 p-5 shadow-sm"}>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className={immersive ? "text-[10px] font-black uppercase tracking-[0.22em] text-emerald-200" : "text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700"}>Estimated next invoice</div>
+                  <div className={immersive ? "mt-2 text-5xl font-black tracking-tight text-white" : "mt-2 text-5xl font-black tracking-tight text-slate-950"}>{money.format(pricing.totalAmount)}</div>
+                </div>
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                  <CreditCard className="h-7 w-7" />
+                </div>
+              </div>
+              <div className={immersive ? "mt-5 grid gap-3 text-sm font-semibold text-slate-200" : "mt-5 grid gap-3 text-sm font-semibold text-slate-600"}>
+                <InfoLine label="Active members" value={String(invoice.currentActiveMembers)} />
+                <InfoLine label="Included active members" value={String(includedActiveMembers)} />
+                <InfoLine label="Additional member rate" value={`${money.format(invoice.overageRate)} / member`} />
+                <InfoLine label="Current billing period" value={currentPeriod} />
+                <InfoLine label="Payment status" value={String(paymentStatus).replaceAll("_", " ")} />
+              </div>
+              {gymCoins > 0 && canCheckout && (
+                <label className={immersive ? "mt-5 flex items-center gap-3 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-4 text-sm font-bold text-emerald-50" : "mt-5 flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-bold text-emerald-800"}>
+                  <input
+                    type="checkbox"
+                    checked={useGymCoins}
+                    onChange={(event) => setUseGymCoins(event.target.checked)}
+                    className="h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-600"
+                  />
+                  Use {money.format(gymCoins)} GymCoins on checkout
+                </label>
               )}
             </div>
-            <div className="rounded-[1.75rem] border border-white/80 bg-white/80 p-6 shadow-sm backdrop-blur">
-              <MessageCircle className="h-6 w-6 text-emerald-700" />
-              <div className="mt-4 text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">WhatsApp This Month</div>
-              <div className="mt-2 text-3xl font-black text-slate-950">{subscription.whatsappUsage}</div>
-              <p className="mt-2 text-sm font-bold text-slate-500">Digest and report usage visibility.</p>
+          </div>
+        </section>
+
+        <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className={immersive ? "rounded-[1.8rem] border border-white/10 bg-white/[0.06] p-6" : "glass-panel rounded-[1.8rem] p-6"}>
+            <div className={immersive ? "text-[10px] font-black uppercase tracking-[0.24em] text-emerald-200" : "text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700"}>Active member billing</div>
+            <h2 className={immersive ? "mt-2 text-2xl font-black text-white" : "mt-2 text-2xl font-black text-slate-950"}>Usage snapshot</h2>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              <Metric label="Current active" value={invoice.currentActiveMembers} immersive={immersive} />
+              <Metric label="Included" value={includedActiveMembers} immersive={immersive} />
+              <Metric label="Additional" value={invoice.additionalActiveMembers} immersive={immersive} />
             </div>
-            <div className="rounded-[1.75rem] border border-white/80 bg-white/80 p-6 shadow-sm backdrop-blur">
-              <Mail className="h-6 w-6 text-emerald-700" />
-              <div className="mt-4 text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Email This Month</div>
-              <div className="mt-2 text-3xl font-black text-slate-950">{subscription.emailUsage}</div>
-              <p className="mt-2 text-sm font-bold text-slate-500">Monthly communication count.</p>
+            <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-200/70">
+              <div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: `${Math.max(includedUsagePercent, invoice.currentActiveMembers > 0 ? 6 : 0)}%` }} />
+            </div>
+            <div className={immersive ? "mt-3 flex flex-wrap justify-between gap-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-300" : "mt-3 flex flex-wrap justify-between gap-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500"}>
+              <span>{Math.min(invoice.currentActiveMembers, includedActiveMembers)} included members used</span>
+              <span>{invoice.additionalActiveMembers} extra members billed</span>
             </div>
           </div>
-        )}
 
-        {showPlans && (
-          <div className="grid gap-5 xl:grid-cols-3">
-            {checkoutPlans.map((plan) => {
-              const Icon = plan.icon;
-              const isSelected = selectedPlan === plan.key;
-                const isCurrent = currentShowcasePlan === plan.key;
-              const isPro = plan.key === "PRO";
-              const isGrowth = plan.key === "GROWTH";
-              const isStarter = plan.key === "STARTER";
-              const planMonthlyPrice = estimatedPlanPrice(plan, subscription);
-              const planPreview = planPricingPreview(plan.key, subscription);
-              return (
-                <div
-                  key={plan.key}
-                  className={`group relative flex min-h-full flex-col overflow-hidden rounded-[2.2rem] border p-6 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur transition duration-500 ${
-                    isPro
-                      ? "bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.2),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.98),rgba(30,41,59,0.94))] text-white border-indigo-200/30"
-                      : isGrowth
-                        ? "bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.14),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.96),rgba(236,253,245,0.96))] text-slate-950 border-emerald-100/80"
-                        : "bg-[radial-gradient(circle_at_top,rgba(148,163,184,0.12),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,250,252,0.98))] text-slate-950 border-slate-200/80"
-                  } ${
-                    isSelected
-                      ? isPro
-                        ? "border-sky-300/60 ring-4 ring-sky-200/30 -translate-y-1"
-                        : isGrowth
-                          ? "border-emerald-400 ring-4 ring-emerald-100 -translate-y-1"
-                          : "border-slate-400 ring-4 ring-slate-200 -translate-y-1"
-                      : isPro
-                        ? "border-white/10 hover:-translate-y-2 hover:shadow-[0_26px_70px_rgba(30,41,59,0.28)]"
-                        : isGrowth
-                          ? "hover:-translate-y-2 hover:shadow-[0_26px_60px_rgba(5,150,105,0.16)]"
-                          : "hover:-translate-y-2 hover:shadow-[0_26px_60px_rgba(51,65,85,0.14)]"
-                  }`}
-                >
-                  <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${plan.accent}`} />
-                  <div
-                    className={`pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100 ${
-                      isPro
-                        ? "bg-[radial-gradient(circle_at_top_right,rgba(125,211,252,0.18),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(129,140,248,0.18),transparent_26%)]"
-                        : isGrowth
-                          ? "bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.12),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(20,184,166,0.12),transparent_26%)]"
-                          : "bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.12),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(71,85,105,0.08),transparent_26%)]"
-                    }`}
-                  />
-                  <div className="relative z-10 flex items-start justify-between gap-4">
-                    <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${plan.accent} text-white shadow-lg`}>
-                      <Icon className="h-7 w-7" />
-                    </div>
-                    <div className="flex flex-wrap justify-end gap-2">
-                      {plan.badge && <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">{plan.badge}</Badge>}
-                      {isCurrent && <Badge className={statusStyles[plan.key]}>Current</Badge>}
-                    </div>
-                  </div>
+          <div className={immersive ? "rounded-[1.8rem] border border-white/10 bg-white/[0.06] p-6" : "glass-panel rounded-[1.8rem] p-6"}>
+            <div className={immersive ? "text-[10px] font-black uppercase tracking-[0.24em] text-emerald-200" : "text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700"}>Invoice breakdown</div>
+            <h2 className={immersive ? "mt-2 text-2xl font-black text-white" : "mt-2 text-2xl font-black text-slate-950"}>Estimated invoice line items</h2>
+            <div className="mt-5 space-y-3">
+              <InvoiceRow label="Base subscription fee" value={money.format(invoice.baseAmount)} immersive={immersive} />
+              <InvoiceRow label="Included active members" value={String(includedActiveMembers)} immersive={immersive} />
+              <InvoiceRow label="Current active members" value={String(invoice.currentActiveMembers)} immersive={immersive} />
+              <InvoiceRow label="Additional members" value={String(invoice.additionalActiveMembers)} immersive={immersive} />
+              <InvoiceRow label="Additional charges" value={money.format(invoice.overageAmount)} immersive={immersive} />
+              <InvoiceRow label="Total amount" value={money.format(invoice.totalAmount)} strong immersive={immersive} />
+            </div>
+          </div>
+        </section>
 
-                  <div className="relative z-10 mt-6">
-                    <div className={`text-sm font-black uppercase tracking-[0.24em] ${isPro ? "text-sky-200" : "text-slate-500"}`}>{plan.tagline}</div>
-                    <div className="mt-3 flex items-center justify-between gap-4">
-                      <h2 className={`text-3xl font-black ${isPro ? "text-white" : "text-slate-950"}`}>{plan.name}</h2>
-                      <div className="group/limit relative">
-                        <div className={`flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] ${isPro ? "bg-white/10 text-sky-100 ring-1 ring-white/10" : "bg-slate-100 text-slate-700"}`}>
-                          <span>{plan.limit}</span>
-                          {isPro && (
-                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/12 bg-white/10 text-sky-100">
-                              <Info className="h-3.5 w-3.5" />
-                            </span>
-                          )}
-                        </div>
-                        {isPro && (
-                          <div className="pointer-events-none absolute bottom-full right-0 z-20 mb-3 w-72 translate-y-1 rounded-2xl border border-sky-200/20 bg-slate-950/96 p-4 text-left opacity-0 shadow-2xl backdrop-blur transition-all duration-200 group-hover/limit:translate-y-0 group-hover/limit:opacity-100">
-                            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-200">Member Capacity</div>
-                            <div className="mt-2 text-sm font-black text-white">Unlimited members</div>
-                            <div className="mt-2 text-xs font-semibold leading-5 text-slate-300">
-                              Base pricing covers up to 600 active members. After that, each additional active member is charged at INR 3 per month.
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <p className={`mt-3 min-h-[4.5rem] text-sm font-semibold leading-6 ${isPro ? "text-slate-200" : "text-slate-600"}`}>{plan.description}</p>
-                    <div className={`mt-5 overflow-hidden rounded-[1.6rem] border p-4 ${
-                      isPro
-                        ? "border-white/10 bg-white/6"
-                        : isGrowth
-                          ? "border-emerald-100 bg-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
-                          : "border-slate-200 bg-white/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]"
-                    }`}>
-                      <div className={`text-[10px] font-black uppercase tracking-[0.24em] ${
-                        isPro ? "text-sky-200" : isGrowth ? "text-emerald-700" : "text-slate-500"
-                      }`}>Monthly Price</div>
-                      <div className="mt-2 flex items-end gap-2">
-                        <span className={`text-4xl font-black tracking-tight ${isPro ? "text-white" : "text-slate-950"}`}>{money.format(planMonthlyPrice)}</span>
-                        <span className={`pb-1 text-sm font-bold ${isPro ? "text-slate-300" : "text-slate-500"}`}>/ month</span>
-                      </div>
-                      {isPro && (
-                      <div className={`mt-3 rounded-2xl border px-3 py-2 text-xs font-bold leading-5 ${
-                          planPreview.overageMembers > 0
-                            ? "border-sky-300/20 bg-sky-300/10 text-sky-50"
-                            : "border-white/10 bg-white/[0.04] text-slate-300"
-                        }`}>
-                          {planPreview.overageMembers > 0
-                        ? `${planPreview.overageMembers} extra active members adds ${money.format(planPreview.overageAmount)} this month.`
-                        : `Base price includes your first ${planPreview.includedMembers} active members.`}
-                        </div>
-                      )}
-                      {!isPro && (
-                        <div className="mt-3 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2 text-xs font-bold leading-5 text-slate-700">
-                          Total members can be unlimited. Only active members affect billing on this plan.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="relative z-10 mt-6 grid gap-3">
-                    {plan.features.map((feature) => (
-                      <div
-                        key={feature}
-                        className={`flex items-start gap-3 rounded-[1.1rem] border px-3 py-3 text-sm font-semibold transition duration-300 ${
-                          isPro
-                            ? "border-white/8 bg-white/[0.04] text-slate-100 group-hover:bg-white/[0.06]"
-                            : isGrowth
-                              ? "border-emerald-100 bg-white/72 text-slate-700 group-hover:bg-white"
-                              : "border-slate-200 bg-white/80 text-slate-700 group-hover:bg-white"
-                        }`}
-                      >
-                        <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                          isPro ? "bg-sky-400/15 text-sky-200" : isGrowth ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-700"
-                        }`}>
-                          <Check className="h-3.5 w-3.5" />
-                        </span>
-                        {feature}
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className={`relative z-10 mt-6 rounded-[1.6rem] border p-4 ${
-                    isPro
-                      ? "border-white/10 bg-white/[0.05]"
-                      : isGrowth
-                        ? "border-emerald-100 bg-emerald-50/60"
-                        : "border-slate-200 bg-slate-50/90"
-                  }`}>
-                    <div className={`text-[10px] font-black uppercase tracking-[0.22em] ${
-                      isPro ? "text-sky-200" : isGrowth ? "text-emerald-700" : "text-slate-500"
-                    }`}>Best For</div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {plan.demos.map((demo) => (
-                        <span
-                          key={demo}
-                          className={`rounded-full px-3 py-1 text-xs font-black shadow-sm transition duration-300 ${
-                            isPro
-                              ? "bg-white/10 text-sky-50 ring-1 ring-white/10"
-                              : isGrowth
-                                ? "bg-white text-emerald-800"
-                                : "bg-white text-slate-700"
-                          }`}
-                        >
-                          {demo}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="relative z-10 mt-6">
-                    <Button
-                      onClick={() => handlePlanCheckout(plan.key)}
-                      disabled={!canCheckout || createOrderMutation.isPending || verifyMutation.isPending}
-                      className={`h-12 w-full rounded-full font-black transition duration-300 ${
-                        isPro
-                          ? "bg-white text-slate-950 hover:bg-sky-50"
-                          : isSelected
-                            ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                            : "bg-slate-950 text-white hover:bg-slate-800"
-                      }`}
-                    >
-                      {buttonText(plan)}
-                      {canCheckout && <ArrowRight className="ml-2 h-4 w-4" />}
-                    </Button>
-                    {isPro && (
-                      <div className="mt-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-300">
-                        Advanced analytics, exports, and priority workflows
-                      </div>
-                    )}
-                    {!isPro && isGrowth && (
-                      <div className="mt-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
-                        Best value for historical reporting and analytics
-                      </div>
-                    )}
-                    {isStarter && (
-                      <div className="mt-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-600">
-                        Shared revenue dashboard with current-month visibility only
-                      </div>
-                    )}
-                    {(subscription?.gymCoinBalance || 0) > 0 && (
-                      <div className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm">
-                        <input
-                          type="checkbox"
-                          id={`useGymCoins-${plan.key}`}
-                          checked={useGymCoins}
-                          onChange={(e) => setUseGymCoins(e.target.checked)}
-                          className="h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-600"
-                        />
-                        <Label htmlFor={`useGymCoins-${plan.key}`} className="font-bold text-emerald-800 cursor-pointer">
-                          Use {subscription?.gymCoinBalance} GymCoins
-                          <span className="block text-xs font-semibold text-emerald-600">
-                            1 GymCoin = ₹1. Reduces the checkout amount.
-                          </span>
-                        </Label>
-                      </div>
-                    )}
-                  </div>
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {includedFeatures.map((feature) => {
+            const Icon = feature.icon;
+            return (
+              <div key={feature.label} className={immersive ? "rounded-[1.4rem] border border-white/10 bg-white/[0.06] p-5" : "rounded-[1.4rem] border border-white/80 bg-white/80 p-5 shadow-sm"}>
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                  <Icon className="h-5 w-5" />
                 </div>
-              );
-            })}
-          </div>
-        )}
-
-        {!showPlans && (
-          <div className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
-            <div className="rounded-[2rem] border border-white/80 bg-slate-950 p-6 text-white shadow-xl">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-emerald-200">
-                <CreditCard className="h-6 w-6" />
+                <div className={immersive ? "mt-4 flex items-start gap-3 text-sm font-bold text-slate-100" : "mt-4 flex items-start gap-3 text-sm font-bold text-slate-700"}>
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                  <span>{feature.label}</span>
+                </div>
               </div>
-              <h2 className="mt-5 text-2xl font-black">How renewal works</h2>
-              <div className="mt-5 space-y-4">
-                {["Open the plans screen when you want to compare options.", "Choose Starter, Growth, or Pro on the next step.", "Access is restored only after signed payment verification."].map((step, index) => (
-                  <div key={step} className="flex gap-3">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-300 text-sm font-black text-slate-950">
-                      {index + 1}
-                    </div>
-                    <p className="text-sm font-semibold leading-6 text-slate-200">{step}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm font-semibold leading-6 text-slate-200">
-                No premium feature is unlocked by a click alone. The selected plan is applied only when payment is completed and verified.
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              {implementedDemos.map((demo) => {
-                const Icon = demo.icon;
-                return (
-                  <div key={demo.title} className="rounded-[1.75rem] border border-white/80 bg-white/80 p-5 shadow-sm backdrop-blur">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="mt-4 text-lg font-black text-slate-950">{demo.title}</h3>
-                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{demo.body}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+            );
+          })}
+        </section>
 
         {manualOrder && (
-          <div className="rounded-[1.8rem] border border-white/80 bg-white/85 p-6 shadow-sm backdrop-blur">
+          <section className={immersive ? "rounded-[1.8rem] border border-amber-300/20 bg-amber-300/10 p-6" : "rounded-[1.8rem] border border-white/80 bg-white/85 p-6 shadow-sm backdrop-blur"}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-xl font-black text-slate-950">Pending Checkout Verification</h2>
-                <p className="mt-1 text-sm font-medium text-slate-500">
-                  {subscriptionPlanLabel(manualOrder.subscriptionPlan)} order {manualOrder.razorpayOrderId} covers {dateText(manualOrder.subscriptionStart)} to {dateText(manualOrder.subscriptionEnd)}.
+                <h2 className={immersive ? "text-xl font-black text-white" : "text-xl font-black text-slate-950"}>Pending checkout verification</h2>
+                <p className={immersive ? "mt-1 text-sm font-medium text-slate-300" : "mt-1 text-sm font-medium text-slate-500"}>
+                  Order {manualOrder.razorpayOrderId} covers {dateText(manualOrder.subscriptionStart)} to {dateText(manualOrder.subscriptionEnd)}.
                 </p>
               </div>
-              <Badge className="border-amber-200 bg-amber-100 text-amber-800">{manualOrder.paymentStatus}</Badge>
+              <Badge className={statusStyles.PENDING}>{manualOrder.paymentStatus}</Badge>
             </div>
 
             <div className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
@@ -1083,92 +588,110 @@ export default function Subscription({ immersive = false, showPlans = false }: {
                 {verifyMutation.isPending ? "Verifying..." : "Verify"}
               </Button>
             </div>
-          </div>
+          </section>
         )}
 
-        {!showPlans && (
-          <>
-            <div className="overflow-hidden rounded-[1.8rem] border border-white/80 bg-white/85 shadow-sm backdrop-blur">
-              <div className="border-b border-slate-100 p-6">
-                <h2 className="flex items-center gap-3 text-xl font-black text-slate-950">
-                  <ShieldCheck className="h-5 w-5 text-emerald-700" />
-                  Subscription Payment History
-                </h2>
-                <p className="mt-1 text-sm font-medium text-slate-500">Organization subscription payments are stored separately from member payments.</p>
-              </div>
+        <section className={immersive ? "overflow-hidden rounded-[1.8rem] border border-white/10 bg-white/[0.06]" : "overflow-hidden rounded-[1.8rem] border border-white/80 bg-white/85 shadow-sm backdrop-blur"}>
+          <div className={immersive ? "border-b border-white/10 p-6" : "border-b border-slate-100 p-6"}>
+            <h2 className={immersive ? "flex items-center gap-3 text-xl font-black text-white" : "flex items-center gap-3 text-xl font-black text-slate-950"}>
+              <ShieldCheck className="h-5 w-5 text-emerald-500" />
+              Subscription payment history
+            </h2>
+            <p className={immersive ? "mt-1 text-sm font-medium text-slate-300" : "mt-1 text-sm font-medium text-slate-500"}>Each invoice stores its base fee, included members, overage, and total.</p>
+          </div>
 
-              <div className="divide-y divide-slate-100">
-                {paymentHistory.length === 0 ? (
-                  <div className="p-8 text-center text-sm font-semibold text-slate-500">No subscription ledger rows yet.</div>
-                ) : (
-                  paymentHistory.map((payment) => (
-                    <div key={payment.id} className="grid gap-4 p-5 md:grid-cols-[1fr_auto_auto] md:items-center">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-lg font-black text-slate-950">{money.format(payment.amount || 0)}</span>
-                          <Badge
-                            className={
-                              payment.paymentStatus === "PAID"
-                                ? statusStyles.ACTIVE
-                                : payment.paymentStatus === "FAILED"
-                                  ? statusStyles.DEACTIVATED
-                                  : statusStyles.TRIAL
-                            }
-                          >
-                            {payment.paymentStatus}
-                          </Badge>
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-4 text-xs font-semibold text-slate-500">
-                          <span className="inline-flex items-center gap-1">
-                            <CalendarDays className="h-3.5 w-3.5" /> {dateText(payment.subscriptionStart)} - {dateText(payment.subscriptionEnd)}
-                          </span>
-                          <span>Order: {payment.razorpayOrderId || "manual"}</span>
-                        </div>
+          <div className={immersive ? "divide-y divide-white/10" : "divide-y divide-slate-100"}>
+            {paymentHistory.length === 0 ? (
+              <div className={immersive ? "p-8 text-center text-sm font-semibold text-slate-300" : "p-8 text-center text-sm font-semibold text-slate-500"}>No subscription ledger rows yet.</div>
+            ) : (
+              paymentHistory.map((payment) => {
+                const paymentInvoice = payment.invoice ?? invoiceFromPricing({
+                  ...pricing,
+                  totalAmount: payment.amount,
+                });
+                return (
+                  <div key={payment.id} className="grid gap-5 p-5 lg:grid-cols-[1fr_1.2fr_auto] lg:items-center">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={immersive ? "text-lg font-black text-white" : "text-lg font-black text-slate-950"}>{money.format(payment.amount || 0)}</span>
+                        <Badge className={statusStyles[payment.paymentStatus]}>{payment.paymentStatus}</Badge>
                       </div>
-                      <div className="text-sm font-bold text-slate-700">{dateText(payment.paymentDate)}</div>
-                      <div className="flex items-center gap-1 text-sm font-black text-emerald-700">
-                        <IndianRupee className="h-4 w-4" />
-                        SaaS Ledger
+                      <div className={immersive ? "mt-2 flex flex-wrap gap-4 text-xs font-semibold text-slate-300" : "mt-2 flex flex-wrap gap-4 text-xs font-semibold text-slate-500"}>
+                        <span className="inline-flex items-center gap-1">
+                          <CalendarDays className="h-3.5 w-3.5" /> {dateText(payment.subscriptionStart)} - {dateText(payment.subscriptionEnd)}
+                        </span>
+                        <span>Order: {payment.razorpayOrderId || "manual"}</span>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-              {paymentHistoryPage && paymentHistoryPage.totalElements > paymentHistory.length && (
-                <div className="flex flex-col justify-between gap-3 border-t border-slate-100 bg-slate-50/70 p-4 sm:flex-row sm:items-center">
-                  <div className="text-sm font-bold text-slate-500">
-                    Showing {paymentHistory.length} of {paymentHistoryPage.totalElements} subscription payments
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <MiniInvoice label="Base" value={money.format(paymentInvoice.baseAmount)} immersive={immersive} />
+                      <MiniInvoice label="Active" value={`${paymentInvoice.currentActiveMembers}/${paymentInvoice.includedActiveMembers ?? 100}`} immersive={immersive} />
+                      <MiniInvoice label="Overage" value={money.format(paymentInvoice.overageAmount)} immersive={immersive} />
+                    </div>
+                    <div className={immersive ? "flex items-center gap-1 text-sm font-black text-emerald-200" : "flex items-center gap-1 text-sm font-black text-emerald-700"}>
+                      <IndianRupee className="h-4 w-4" />
+                      SaaS ledger
+                    </div>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => loadMoreHistoryMutation.mutate((paymentHistoryPage?.page ?? 0) + 1)}
-                    disabled={!paymentHistoryPage.hasNext || loadMoreHistoryMutation.isPending}
-                    className="rounded-full border-white/80 bg-white px-5 font-black"
-                  >
-                    {loadMoreHistoryMutation.isPending ? "Loading..." : "Load older payments"}
-                  </Button>
-                </div>
-              )}
-            </div>
+                );
+              })
+            )}
+          </div>
 
-            <div className="grid gap-4 rounded-[1.8rem] border border-emerald-100 bg-emerald-50/80 p-5 text-sm font-semibold text-emerald-950 sm:grid-cols-3">
-              <div className="flex items-center gap-2">
-                <LockKeyhole className="h-4 w-4" />
-                Authenticated checkout endpoint
+          {paymentHistoryPage && paymentHistoryPage.totalElements > paymentHistory.length && (
+            <div className={immersive ? "flex flex-col justify-between gap-3 border-t border-white/10 bg-white/[0.04] p-4 sm:flex-row sm:items-center" : "flex flex-col justify-between gap-3 border-t border-slate-100 bg-slate-50/70 p-4 sm:flex-row sm:items-center"}>
+              <div className={immersive ? "text-sm font-bold text-slate-300" : "text-sm font-bold text-slate-500"}>
+                Showing {paymentHistory.length} of {paymentHistoryPage.totalElements} subscription payments
               </div>
-              <div className="flex items-center gap-2">
-                <FileDown className="h-4 w-4" />
-                Custom-range exports gated by Pro
-              </div>
-              <div className="flex items-center gap-2">
-                <LifeBuoy className="h-4 w-4" />
-                Pro-ready support and integrations
-              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => loadMoreHistoryMutation.mutate((paymentHistoryPage?.page ?? 0) + 1)}
+                disabled={!paymentHistoryPage.hasNext || loadMoreHistoryMutation.isPending}
+                className="rounded-full border-white/80 bg-white px-5 font-black text-slate-900"
+              >
+                {loadMoreHistoryMutation.isPending ? "Loading..." : "Load older payments"}
+              </Button>
             </div>
-          </>
-        )}
+          )}
+        </section>
       </div>
+    </div>
+  );
+}
+
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 rounded-xl border border-current/10 px-3 py-2">
+      <span className="opacity-70">{label}</span>
+      <span className="text-right font-black">{value}</span>
+    </div>
+  );
+}
+
+function Metric({ label, value, immersive }: { label: string; value: number; immersive: boolean }) {
+  return (
+    <div className={immersive ? "rounded-[1.2rem] border border-white/10 bg-white/[0.05] p-4" : "rounded-[1.2rem] border border-white/80 bg-white/75 p-4 shadow-sm"}>
+      <div className={immersive ? "text-[10px] font-black uppercase tracking-[0.2em] text-slate-300" : "text-[10px] font-black uppercase tracking-[0.2em] text-slate-500"}>{label}</div>
+      <div className={immersive ? "mt-2 text-3xl font-black text-white" : "mt-2 text-3xl font-black text-slate-950"}>{value}</div>
+    </div>
+  );
+}
+
+function InvoiceRow({ label, value, strong = false, immersive }: { label: string; value: string; strong?: boolean; immersive: boolean }) {
+  return (
+    <div className={immersive ? "flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3" : "flex items-center justify-between gap-4 rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm"}>
+      <span className={immersive ? "text-sm font-semibold text-slate-300" : "text-sm font-semibold text-slate-600"}>{label}</span>
+      <span className={strong ? (immersive ? "text-xl font-black text-white" : "text-xl font-black text-slate-950") : (immersive ? "text-sm font-black text-white" : "text-sm font-black text-slate-950")}>{value}</span>
+    </div>
+  );
+}
+
+function MiniInvoice({ label, value, immersive }: { label: string; value: string; immersive: boolean }) {
+  return (
+    <div className={immersive ? "rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2" : "rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"}>
+      <div className={immersive ? "text-[9px] font-black uppercase tracking-[0.18em] text-slate-400" : "text-[9px] font-black uppercase tracking-[0.18em] text-slate-500"}>{label}</div>
+      <div className={immersive ? "mt-1 text-sm font-black text-white" : "mt-1 text-sm font-black text-slate-950"}>{value}</div>
     </div>
   );
 }

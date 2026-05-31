@@ -944,6 +944,7 @@ function MemberLimitCard({
   const usagePercent = unlimited ? 0 : Number(memberLimit?.usagePercent ?? 0);
   const remainingSlots = Number(memberLimit?.remainingSlots ?? 0);
   const activePricing = !unlimited && limit !== null;
+  const planLabel = memberLimit?.plan === "BILLMYGYM" || !memberLimit?.plan ? "BillMyGym" : memberLimit.plan;
 
   return (
     <div className="glass-panel w-full max-w-sm rounded-[1.7rem] p-5">
@@ -960,13 +961,13 @@ function MemberLimitCard({
                 <Info className="h-3.5 w-3.5" />
               </button>
               <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-3 w-56 -translate-x-1/2 rounded-2xl border border-emerald-100 bg-slate-950 px-4 py-3 text-left text-[11px] font-bold normal-case tracking-normal text-white opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100">
-                {deactivatedMembers} deactivated members stay in your directory, but only active members affect Starter and Growth pricing.
+                {deactivatedMembers} deactivated members stay in your directory, but only active members affect BillMyGym pricing.
               </div>
             </div>
           </div>
           <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{unlimited ? `${usedMembers} Active` : `${usedMembers} / ${limit ?? 0}`}</div>
         </div>
-        <Badge className="border-slate-200 bg-white/80 text-slate-700">{memberLimit?.plan ?? "STARTER"}</Badge>
+        <Badge className="border-slate-200 bg-white/80 text-slate-700">{planLabel}</Badge>
       </div>
       {activePricing ? (
         <>
@@ -1004,8 +1005,8 @@ function CustomReminderLimitCard({
     return (
       <div className="glass-panel rounded-[1.7rem] p-5">
         <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Custom WhatsApp Reminders</div>
-        <div className="mt-2 text-2xl font-black tracking-tight text-slate-950">Locked on current plan</div>
-        <div className="mt-3 text-sm font-semibold text-slate-500">Upgrade to Pro or use a Demo workspace to send overdue reminders manually.</div>
+        <div className="mt-2 text-2xl font-black tracking-tight text-slate-950">Included with BillMyGym</div>
+        <div className="mt-3 text-sm font-semibold text-slate-500">Manual overdue reminders are included for every organization.</div>
       </div>
     );
   }

@@ -5,15 +5,12 @@ import com.gymflow.api.dto.ReportDtos.FinancialReportResponse;
 import com.gymflow.api.dto.ReportDtos.FinancialReportSummary;
 import com.gymflow.api.dto.SubscriptionDtos.PlanAccessResponse;
 import com.gymflow.api.error.BadRequestException;
-import com.gymflow.api.error.ForbiddenException;
 import com.gymflow.api.error.NotFoundException;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.Organization;
-import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.PaymentStatus;
 import com.gymflow.domain.enums.PaymentType;
-import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.repository.AuditLogRepository;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberPaymentRepository;
@@ -57,9 +54,6 @@ public class FinancialReportService {
     @Transactional(readOnly = true)
     public FinancialReportResponse financialReport(String period, String range, LocalDate from, LocalDate to) {
         Organization organization = currentOrganization();
-        if (!planAccessService.canReceiveMonthlyReports(organization)) {
-            throw new ForbiddenException("Financial reports are available on Growth and Pro plans.");
-        }
 
         ReportWindow window = resolveWindow(organization, period, range, from, to);
         List<MemberPayment> payments = memberPaymentRepository
@@ -95,9 +89,6 @@ public class FinancialReportService {
     @Transactional(readOnly = true)
     public ReportExport export(String type, String period, String range, LocalDate from, LocalDate to) {
         Organization organization = currentOrganization();
-        if (!planAccessService.canExportReports(organization)) {
-            throw new ForbiddenException("Upgrade to Pro to unlock this feature");
-        }
 
         FinancialReportResponse report = financialReport(period, range, from, to);
         String normalizedType = normalizeExportType(type);
@@ -346,9 +337,6 @@ public class FinancialReportService {
     }
 
     private String reportPlanName(Organization organization) {
-        if (organization.getOrganizationType() == OrganizationType.DEMO) {
-            return "DEMO";
-        }
         return planAccessService.resolvePlan(organization).name();
     }
 

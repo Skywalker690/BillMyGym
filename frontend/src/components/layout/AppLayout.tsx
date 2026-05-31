@@ -6,7 +6,7 @@ import { Sidebar } from "./Sidebar";
 import { getPageContext, getProfileNavItems, getSidebarNavItems, type AppRole } from "./navigation";
 import { Topbar } from "./Topbar";
 import api from "../../lib/api";
-import { DemoPlanPreviewProvider, useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
+import { DemoPlanPreviewProvider } from "@/context/DemoPlanPreviewContext";
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
@@ -25,6 +25,8 @@ export default function AppLayout() {
     queryFn: () => api.get("/subscription/status").then((res) => res.data),
     enabled: role === "ORG_ADMIN" && Boolean(user?.organizationId),
     staleTime: 60_000,
+    refetchInterval: role === "ORG_ADMIN" ? 60_000 : false,
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
@@ -36,6 +38,23 @@ export default function AppLayout() {
       navigate("/app/dashboard", { replace: true });
     }
   }, [location.pathname, navigate, referralsEnabled, role]);
+
+  useEffect(() => {
+    if (role !== "ORG_ADMIN" || !subscriptionStatus) {
+      return;
+    }
+    if (subscriptionStatus.organizationType === "DEMO") {
+      return;
+    }
+    const inactive = subscriptionStatus.organizationStatus === "PAUSED" || subscriptionStatus.organizationStatus === "DEACTIVATED";
+    if (!inactive) {
+      return;
+    }
+    if (location.pathname.startsWith("/app/subscription")) {
+      return;
+    }
+    navigate("/app/subscription/recovery", { replace: true });
+  }, [location.pathname, navigate, role, subscriptionStatus]);
 
   const handleLogout = () => {
     logout();
@@ -84,11 +103,9 @@ function AppLayoutShell({
   onOpenMobileSidebar: () => void;
   onLogout: () => void;
 }) {
-  const { effectivePlanAccess } = useDemoPlanPreview();
-  const previewPlanAccess = effectivePlanAccess();
   const sidebarItems = useMemo(
-    () => getSidebarNavItems(role, referralsEnabled, Boolean(previewPlanAccess.canReceiveMonthlyReports)),
-    [previewPlanAccess.canReceiveMonthlyReports, referralsEnabled, role]
+    () => getSidebarNavItems(role, referralsEnabled),
+    [referralsEnabled, role]
   );
   const profileItems = useMemo(() => getProfileNavItems(role, referralsEnabled), [role, referralsEnabled]);
   const pageContext = useMemo(() => getPageContext(locationPath, role), [locationPath, role]);

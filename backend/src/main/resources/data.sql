@@ -42,21 +42,21 @@ SELECT
         'leena@elitebarbell.local'
     ])[org_id],
     (ARRAY[
-        'PRO gym with healthy revenue, admission collections, and overdue exposure for dashboards.',
-        'Growth gym paused because the latest subscription renewal failed.',
-        'Starter trial gym ending soon, useful for trial countdown checks.',
-        'PRO gym whose paid cycle ended and is waiting for renewal.',
-        'Regular workspace with premium reminder and report access.',
+        'BillMyGym workspace with healthy revenue, admission collections, and overdue exposure for dashboards.',
+        'BillMyGym workspace paused because the latest subscription renewal failed.',
+        'BillMyGym trial gym ending soon, useful for trial countdown checks.',
+        'BillMyGym workspace whose paid cycle ended and is waiting for renewal.',
+        'Regular workspace with complete reminder and report access.',
         'Regular workspace converted from a legacy founding setup and paused after a renewal lapse.',
-        'Demo workspace with billing bypass and premium feature access.',
-        'Growth workspace waiting for renewal after a missed payment.',
-        'Starter workspace with basic dashboard access only.',
-        'PRO workspace near renewal, with active reports and export access.'
+        'Demo workspace with billing bypass and full BillMyGym access.',
+        'BillMyGym workspace waiting for renewal after a missed payment.',
+        'BillMyGym workspace with complete product access.',
+        'BillMyGym workspace near renewal, with active reports and export access.'
     ])[org_id],
     (ARRAY[1500.00, 1300.00, 1200.00, 1800.00, 900.00, 1100.00, 1000.00, 1400.00, 800.00, 2200.00])[org_id]::numeric(12, 2),
     (ARRAY[500.00, 400.00, 300.00, 700.00, 0.00, 350.00, 0.00, 450.00, 250.00, 900.00])[org_id]::numeric(12, 2),
     (ARRAY['REGULAR', 'REGULAR', 'REGULAR', 'REGULAR', 'REGULAR', 'REGULAR', 'DEMO', 'REGULAR', 'REGULAR', 'REGULAR'])[org_id],
-    (ARRAY['PRO', 'GROWTH', 'STARTER', 'PRO', 'PRO', 'STARTER', 'PRO', 'GROWTH', 'STARTER', 'PRO'])[org_id],
+    (ARRAY['BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM'])[org_id],
     (ARRAY['ACTIVE', 'PAUSED', 'TRIAL', 'PAUSED', 'ACTIVE', 'PAUSED', 'ACTIVE', 'PAUSED', 'ACTIVE', 'ACTIVE'])[org_id],
     CASE WHEN org_id = 3 THEN DATE '2026-05-18' WHEN org_id = 7 THEN NULL ELSE DATE '2026-03-01' END,
     CASE WHEN org_id = 3 THEN DATE '2026-07-16' WHEN org_id = 7 THEN NULL ELSE DATE '2026-04-29' END,
@@ -323,7 +323,7 @@ SELECT
     org_id,
     org_id,
     (ARRAY[1499.00, 699.00, 299.00, 1499.00, 0.00, 299.00, 0.00, 699.00, 299.00, 1499.00])[org_id]::numeric(12, 2),
-    (ARRAY['PRO', 'GROWTH', 'STARTER', 'PRO', 'PRO', 'STARTER', 'PRO', 'GROWTH', 'STARTER', 'PRO'])[org_id],
+    (ARRAY['BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM'])[org_id],
     CASE WHEN org_id IN (1, 5, 7, 9, 10) THEN (ARRAY[DATE '2026-05-23', DATE '2026-04-21', DATE '2026-05-18', DATE '2026-04-24', DATE '2026-05-12', DATE '2026-04-01', DATE '2026-05-01', DATE '2026-04-20', DATE '2026-05-07', DATE '2026-04-28'])[org_id] ELSE NULL END,
     (ARRAY[DATE '2026-05-23', DATE '2026-04-21', DATE '2026-05-18', DATE '2026-04-24', DATE '2026-05-12', DATE '2026-04-01', DATE '2026-05-01', DATE '2026-04-20', DATE '2026-05-07', DATE '2026-04-28'])[org_id],
     (ARRAY[DATE '2026-06-22', DATE '2026-05-20', DATE '2026-05-31', DATE '2026-05-23', DATE '2026-07-08', DATE '2026-05-10', DATE '2027-05-24', DATE '2026-05-19', DATE '2026-06-05', DATE '2026-05-27'])[org_id],
@@ -345,16 +345,16 @@ FROM generate_series(1, 10) AS org_id;
 INSERT INTO referrals (
     id, referrer_org_id, referred_org_id, referral_code_used, status, reward_type, deleted, created_at, updated_at
 ) VALUES
-    (1, 1, 2, 'ORG001', 'COMPLETED', 'GYM_COINS', FALSE, TIMESTAMPTZ '2026-05-20 09:00:00+05:30', TIMESTAMPTZ '2026-05-20 09:00:00+05:30'),
-    (2, 4, 3, 'ORG004', 'COMPLETED', 'GYM_COINS', FALSE, TIMESTAMPTZ '2026-05-18 09:00:00+05:30', TIMESTAMPTZ '2026-05-18 09:00:00+05:30'),
-    (3, 4, 6, 'ORG004', 'COMPLETED', 'GYM_COINS', FALSE, TIMESTAMPTZ '2026-05-19 09:00:00+05:30', TIMESTAMPTZ '2026-05-19 09:00:00+05:30');
+    (1, 1, 2, 'ORG001', 'REWARDED', 'GYM_COIN', FALSE, TIMESTAMPTZ '2026-05-20 09:00:00+05:30', TIMESTAMPTZ '2026-05-20 09:00:00+05:30'),
+    (2, 4, 3, 'ORG004', 'REWARDED', 'GYM_COIN', FALSE, TIMESTAMPTZ '2026-05-18 09:00:00+05:30', TIMESTAMPTZ '2026-05-18 09:00:00+05:30'),
+    (3, 4, 6, 'ORG004', 'REWARDED', 'GYM_COIN', FALSE, TIMESTAMPTZ '2026-05-19 09:00:00+05:30', TIMESTAMPTZ '2026-05-19 09:00:00+05:30');
 
 INSERT INTO referral_rewards (
     id, org_id, reward_type, amount, months_rewarded, reward_used, deleted, created_at, updated_at
 ) VALUES
-    (1, 1, 'GYM_COINS', 300.00, 0, FALSE, FALSE, TIMESTAMPTZ '2026-05-20 09:00:00+05:30', TIMESTAMPTZ '2026-05-20 09:00:00+05:30'),
-    (2, 4, 'GYM_COINS', 300.00, 0, FALSE, FALSE, TIMESTAMPTZ '2026-05-18 09:00:00+05:30', TIMESTAMPTZ '2026-05-18 09:00:00+05:30'),
-    (3, 4, 'GYM_COINS', 300.00, 0, FALSE, FALSE, TIMESTAMPTZ '2026-05-19 09:00:00+05:30', TIMESTAMPTZ '2026-05-19 09:00:00+05:30');
+    (1, 1, 'GYM_COIN', 300.00, 0, FALSE, FALSE, TIMESTAMPTZ '2026-05-20 09:00:00+05:30', TIMESTAMPTZ '2026-05-20 09:00:00+05:30'),
+    (2, 4, 'GYM_COIN', 300.00, 0, FALSE, FALSE, TIMESTAMPTZ '2026-05-18 09:00:00+05:30', TIMESTAMPTZ '2026-05-18 09:00:00+05:30'),
+    (3, 4, 'GYM_COIN', 300.00, 0, FALSE, FALSE, TIMESTAMPTZ '2026-05-19 09:00:00+05:30', TIMESTAMPTZ '2026-05-19 09:00:00+05:30');
 
 INSERT INTO notifications (
     id, organization_id, member_id, member_count, type, channel, recipient, status, attempt_count, failure_reason,

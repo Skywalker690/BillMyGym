@@ -8,14 +8,12 @@ import {
   FileSpreadsheet,
   FileText,
   Info,
-  Lock,
   RefreshCw,
   TrendingUp,
   type LucideIcon,
   Users,
   Wallet,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -140,7 +138,7 @@ function reportWindowLabel(startDate?: string | null, endDate?: string | null) {
 }
 
 export default function Reports() {
-  const { effectivePlan, effectivePlanAccess, isDemoWorkspace } = useDemoPlanPreview();
+  const { effectivePlan, isDemoWorkspace } = useDemoPlanPreview();
   const [period, setPeriod] = useState<ReportPeriod>("monthly");
   const [range, setRange] = useState<ReportRange>("current_year");
   const [customFrom, setCustomFrom] = useState(() => currentYearStartInIndiaIso());
@@ -156,8 +154,7 @@ export default function Reports() {
     staleTime: 60_000,
   });
 
-  const effectiveAccess = effectivePlanAccess(subscription?.planAccess);
-  const previewPlan = isDemoWorkspace ? effectivePlan : subscription?.subscriptionPlan;
+  const previewPlan = isDemoWorkspace ? effectivePlan : subscription?.subscriptionPlan ?? "BILLMYGYM";
   const params = useMemo(() => {
     const next: Record<string, string> = { period, range };
     if (range === "custom") {
@@ -167,8 +164,6 @@ export default function Reports() {
     return next;
   }, [period, range, customFrom, customTo]);
 
-  const canViewReports = Boolean(effectiveAccess.canReceiveMonthlyReports);
-  const canExportReports = Boolean(effectiveAccess.canExportReports);
   const todayIso = todayInIndiaIso();
   const currentMonthKey = currentYearMonthInIndia();
   const customRangeInvalid = range === "custom" && (!customFrom || !customTo || customFrom > customTo || customFrom > todayIso);
@@ -184,7 +179,7 @@ export default function Reports() {
       const res = await api.get("/reports/financial", { params });
       return res.data;
     },
-    enabled: canViewReports && !customRangeInvalid,
+    enabled: !customRangeInvalid,
   });
   const visibleWindowLabel = reportWindowLabel(report?.startDate ?? customFrom, report?.endDate ?? customTo);
   const visibleWindowDetail = report?.startDate && report?.endDate
@@ -208,10 +203,6 @@ export default function Reports() {
   }
 
   async function exportReport(type: "csv" | "pdf") {
-    if (!canExportReports) {
-      toast.error("Report exports are available on the Pro plan.");
-      return;
-    }
     if (customRangeInvalid) {
       toast.error(customRangeMessage);
       return;
@@ -245,43 +236,6 @@ export default function Reports() {
     return <div className="p-8">Loading reports access...</div>;
   }
 
-  if (!canViewReports) {
-    return (
-      <div className="mx-auto max-w-7xl space-y-8 p-8">
-        <section className="billmygym-shell overflow-hidden rounded-[2rem] p-8 lg:p-10">
-          <div className="grid gap-8 lg:grid-cols-[1fr_0.8fr] lg:items-center">
-            <div>
-              <Badge className="border-amber-200 bg-amber-100 text-amber-800">
-                <Lock className="mr-1.5 h-3.5 w-3.5" />
-                Reports Locked
-              </Badge>
-              <h1 className="mt-5 max-w-2xl text-4xl font-black tracking-tight text-slate-950 lg:text-5xl">
-                Reports are available on Growth and Pro
-              </h1>
-              <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">
-                Financial reports, month-wise revenue views, and report exports are available on Growth and Pro. Use the demo plan switch to showcase each access level.
-              </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <Link to="/app/subscription/plans">
-                  <Button className="h-12 rounded-full bg-slate-950 px-6 font-bold text-white hover:bg-slate-800">
-                    View Plans
-                  </Button>
-                </Link>
-              </div>
-            </div>
-            <div className="rounded-[1.7rem] border border-white/80 bg-white/72 p-6 shadow-sm">
-              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Current Plan</div>
-              <div className="mt-2 text-4xl font-black tracking-tight text-slate-950">{previewPlan ?? "STARTER"}</div>
-              <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
-                Starter includes the revenue dashboard, but reports start on Growth.
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-    );
-  }
-
   const summary = report?.summary ?? {};
   const rows = report?.months ?? [];
   const maxRevenue = Math.max(...rows.map((row) => Number(row.totalRevenue ?? 0)), 1);
@@ -302,9 +256,7 @@ export default function Reports() {
               Month-wise revenue clarity for the gym.
             </h1>
             <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">
-              {previewPlan === "GROWTH"
-                ? "Track admissions, membership collections, due payments, and member health across your historical report windows."
-                : "Track admissions, membership collections, due payments, and member health in one export-ready workspace."}
+              Track admissions, membership collections, due payments, and member health in one export-ready workspace.
             </p>
           </div>
 
@@ -352,37 +304,26 @@ export default function Reports() {
               <RefreshCw className={cn("mr-2 h-4 w-4", isFetching && "animate-spin")} />
               Refresh
             </Button>
-            {canExportReports ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button className="h-11 rounded-xl bg-slate-950 px-5 font-bold text-white hover:bg-slate-800" disabled={Boolean(exportingType) || customRangeInvalid}>
-                      <Download className="mr-2 h-4 w-4" />
-                      {exportingType ? "Exporting..." : "Export"}
-                    </Button>
-                  }
-                />
-                <DropdownMenuContent align="end" className="w-48 rounded-2xl border border-white/80 bg-white/95 p-2 shadow-[0_18px_40px_-24px_rgba(15,23,42,0.32)] backdrop-blur-xl">
-                  <DropdownMenuItem className="rounded-xl px-3 py-2 font-semibold" onClick={() => exportReport("csv")}>
-                    <FileSpreadsheet className="h-4 w-4" />
-                    Export CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="rounded-xl px-3 py-2 font-semibold" onClick={() => exportReport("pdf")}>
-                    <FileText className="h-4 w-4" />
-                    Export PDF
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button
-                type="button"
-                className="h-11 rounded-xl bg-slate-200 px-5 font-bold text-slate-600 hover:bg-slate-200"
-                onClick={() => toast.error("Report exports are available on the Pro plan.")}
-              >
-                <Lock className="mr-2 h-4 w-4" />
-                Export Locked
-              </Button>
-            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button className="h-11 rounded-xl bg-slate-950 px-5 font-bold text-white hover:bg-slate-800" disabled={Boolean(exportingType) || customRangeInvalid}>
+                    <Download className="mr-2 h-4 w-4" />
+                    {exportingType ? "Exporting..." : "Export"}
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end" className="w-48 rounded-2xl border border-white/80 bg-white/95 p-2 shadow-[0_18px_40px_-24px_rgba(15,23,42,0.32)] backdrop-blur-xl">
+                <DropdownMenuItem className="rounded-xl px-3 py-2 font-semibold" onClick={() => exportReport("csv")}>
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem className="rounded-xl px-3 py-2 font-semibold" onClick={() => exportReport("pdf")}>
+                  <FileText className="h-4 w-4" />
+                  Export PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -471,11 +412,6 @@ export default function Reports() {
           </div>
         )}
 
-        {!canExportReports && (
-          <div className="border-t border-white/70 px-5 py-4 text-sm font-bold text-amber-900">
-            {previewPlan === "GROWTH" ? "Upgrade to Pro to unlock report exports." : "Starter includes dashboard analytics, while reports begin on Growth."}
-          </div>
-        )}
       </section>
 
       {isLoading ? (

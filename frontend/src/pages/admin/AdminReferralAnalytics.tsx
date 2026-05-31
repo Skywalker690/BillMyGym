@@ -72,7 +72,7 @@ export default function AdminReferralAnalytics() {
         <StatCard title="Total Referral Signups" value={data.totalReferralSignups || 0} icon={Users} color="text-indigo-500" />
         <StatCard title="Successful Referrals" value={data.totalSuccessfulReferrals || 0} icon={CheckCircle2} color="text-emerald-500" />
         <StatCard title="Total GymCoins Distributed" value={data.totalCoinsRewarded || 0} icon={Gift} color="text-amber-500" />
-        <StatCard title="6-Month Pro Unlocks" value={data.totalSixMonthRewards || 0} icon={Crown} color="text-purple-500" />
+        <StatCard title="6-Month BillMyGym Unlocks" value={data.totalSixMonthRewards || 0} icon={Crown} color="text-purple-500" />
       </div>
     </div>
   );
