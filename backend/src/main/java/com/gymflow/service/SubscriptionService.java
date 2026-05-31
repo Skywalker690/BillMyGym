@@ -15,7 +15,6 @@ import com.gymflow.api.error.BadRequestException;
 import com.gymflow.api.error.ForbiddenException;
 import com.gymflow.api.error.NotFoundException;
 import com.gymflow.domain.Organization;
-import com.gymflow.domain.OrganizationSubscription;
 import com.gymflow.domain.OrganizationSubscriptionPayment;
 import com.gymflow.domain.UsageMetric;
 import com.gymflow.domain.enums.AuditCategory;
@@ -26,7 +25,6 @@ import com.gymflow.domain.enums.SubscriptionPaymentStatus;
 import com.gymflow.repository.MemberRepository;
 import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.repository.OrganizationSubscriptionPaymentRepository;
-import com.gymflow.repository.OrganizationSubscriptionRepository;
 import com.gymflow.repository.UsageMetricRepository;
 import com.gymflow.security.AuthenticatedUser;
 import com.gymflow.security.SecurityUtils;
@@ -62,9 +60,9 @@ public class SubscriptionService {
     private static final String CURRENCY = "INR";
     private static final int DEFAULT_PAYMENT_HISTORY_SIZE = 5;
     private static final int MAX_PAYMENT_HISTORY_SIZE = 50;
+    private static final SubscriptionPaymentStatus PAID_STATUS = SubscriptionPaymentStatus.PAID;
 
     private final OrganizationRepository organizationRepository;
-    private final OrganizationSubscriptionRepository subscriptionRepository;
     private final OrganizationSubscriptionPaymentRepository subscriptionPaymentRepository;
     private final UsageMetricRepository usageMetricRepository;
     private final MemberRepository memberRepository;
@@ -114,7 +112,7 @@ public class SubscriptionService {
         OrganizationSubscriptionPayment existingPending = subscriptionPaymentRepository
             .findTopByOrganizationIdAndPaymentStatusInAndDeletedFalseOrderByCreatedAtDesc(
                 organization.getId(),
-                List.of(SubscriptionPaymentStatus.PENDING, SubscriptionPaymentStatus.FAILED)
+                List.of(SubscriptionPaymentStatus.PENDING)
             )
             .filter(payment -> payment.getSubscriptionStart().equals(start)
                 && payment.getSubscriptionEnd().equals(end)
@@ -253,8 +251,11 @@ public class SubscriptionService {
             currentMonth.getYear(),
             currentMonth.getMonthValue()
         ).orElseGet(() -> UsageMetric.empty(organization, currentMonth));
-        OrganizationSubscription latestSubscription = subscriptionRepository
-            .findTopByOrganizationIdAndDeletedFalseOrderByEndDateDesc(organization.getId())
+        OrganizationSubscriptionPayment latestPaidPayment = subscriptionPaymentRepository
+            .findTopByOrganizationIdAndPaymentStatusAndDeletedFalseOrderBySubscriptionEndDescCreatedAtDesc(
+                organization.getId(),
+                PAID_STATUS
+            )
             .orElse(null);
 
         PaymentHistoryPageResponse paymentHistoryPage = loadPaymentHistory(
@@ -284,8 +285,8 @@ public class SubscriptionService {
             organization.getCreatedAt() == null ? null : organization.getCreatedAt().toInstant(),
             organization.getTrialEndDate(),
             organization.getSubscriptionDueDate(),
-            latestSubscription == null ? null : latestSubscription.getStartDate(),
-            latestSubscription == null ? null : latestSubscription.getEndDate(),
+            latestPaidPayment == null ? null : latestPaidPayment.getSubscriptionStart(),
+            latestPaidPayment == null ? null : latestPaidPayment.getSubscriptionEnd(),
             usage.getMonthlyWhatsappCount(),
             usage.getMonthlyEmailCount(),
             customReminderUsage,
@@ -432,7 +433,7 @@ public class SubscriptionService {
     }
 
     private LocalDate resolveNextSubscriptionStart(Organization organization) {
-        return LocalDate.now(APP_ZONE);
+        return billingLifecycleService.nextChargeStartDate(organization, LocalDate.now(APP_ZONE));
     }
 
     private Organization resolveCurrentOrganization() {

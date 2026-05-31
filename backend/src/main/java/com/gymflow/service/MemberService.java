@@ -47,7 +47,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -76,6 +75,7 @@ public class MemberService {
     private final OrganizationSettingService organizationSettingService;
     private final MemberLimitService memberLimitService;
     private final AuditLogService auditLogService;
+    private final ReportCacheService reportCacheService;
 
     @Transactional
     public MemberPageResponse listMembers(int page, int size, String search, String membershipStatus, MemberStatus memberStatus) {
@@ -131,7 +131,6 @@ public class MemberService {
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public MemberResponse createMember(MemberRequest request) {
         Long orgId = requireOrgId(SecurityUtils.currentUser());
         Organization organization = organizationRepository.findByIdAndDeletedFalse(orgId)
@@ -160,11 +159,11 @@ public class MemberService {
             orgId,
             member.getFullName()
         );
+        reportCacheService.evictOrganization(orgId);
         return memberMapper.toResponse(member);
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public MemberResponse updateMember(Long memberId, MemberRequest request) {
         Long orgId = requireOrgId(SecurityUtils.currentUser());
         Member member = memberRepository.findByIdAndOrganizationIdAndDeletedFalse(memberId, orgId)
@@ -212,11 +211,11 @@ public class MemberService {
                 member.getFullName()
             );
         }
+        reportCacheService.evictOrganization(orgId);
         return memberMapper.toResponse(member);
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public BulkMemberImportResponse bulkImportMembers(Long organizationId, MultipartFile file) {
         SecurityUtils.requireRole(Role.SUPER_ADMIN);
         Organization organization = organizationRepository.findByIdAndDeletedFalse(organizationId)
@@ -325,11 +324,11 @@ public class MemberService {
             organization.getName()
         );
 
+        reportCacheService.evictOrganization(organizationId);
         return new BulkMemberImportResponse(parseResult.totalRows(), members.size(), BULK_IMPORT_LIMIT, List.of());
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public void softDeleteMember(Long memberId) {
         Long orgId = requireOrgId(SecurityUtils.currentUser());
         Member member = memberRepository.findByIdAndOrganizationIdAndDeletedFalse(memberId, orgId)
@@ -352,6 +351,7 @@ public class MemberService {
             orgId,
             member.getFullName()
         );
+        reportCacheService.evictOrganization(orgId);
     }
 
     public List<MemberDirectoryItem> toDirectoryItems(Collection<Member> members, int reminderDays) {

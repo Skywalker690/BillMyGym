@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,9 +46,9 @@ public class MemberMembershipService {
     private final MemberCreditLedgerService memberCreditLedgerService;
     private final OrganizationSettingService organizationSettingService;
     private final AuditLogService auditLogService;
+    private final ReportCacheService reportCacheService;
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public MembershipResponse createMembership(Long memberId, CreateMembershipRequest request) {
         throw new BadRequestException("Use the idempotent membership workflow endpoint");
     }
@@ -279,11 +278,13 @@ public class MemberMembershipService {
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public void markReminderSent(List<MemberMembership> memberships, OffsetDateTime sentAt) {
         for (MemberMembership membership : memberships) {
             membership.setLastSentAt(sentAt);
         }
+        reportCacheService.evictOrganizations(
+            memberships.stream().map(membership -> membership.getOrganization().getId()).toList()
+        );
     }
 
     private Long requireOrganizationId() {

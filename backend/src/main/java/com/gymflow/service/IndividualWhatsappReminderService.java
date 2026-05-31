@@ -34,7 +34,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +55,7 @@ public class IndividualWhatsappReminderService {
     private final WhatsAppTemplateService whatsAppTemplateService;
     private final WhatsAppDeliveryService whatsAppDeliveryService;
     private final AuditLogService auditLogService;
+    private final ReportCacheService reportCacheService;
 
     @Transactional
     public WhatsappReminderPreviewResponse preview(Long memberId) {
@@ -65,7 +65,6 @@ public class IndividualWhatsappReminderService {
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public WhatsappReminderSendResponse send(Long memberId) {
         ReminderContext context = resolveContext(memberId);
         SendEligibility eligibility = sendEligibility(context);
@@ -111,6 +110,7 @@ public class IndividualWhatsappReminderService {
 
         whatsappReminderLogRepository.save(reminderLog);
         notificationLogRepository.save(notification);
+        reportCacheService.evictOrganization(context.organization().getId());
 
         return new WhatsappReminderSendResponse(
             reminderLog.getId(),

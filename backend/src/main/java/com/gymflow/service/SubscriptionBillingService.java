@@ -169,7 +169,7 @@ public class SubscriptionBillingService {
 
     private void retryFailedPayments(LocalDate today) {
         subscriptionPaymentRepository.findByPaymentStatusInAndNextRetryDateLessThanEqualAndDeletedFalse(
-            List.of(SubscriptionPaymentStatus.FAILED, SubscriptionPaymentStatus.PENDING),
+            List.of(SubscriptionPaymentStatus.PENDING),
             today
         ).forEach(payment -> {
             payment.setRetryCount(payment.getRetryCount() + 1);

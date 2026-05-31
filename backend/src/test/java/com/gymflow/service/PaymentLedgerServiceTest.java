@@ -48,6 +48,9 @@ class PaymentLedgerServiceTest {
     @Mock
     private IdempotencyService idempotencyService;
 
+    @Mock
+    private ReportCacheService reportCacheService;
+
     private final MembershipLifecycleService membershipLifecycleService = new MembershipLifecycleService();
 
     private PaymentLedgerService paymentLedgerService;
@@ -59,7 +62,8 @@ class PaymentLedgerServiceTest {
             memberPaymentRepository,
             membershipLifecycleService,
             auditLogService,
-            idempotencyService
+            idempotencyService,
+            reportCacheService
         );
         SecurityContextHolder.getContext().setAuthentication(
             new UsernamePasswordAuthenticationToken(

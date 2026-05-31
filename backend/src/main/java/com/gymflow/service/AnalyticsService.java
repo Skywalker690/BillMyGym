@@ -19,7 +19,6 @@ import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.NotificationLogRepository;
 import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.repository.OrganizationSubscriptionPaymentRepository;
-import com.gymflow.repository.OrganizationSubscriptionRepository;
 import com.gymflow.repository.UsageMetricRepository;
 import com.gymflow.security.SecurityUtils;
 import java.math.BigDecimal;
@@ -30,8 +29,10 @@ import java.time.ZoneId;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
@@ -42,9 +43,9 @@ import org.springframework.stereotype.Service;
 public class AnalyticsService {
 
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
+    private static final SubscriptionPaymentStatus PAID_STATUS = SubscriptionPaymentStatus.PAID;
 
     private final OrganizationRepository organizationRepository;
-    private final OrganizationSubscriptionRepository subscriptionRepository;
     private final OrganizationSubscriptionPaymentRepository subscriptionPaymentRepository;
     private final UsageMetricRepository usageMetricRepository;
     private final MemberMembershipRepository memberMembershipRepository;
@@ -60,8 +61,7 @@ public class AnalyticsService {
         LocalDate previousMonthStart = previousMonth.atDay(1);
         LocalDate previousMonthEnd = previousMonth.atEndOfMonth();
         LocalDate today = LocalDate.now(APP_ZONE);
-        List<Organization> organizations = organizationRepository.findAllByDeletedFalse();
-        long totalOrganizations = organizations.size();
+        long totalOrganizations = organizationRepository.countByDeletedFalse();
         long activeOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.ACTIVE);
         long trialOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.TRIAL);
         long demoOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.DEMO);
@@ -82,12 +82,11 @@ public class AnalyticsService {
         BigDecimal monthlySaasRevenue = safe(subscriptionPaymentRepository.sumPaidBetween(monthStart, monthEnd));
         BigDecimal previousMonthlySaasRevenue = safe(subscriptionPaymentRepository.sumPaidBetween(previousMonthStart, previousMonthEnd));
         BigDecimal lifetimeSaasRevenue = safe(subscriptionPaymentRepository.sumPaidAll());
-        BigDecimal projectedMonthlyRevenue = organizations.stream()
-            .filter(organization -> !organization.isDeleted())
-            .filter(organization -> organization.getStatus() == OrganizationStatus.ACTIVE)
-            .filter(organization -> organization.getOrganizationType() == OrganizationType.REGULAR)
-            .map(organization -> subscriptionPricingService.currentPrice(organization).totalAmount())
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        List<Organization> activeRegularOrganizations = organizationRepository.findAllByDeletedFalseAndOrganizationTypeAndStatus(
+            OrganizationType.REGULAR,
+            OrganizationStatus.ACTIVE
+        );
+        BigDecimal projectedMonthlyRevenue = subscriptionPricingService.projectedRevenue(activeRegularOrganizations);
         var usage = usageMetricRepository.findByYearAndMonthAndDeletedFalse(
             currentMonth.getYear(),
             currentMonth.getMonthValue()
@@ -113,7 +112,10 @@ public class AnalyticsService {
             overdueRegularOrganizations,
             deactivatedOrganizations,
             expiredOrganizations,
-            subscriptionRepository.countByDeletedFalseAndEndDateGreaterThanEqual(today),
+            subscriptionPaymentRepository.countByPaymentStatusAndSubscriptionEndGreaterThanEqualAndDeletedFalse(
+                PAID_STATUS,
+                today
+            ),
             monthlySaasRevenue,
             previousMonthlySaasRevenue,
             growthPercent(previousMonthlySaasRevenue, monthlySaasRevenue),
@@ -131,7 +133,7 @@ public class AnalyticsService {
             growthPercent(previousMonthNewOrganizations, currentMonthNewOrganizations),
             monthlySubscriptionActivity(currentMonth),
             organizationsByStatus(totalOrganizations),
-            organizationsByPlan(totalOrganizations),
+            organizationsByPlan(totalOrganizations, activeRegularOrganizations),
             paymentsByStatus(),
             List.of(
                 breakdown("RENEWALS_DUE", "Renewals due in 7 days", renewalsDueInSevenDays, BigDecimal.ZERO, totalOrganizations),
@@ -188,19 +190,45 @@ public class AnalyticsService {
             .toList();
     }
 
-    private List<PlatformBreakdownResponse> organizationsByPlan(long totalOrganizations) {
+    private List<PlatformBreakdownResponse> organizationsByPlan(long totalOrganizations, List<Organization> activeRegularOrganizations) {
+        Map<SubscriptionPlan, Long> activeRegularCounts = new EnumMap<>(SubscriptionPlan.class);
+        organizationRepository.countBySubscriptionPlanForOrganizationTypeAndStatus(
+                OrganizationType.REGULAR,
+                OrganizationStatus.ACTIVE
+            )
+            .forEach(row -> activeRegularCounts.put(row.getSubscriptionPlan(), row.getCount() == null ? 0L : row.getCount()));
+        Map<SubscriptionPlan, BigDecimal> activeRegularAmounts = subscriptionPricingService.projectedRevenueByPlan(activeRegularOrganizations);
         List<PlatformBreakdownResponse> items = new ArrayList<>(Arrays.stream(SubscriptionPlan.values())
-            .map(plan -> {
-                long count = organizationRepository.countByDeletedFalseAndSubscriptionPlan(plan);
-                return breakdown(
-                    plan.name(),
-                    label(plan.name()),
-                    count,
-                    plan.monthlyAmount().multiply(BigDecimal.valueOf(count)),
-                    totalOrganizations
-                );
-            })
+            .map(plan -> breakdown(
+                plan.name(),
+                label(plan.name()),
+                activeRegularCounts.getOrDefault(plan, 0L),
+                activeRegularAmounts.getOrDefault(plan, BigDecimal.ZERO),
+                totalOrganizations
+            ))
             .toList());
+        long demoOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.DEMO);
+        if (demoOrganizations > 0) {
+            items.add(breakdown(
+                "DEMO",
+                label("DEMO"),
+                demoOrganizations,
+                BigDecimal.ZERO,
+                totalOrganizations
+            ));
+        }
+        long renewalRequiredOrganizations = organizationRepository.countByDeletedFalseAndStatusIn(
+            List.of(OrganizationStatus.PAUSED, OrganizationStatus.DEACTIVATED)
+        );
+        if (renewalRequiredOrganizations > 0) {
+            items.add(breakdown(
+                "RENEWAL_REQUIRED",
+                "Renewal Required",
+                renewalRequiredOrganizations,
+                BigDecimal.ZERO,
+                totalOrganizations
+            ));
+        }
         items.add(breakdown(
             "TRIAL",
             "Free Trial Gyms",
@@ -233,23 +261,25 @@ public class AnalyticsService {
                 YearMonth month = startMonth.plusMonths(offset);
                 OffsetDateTime start = startOfDay(month.atDay(1));
                 OffsetDateTime end = endOfDay(month.atEndOfMonth());
+                LocalDate startDate = month.atDay(1);
+                LocalDate endDate = month.atEndOfMonth();
                 return new PlatformSubscriptionMonthResponse(
                     month.toString(),
                     month.atDay(1).getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
-                    subscriptionPaymentRepository.countByPaymentStatusAndDeletedFalseAndCreatedAtBetween(
+                    subscriptionPaymentRepository.countByPaymentStatusAndDeletedFalseAndPaymentDateBetween(
                         SubscriptionPaymentStatus.PAID,
-                        start,
-                        end
+                        startDate,
+                        endDate
                     ),
                     subscriptionPaymentRepository.countByPaymentStatusAndDeletedFalseAndCreatedAtBetween(
                         SubscriptionPaymentStatus.PENDING,
                         start,
                         end
                     ),
-                    safe(subscriptionPaymentRepository.sumByPaymentStatusAndCreatedAtBetween(
+                    safe(subscriptionPaymentRepository.sumByPaymentStatusAndPaymentDateBetween(
                         SubscriptionPaymentStatus.PAID,
-                        start,
-                        end
+                        startDate,
+                        endDate
                     )),
                     safe(subscriptionPaymentRepository.sumByPaymentStatusAndCreatedAtBetween(
                         SubscriptionPaymentStatus.PENDING,

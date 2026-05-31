@@ -101,6 +101,7 @@ const statusTone: Record<string, string> = {
   DEACTIVATED: "bg-rose-100 text-rose-800 border-rose-200",
   BILLMYGYM: "bg-emerald-100 text-emerald-800 border-emerald-200",
   DEMO: "bg-cyan-100 text-cyan-800 border-cyan-200",
+  RENEWAL_REQUIRED: "bg-orange-100 text-orange-800 border-orange-200",
 };
 
 function percentText(value: number) {
@@ -114,7 +115,10 @@ function BreakdownBar({ item, amount = false }: { key?: string; item: PlatformBr
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-black text-slate-950">{item.label}</div>
-          <div className="mt-1 text-xs font-bold text-slate-500">{item.count} orgs</div>
+          <div className="mt-1 text-xs font-bold text-slate-500">
+            {item.count} orgs
+            {amount ? ` • ${item.amount > 0 ? money.format(item.amount) : "No billed revenue"}` : ""}
+          </div>
         </div>
         <Badge className={statusTone[item.key] ?? "border-slate-200 bg-slate-100 text-slate-700"}>{item.percentage}%</Badge>
       </div>
@@ -401,7 +405,7 @@ export default function PlatformOverview() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Subscription Distribution</div>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">BillMyGym MRR shape</h2>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Billing cohort mix</h2>
             </div>
             <Badge className="w-fit border-amber-200 bg-amber-100 text-amber-800">{data.trialOrganizations} free trial gyms</Badge>
           </div>

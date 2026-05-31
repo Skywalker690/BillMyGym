@@ -13,7 +13,6 @@ import com.gymflow.security.AuthenticatedUser;
 import com.gymflow.security.SecurityUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,6 +22,7 @@ public class OrganizationSettingService {
     private final OrganizationRepository organizationRepository;
     private final OrganizationSettingRepository settingRepository;
     private final AuditLogService auditLogService;
+    private final ReportCacheService reportCacheService;
 
     @Transactional
     public SettingsResponse getCurrentSettings() {
@@ -31,7 +31,6 @@ public class OrganizationSettingService {
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public SettingsResponse updateCurrentSettings(UpdateSettingsRequest request) {
         Long organizationId = requireOrgId();
         OrganizationSetting setting = getOrCreateSettings(organizationId);
@@ -58,6 +57,7 @@ public class OrganizationSettingService {
             AuditCategory.ORGANIZATION,
             "SETTINGS"
         );
+        reportCacheService.evictOrganization(organizationId);
         return toResponse(setting);
     }
 

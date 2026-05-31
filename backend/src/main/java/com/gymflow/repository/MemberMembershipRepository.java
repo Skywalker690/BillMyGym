@@ -15,6 +15,11 @@ import org.springframework.data.repository.query.Param;
 
 public interface MemberMembershipRepository extends JpaRepository<MemberMembership, Long> {
 
+    interface OrganizationActiveMemberCountProjection {
+        Long getOrganizationId();
+        Long getActiveMembers();
+    }
+
     @EntityGraph(attributePaths = {"member", "organization"})
     List<MemberMembership> findByOrganizationIdAndDeletedFalse(Long organizationId);
 
@@ -216,6 +221,24 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
         """)
     long countBillableActiveMembers(
         @Param("organizationId") Long organizationId,
+        @Param("today") java.time.LocalDate today
+    );
+
+    @Query("""
+        select membership.organization.id as organizationId,
+               count(distinct membership.member.id) as activeMembers
+        from MemberMembership membership
+        where membership.deleted = false
+          and membership.member.deleted = false
+          and membership.member.status = 'ACTIVE'
+          and membership.organization.id in :organizationIds
+          and membership.status = 'ACTIVE'
+          and membership.startDate <= :today
+          and membership.endDate >= :today
+        group by membership.organization.id
+        """)
+    List<OrganizationActiveMemberCountProjection> countBillableActiveMembersByOrganizationIds(
+        @Param("organizationIds") Collection<Long> organizationIds,
         @Param("today") java.time.LocalDate today
     );
 

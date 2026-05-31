@@ -1,7 +1,9 @@
 package com.gymflow.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.enums.OrganizationStatus;
@@ -32,5 +34,29 @@ class BillingLifecycleServiceTest {
         assertEquals(LocalDate.of(2026, 6, 30), organization.getSubscriptionDueDate());
         assertNull(organization.getPausedAt());
         assertNull(organization.getDeactivatedAt());
+    }
+
+    @Test
+    void regularTrialProvidesTwoFullMonthsBeforePaymentIsDue() {
+        Organization organization = new Organization();
+
+        LocalDate trialStart = LocalDate.of(2026, 5, 31);
+        billingLifecycleService.startRegularTrial(organization, trialStart);
+
+        assertEquals(OrganizationStatus.TRIAL, organization.getStatus());
+        assertEquals(LocalDate.of(2026, 7, 29), organization.getTrialEndDate());
+        assertEquals(LocalDate.of(2026, 7, 30), organization.getSubscriptionDueDate());
+        assertTrue(billingLifecycleService.hasCurrentAccessWindow(organization, LocalDate.of(2026, 7, 29)));
+        assertFalse(billingLifecycleService.hasCurrentAccessWindow(organization, LocalDate.of(2026, 7, 30)));
+    }
+
+    @Test
+    void earlyTrialPaymentStartsAfterTrialEnds() {
+        Organization organization = new Organization();
+        billingLifecycleService.startRegularTrial(organization, LocalDate.of(2026, 5, 31));
+
+        LocalDate checkoutDate = LocalDate.of(2026, 6, 15);
+
+        assertEquals(LocalDate.of(2026, 7, 30), billingLifecycleService.nextChargeStartDate(organization, checkoutDate));
     }
 }

@@ -22,7 +22,7 @@ public class BillingLifecycleService {
         organization.setStatus(OrganizationStatus.TRIAL);
         organization.setTrialStartDate(startDate);
         organization.setTrialEndDate(trialEndDate);
-        organization.setSubscriptionDueDate(trialEndDate);
+        organization.setSubscriptionDueDate(nextDueDate(trialEndDate));
         organization.setPausedAt(null);
         organization.setDeactivatedAt(null);
     }
@@ -79,6 +79,16 @@ public class BillingLifecycleService {
             return false;
         }
         return organization.getSubscriptionDueDate() != null && organization.getSubscriptionDueDate().isAfter(today);
+    }
+
+    public LocalDate nextChargeStartDate(Organization organization, LocalDate today) {
+        if (organization == null || organization.getOrganizationType() == OrganizationType.DEMO) {
+            return today;
+        }
+        if (hasCurrentAccessWindow(organization, today) && organization.getSubscriptionDueDate() != null) {
+            return organization.getSubscriptionDueDate();
+        }
+        return today;
     }
 
     public boolean isDeactivated(Organization organization) {

@@ -27,6 +27,11 @@ public interface OrganizationSubscriptionPaymentRepository extends JpaRepository
 
     Optional<OrganizationSubscriptionPayment> findTopByRazorpaySubscriptionIdAndDeletedFalseOrderByCreatedAtDesc(String razorpaySubscriptionId);
 
+    Optional<OrganizationSubscriptionPayment> findTopByOrganizationIdAndPaymentStatusAndDeletedFalseOrderBySubscriptionEndDescCreatedAtDesc(
+        Long organizationId,
+        SubscriptionPaymentStatus paymentStatus
+    );
+
     @EntityGraph(attributePaths = "organization")
     List<OrganizationSubscriptionPayment> findByOrganizationIdAndDeletedFalseOrderByCreatedAtDesc(Long organizationId);
 
@@ -57,10 +62,21 @@ public interface OrganizationSubscriptionPaymentRepository extends JpaRepository
 
     long countByPaymentStatusAndDeletedFalse(SubscriptionPaymentStatus status);
 
+    long countByPaymentStatusAndSubscriptionEndGreaterThanEqualAndDeletedFalse(
+        SubscriptionPaymentStatus status,
+        LocalDate subscriptionEnd
+    );
+
     long countByPaymentStatusAndDeletedFalseAndCreatedAtBetween(
         SubscriptionPaymentStatus status,
         OffsetDateTime start,
         OffsetDateTime end
+    );
+
+    long countByPaymentStatusAndDeletedFalseAndPaymentDateBetween(
+        SubscriptionPaymentStatus status,
+        LocalDate start,
+        LocalDate end
     );
 
     @Query("""
@@ -74,6 +90,19 @@ public interface OrganizationSubscriptionPaymentRepository extends JpaRepository
         @Param("status") SubscriptionPaymentStatus status,
         @Param("start") OffsetDateTime start,
         @Param("end") OffsetDateTime end
+    );
+
+    @Query("""
+        select coalesce(sum(payment.amount), 0)
+        from OrganizationSubscriptionPayment payment
+        where payment.deleted = false
+          and payment.paymentStatus = :status
+          and payment.paymentDate between :startDate and :endDate
+        """)
+    BigDecimal sumByPaymentStatusAndPaymentDateBetween(
+        @Param("status") SubscriptionPaymentStatus status,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate
     );
 
     @Query("""

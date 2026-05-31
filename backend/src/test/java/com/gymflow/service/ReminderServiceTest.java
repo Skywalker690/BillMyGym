@@ -49,6 +49,9 @@ class ReminderServiceTest {
     @Mock
     private NotificationLogRepository notificationLogRepository;
 
+    @Mock
+    private ReportCacheService reportCacheService;
+
     @Test
     void marksMembershipsAsSentWhenDigestDispatchSucceeds() {
         ReminderService reminderService = new ReminderService(
@@ -58,7 +61,8 @@ class ReminderServiceTest {
             organizationDigestBuilderService,
             notificationDispatcherService,
             organizationRepository,
-            notificationLogRepository
+            notificationLogRepository,
+            reportCacheService
         );
 
         Organization organization = new Organization();

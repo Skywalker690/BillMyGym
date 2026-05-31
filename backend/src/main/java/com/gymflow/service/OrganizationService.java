@@ -31,6 +31,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -54,7 +55,7 @@ public class OrganizationService {
     public List<OrganizationResponse> listOrganizations() {
         AuthenticatedUser user = SecurityUtils.currentUser();
         if (user.role() == Role.SUPER_ADMIN) {
-            return organizationRepository.findAllByDeletedFalse().stream().map(this::toResponse).toList();
+            return toResponses(organizationRepository.findAllByDeletedFalse());
         }
         if (user.organizationId() == null) {
             return List.of();
@@ -166,7 +167,7 @@ public class OrganizationService {
             PageRequest.of(safePage, safeSize)
         );
         return new OrganizationDirectoryResponse(
-            result.getContent().stream().map(this::toResponse).toList(),
+            toResponses(result.getContent()),
             result.getNumber(),
             result.getSize(),
             result.getTotalElements(),
@@ -264,21 +265,35 @@ public class OrganizationService {
     }
 
     private OrganizationDirectorySummary buildDirectorySummary() {
-        long totalOrganizations = organizationRepository.findAllByDeletedFalse().size();
+        long totalOrganizations = organizationRepository.countByDeletedFalse();
         long totalActiveOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.ACTIVE);
         long totalRenewalPendingOrganizations = organizationRepository.countByDeletedFalseAndStatusIn(
             List.of(OrganizationStatus.PAUSED, OrganizationStatus.DEACTIVATED)
         );
         long totalDemoOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.DEMO);
         long totalTrialOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.TRIAL);
+        Map<com.gymflow.domain.enums.SubscriptionPlan, Long> regularPlanCounts = organizationRepository
+            .countBySubscriptionPlanForOrganizationTypeExcludingStatus(OrganizationType.REGULAR, OrganizationStatus.TRIAL)
+            .stream()
+            .collect(java.util.stream.Collectors.toMap(
+                OrganizationRepository.OrganizationPlanCountProjection::getSubscriptionPlan,
+                projection -> projection.getCount() == null ? 0L : projection.getCount()
+            ));
         List<OrganizationPlanSummary> subscriptionDistribution = new ArrayList<>(Arrays.stream(com.gymflow.domain.enums.SubscriptionPlan.values())
             .map(plan -> {
-                long count = organizationRepository.countByDeletedFalseAndSubscriptionPlan(plan);
+                long count = regularPlanCounts.getOrDefault(plan, 0L);
                 int percentage = totalOrganizations <= 0 ? 0 : (int) Math.round((count * 100.0) / totalOrganizations);
-                String label = "BillMyGym Plan";
-                return new OrganizationPlanSummary(plan.name(), label, count, percentage);
+                return new OrganizationPlanSummary(plan.name(), "BillMyGym Plan", count, percentage);
             })
             .toList());
+        if (totalDemoOrganizations > 0) {
+            subscriptionDistribution.add(new OrganizationPlanSummary(
+                "DEMO",
+                "Demo Workspaces",
+                totalDemoOrganizations,
+                totalOrganizations <= 0 ? 0 : (int) Math.round((totalDemoOrganizations * 100.0) / totalOrganizations)
+            ));
+        }
         subscriptionDistribution.add(new OrganizationPlanSummary(
             "TRIAL",
             "Free Trial Gyms",
@@ -376,6 +391,27 @@ public class OrganizationService {
     private OrganizationResponse toResponse(Organization organization) {
         OrganizationResponse base = organizationMapper.toResponse(organization);
         SubscriptionPricingService.SubscriptionPriceBreakdown pricing = subscriptionPricingService.currentPrice(organization);
+        return toResponse(base, pricing);
+    }
+
+    private List<OrganizationResponse> toResponses(List<Organization> organizations) {
+        if (organizations == null || organizations.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, SubscriptionPricingService.SubscriptionPriceBreakdown> pricingByOrganizationId =
+            subscriptionPricingService.currentPrices(organizations);
+        return organizations.stream()
+            .map(organization -> toResponse(
+                organizationMapper.toResponse(organization),
+                pricingByOrganizationId.get(organization.getId())
+            ))
+            .toList();
+    }
+
+    private OrganizationResponse toResponse(
+        OrganizationResponse base,
+        SubscriptionPricingService.SubscriptionPriceBreakdown pricing
+    ) {
         return new OrganizationResponse(
             base.id(),
             base.name(),

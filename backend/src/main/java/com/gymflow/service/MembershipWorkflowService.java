@@ -20,7 +20,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,9 +36,9 @@ public class MembershipWorkflowService {
     private final MembershipOperationIdempotencyService idempotencyService;
     private final OrganizationSettingService organizationSettingService;
     private final AuditLogService auditLogService;
+    private final ReportCacheService reportCacheService;
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public MembershipResponse createMembership(Long memberId, CreateMembershipRequest request, String idempotencyKey) {
         Long organizationId = requireOrganizationId();
         int reminderDays = DUE_TODAY_WINDOW_DAYS;
@@ -113,11 +112,11 @@ public class MembershipWorkflowService {
                 member.getFullName()
             );
         }
+        reportCacheService.evictOrganization(organizationId);
         return memberMembershipService.membershipResponse(membership.getId(), organizationId);
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public MembershipResponse switchMembership(Long memberId, SwitchMembershipRequest request, String idempotencyKey) {
         Long organizationId = requireOrganizationId();
         Member member = memberMembershipService.requireActiveMember(memberId, organizationId);
@@ -207,6 +206,7 @@ public class MembershipWorkflowService {
             AuditCategory.MEMBER,
             "MEMBERSHIP"
         );
+        reportCacheService.evictOrganization(organizationId);
         return memberMembershipService.membershipResponse(newMembership.getId(), organizationId);
     }
 

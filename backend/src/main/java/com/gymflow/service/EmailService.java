@@ -39,7 +39,7 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
-    @Async
+    @Async("emailTaskExecutor")
     public void sendOrganizationAdminWelcomeEmail(
         Organization organization,
         String toEmail,
@@ -62,7 +62,7 @@ public class EmailService {
         );
     }
 
-    @Async
+    @Async("emailTaskExecutor")
     public void sendUserWelcomeEmail(String toEmail, String userName, String role, String zone) {
         sendHtmlEmail(
             toEmail,
@@ -72,7 +72,7 @@ public class EmailService {
         );
     }
 
-    @Async
+    @Async("emailTaskExecutor")
     public void sendUserAccessRevokedEmail(String toEmail) {
         sendHtmlEmail(
             toEmail,
@@ -91,7 +91,7 @@ public class EmailService {
         );
     }
 
-    @Async
+    @Async("emailTaskExecutor")
     public void sendSubscriptionReminderEmail(
         Organization organization,
         String toEmail,
@@ -121,7 +121,7 @@ public class EmailService {
         );
     }
 
-    @Async
+    @Async("emailTaskExecutor")
     public void sendTrialEndingEmail(
         Organization organization,
         BigDecimal amountDue,
@@ -141,7 +141,7 @@ public class EmailService {
         );
     }
 
-    @Async
+    @Async("emailTaskExecutor")
     public void sendPaymentSuccessEmail(
         Organization organization,
         BigDecimal amountPaid,
@@ -170,7 +170,7 @@ public class EmailService {
         );
     }
 
-    @Async
+    @Async("emailTaskExecutor")
     public void sendPaymentFailedEmail(
         Organization organization,
         BigDecimal amountDue,
@@ -201,7 +201,7 @@ public class EmailService {
         );
     }
 
-    @Async
+    @Async("emailTaskExecutor")
     public void sendSuperAdminSubscriptionPaymentEmail(OrganizationSubscriptionPayment payment) {
         appUserRepository.findByRoleAndStatusAndDeletedFalse(Role.SUPER_ADMIN, UserStatus.ACTIVE)
             .forEach(superAdmin -> sendHtmlEmail(
@@ -213,7 +213,7 @@ public class EmailService {
             ));
     }
 
-    @Async
+    @Async("emailTaskExecutor")
     public void sendPausedNotificationEmail(
         Organization organization,
         BigDecimal amountDue,
@@ -242,7 +242,7 @@ public class EmailService {
         );
     }
 
-    @Async
+    @Async("emailTaskExecutor")
     public void sendDeactivatedNotificationEmail(
         Organization organization,
         BigDecimal amountDue,
@@ -271,7 +271,7 @@ public class EmailService {
         );
     }
 
-    @Async
+    @Async("emailTaskExecutor")
     public void sendMonthlyOrganizationReport(
         Organization organization,
         MonthlyOrganizationReportService.MonthlyOrganizationReport report

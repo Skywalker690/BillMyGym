@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -41,6 +40,7 @@ public class ReminderService {
     private final NotificationDispatcherService notificationDispatcherService;
     private final OrganizationRepository organizationRepository;
     private final NotificationLogRepository notificationLogRepository;
+    private final ReportCacheService reportCacheService;
 
     @Transactional
     public ReminderRunResponse runRemindersForCurrentOrganization() {
@@ -52,13 +52,11 @@ public class ReminderService {
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public ReminderRunResponse runReminders(Long organizationId) {
         return runReminders(organizationId, false);
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public ReminderRunResponse runReminders(Long organizationId, boolean manualTrigger) {
         ManualReminderQuotaResponse quota = manualQuota(organizationId);
         if (manualTrigger && !quota.canRun()) {
@@ -114,6 +112,7 @@ public class ReminderService {
             }
         }
 
+        reportCacheService.evictOrganization(organizationId);
         return new ReminderRunResponse(
             candidates.size(),
             membershipsByOrganization.size(),
@@ -123,7 +122,6 @@ public class ReminderService {
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public ReminderRunResponse runDailyReminders() {
         int processedMemberships = 0;
         int organizationsGrouped = 0;

@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +34,7 @@ public class MemberCreditLedgerService {
     private final MemberCreditLedgerRepository memberCreditLedgerRepository;
     private final MemberRepository memberRepository;
     private final IdempotencyService idempotencyService;
+    private final ReportCacheService reportCacheService;
 
     public BigDecimal balanceForMember(Long memberId, Long organizationId) {
         return scale(memberCreditLedgerRepository.balanceForMember(memberId, organizationId));
@@ -73,13 +73,11 @@ public class MemberCreditLedgerService {
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public MemberWalletResponse manualCredit(Long memberId, Long organizationId, CreditLedgerAdjustmentRequest request, String idempotencyKey) {
         return manualAdjustment(memberId, organizationId, request, idempotencyKey, MemberCreditLedgerTransactionType.CREDIT);
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public MemberWalletResponse manualDebit(Long memberId, Long organizationId, CreditLedgerAdjustmentRequest request, String idempotencyKey) {
         return manualAdjustment(memberId, organizationId, request, idempotencyKey, MemberCreditLedgerTransactionType.DEBIT);
     }
@@ -168,6 +166,7 @@ public class MemberCreditLedgerService {
             IdempotencyResourceType.CREDIT_LEDGER_ENTRY,
             entry.getId()
         );
+        reportCacheService.evictOrganization(organizationId);
         return wallet(memberId, organizationId);
     }
 

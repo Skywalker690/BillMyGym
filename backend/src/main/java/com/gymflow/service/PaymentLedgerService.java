@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,9 +41,9 @@ public class PaymentLedgerService {
     private final MembershipLifecycleService membershipLifecycleService;
     private final AuditLogService auditLogService;
     private final IdempotencyService idempotencyService;
+    private final ReportCacheService reportCacheService;
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public PaymentResponse recordPayment(RecordPaymentRequest request, String idempotencyKey) {
         Long organizationId = requireOrganizationId();
         String requiredKey = idempotencyService.requireKey(idempotencyKey);
@@ -94,6 +93,7 @@ public class PaymentLedgerService {
 
         previousPayments.add(payment);
         PaymentCoverageSummary coverage = membershipLifecycleService.buildCoverageSummary(membership, previousPayments, DUE_TODAY_WINDOW_DAYS);
+        reportCacheService.evictOrganization(organizationId);
         return toResponse(payment, coverage);
     }
 
@@ -153,13 +153,13 @@ public class PaymentLedgerService {
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public void softDeletePayment(Long paymentId) {
         Long organizationId = requireOrganizationId();
         MemberPayment payment = memberPaymentRepository.findByIdAndOrganizationIdAndDeletedFalse(paymentId, organizationId)
             .orElseThrow(() -> new NotFoundException("Payment not found"));
         payment.setDeleted(true);
         payment.setDeletedAt(OffsetDateTime.now(APP_ZONE));
+        reportCacheService.evictOrganization(organizationId);
     }
 
     private Long requireOrganizationId() {

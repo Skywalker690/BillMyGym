@@ -150,7 +150,7 @@ const statusStyles: Record<string, string> = {
 
 const includedFeatures = [
   { icon: Users, label: "Member and membership management" },
-  { icon: CalendarDays, label: "Attendance and expiry tracking" },
+  { icon: CalendarDays, label: "Membership renewals and expiry tracking" },
   { icon: BarChart3, label: "Revenue dashboards, reports, analytics" },
   { icon: FileDown, label: "Custom date ranges and report exports" },
   { icon: MessageCircle, label: "WhatsApp reminders and renewal digests" },
@@ -471,8 +471,7 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
                 </div>
               </div>
               <div className={immersive ? "mt-5 grid gap-3 text-sm font-semibold text-slate-200" : "mt-5 grid gap-3 text-sm font-semibold text-slate-600"}>
-                <InfoLine label="Active members" value={String(invoice.currentActiveMembers)} />
-                <InfoLine label="Included active members" value={String(includedActiveMembers)} />
+                <InfoLine label="Active member usage" value={`${invoice.currentActiveMembers} / ${includedActiveMembers}`} />
                 <InfoLine label="Additional member rate" value={`${money.format(invoice.overageRate)} / member`} />
                 <InfoLine label="Current billing period" value={currentPeriod} />
                 <InfoLine label="Payment status" value={String(paymentStatus).replaceAll("_", " ")} />
@@ -496,9 +495,8 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
           <div className={immersive ? "rounded-[1.8rem] border border-white/10 bg-white/[0.06] p-6" : "glass-panel rounded-[1.8rem] p-6"}>
             <div className={immersive ? "text-[10px] font-black uppercase tracking-[0.24em] text-emerald-200" : "text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700"}>Active member billing</div>
             <h2 className={immersive ? "mt-2 text-2xl font-black text-white" : "mt-2 text-2xl font-black text-slate-950"}>Usage snapshot</h2>
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <Metric label="Current active" value={invoice.currentActiveMembers} immersive={immersive} />
-              <Metric label="Included" value={includedActiveMembers} immersive={immersive} />
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <Metric label="Active / included" value={`${invoice.currentActiveMembers} / ${includedActiveMembers}`} immersive={immersive} />
               <Metric label="Additional" value={invoice.additionalActiveMembers} immersive={immersive} />
             </div>
             <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-200/70">
@@ -515,8 +513,7 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
             <h2 className={immersive ? "mt-2 text-2xl font-black text-white" : "mt-2 text-2xl font-black text-slate-950"}>Estimated invoice line items</h2>
             <div className="mt-5 space-y-3">
               <InvoiceRow label="Base subscription fee" value={money.format(invoice.baseAmount)} immersive={immersive} />
-              <InvoiceRow label="Included active members" value={String(includedActiveMembers)} immersive={immersive} />
-              <InvoiceRow label="Current active members" value={String(invoice.currentActiveMembers)} immersive={immersive} />
+              <InvoiceRow label="Active member usage" value={`${invoice.currentActiveMembers} / ${includedActiveMembers}`} immersive={immersive} />
               <InvoiceRow label="Additional members" value={String(invoice.additionalActiveMembers)} immersive={immersive} />
               <InvoiceRow label="Additional charges" value={money.format(invoice.overageAmount)} immersive={immersive} />
               <InvoiceRow label="Total amount" value={money.format(invoice.totalAmount)} strong immersive={immersive} />
@@ -669,7 +666,7 @@ function InfoLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Metric({ label, value, immersive }: { label: string; value: number; immersive: boolean }) {
+function Metric({ label, value, immersive }: { label: string; value: string | number; immersive: boolean }) {
   return (
     <div className={immersive ? "rounded-[1.2rem] border border-white/10 bg-white/[0.05] p-4" : "rounded-[1.2rem] border border-white/80 bg-white/75 p-4 shadow-sm"}>
       <div className={immersive ? "text-[10px] font-black uppercase tracking-[0.2em] text-slate-300" : "text-[10px] font-black uppercase tracking-[0.2em] text-slate-500"}>{label}</div>

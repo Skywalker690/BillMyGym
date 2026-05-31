@@ -17,13 +17,25 @@ import org.springframework.data.repository.query.Param;
 
 public interface OrganizationRepository extends JpaRepository<Organization, Long> {
 
+    interface OrganizationPlanCountProjection {
+        SubscriptionPlan getSubscriptionPlan();
+        Long getCount();
+    }
+
     Optional<Organization> findByIdAndDeletedFalse(Long id);
 
     Optional<Organization> findByReferralCode(String referralCode);
 
     List<Organization> findAllByDeletedFalse();
 
+    long countByDeletedFalse();
+
     List<Organization> findAllByDeletedFalseAndStatus(OrganizationStatus status);
+
+    List<Organization> findAllByDeletedFalseAndOrganizationTypeAndStatus(
+            OrganizationType organizationType,
+            OrganizationStatus status
+    );
 
     long countByDeletedFalseAndStatus(OrganizationStatus status);
 
@@ -32,6 +44,34 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
     long countByDeletedFalseAndOrganizationType(OrganizationType organizationType);
 
     long countByDeletedFalseAndSubscriptionPlan(SubscriptionPlan subscriptionPlan);
+
+    @Query("""
+        select organization.subscriptionPlan as subscriptionPlan,
+               count(organization) as count
+        from Organization organization
+        where organization.deleted = false
+          and organization.organizationType = :organizationType
+          and organization.status = :status
+        group by organization.subscriptionPlan
+        """)
+    List<OrganizationPlanCountProjection> countBySubscriptionPlanForOrganizationTypeAndStatus(
+            @Param("organizationType") OrganizationType organizationType,
+            @Param("status") OrganizationStatus status
+    );
+
+    @Query("""
+        select organization.subscriptionPlan as subscriptionPlan,
+               count(organization) as count
+        from Organization organization
+        where organization.deleted = false
+          and organization.organizationType = :organizationType
+          and organization.status <> :excludedStatus
+        group by organization.subscriptionPlan
+        """)
+    List<OrganizationPlanCountProjection> countBySubscriptionPlanForOrganizationTypeExcludingStatus(
+            @Param("organizationType") OrganizationType organizationType,
+            @Param("excludedStatus") OrganizationStatus excludedStatus
+    );
 
     long countByDeletedFalseAndCreatedAtBetween(
             OffsetDateTime start,

@@ -5,8 +5,13 @@ import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.repository.MemberMembershipRepository;
 import java.math.BigDecimal;
+import java.util.Collection;
+import java.util.List;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -25,21 +30,80 @@ public class SubscriptionPricingService {
     private final PlanAccessService planAccessService;
 
     public SubscriptionPriceBreakdown currentPrice(Organization organization) {
-        return priceFor(organization, planAccessService.resolvePlan(organization));
-    }
-
-    public SubscriptionPriceBreakdown priceFor(Organization organization, SubscriptionPlan selectedPlan) {
-        SubscriptionPlan plan = BILLMYGYM_PLAN;
+        SubscriptionPlan plan = planAccessService.resolvePlan(organization);
         if (organization.getOrganizationType() == OrganizationType.DEMO) {
-            return new SubscriptionPriceBreakdown(plan, BigDecimal.ZERO, 0L, null, 0L, BigDecimal.ZERO, BigDecimal.ZERO);
+            return priceFor(organization, plan, 0L);
         }
-
         long activeMembers = memberMembershipRepository.countBillableActiveMembers(
             organization.getId(),
             LocalDate.now(APP_ZONE)
         );
+        return priceFor(organization, plan, activeMembers);
+    }
+
+    public SubscriptionPriceBreakdown priceFor(Organization organization, SubscriptionPlan selectedPlan) {
+        return currentPrice(organization);
+    }
+
+    public Map<Long, SubscriptionPriceBreakdown> currentPrices(List<Organization> organizations) {
+        if (organizations == null || organizations.isEmpty()) {
+            return Map.of();
+        }
+        LocalDate today = LocalDate.now(APP_ZONE);
+        List<Long> billableOrganizationIds = organizations.stream()
+            .filter(organization -> organization.getOrganizationType() != OrganizationType.DEMO)
+            .map(Organization::getId)
+            .toList();
+        Map<Long, Long> activeMembersByOrganizationId = billableOrganizationIds.isEmpty()
+            ? Map.of()
+            : memberMembershipRepository.countBillableActiveMembersByOrganizationIds(billableOrganizationIds, today)
+                .stream()
+                .collect(Collectors.toMap(
+                    MemberMembershipRepository.OrganizationActiveMemberCountProjection::getOrganizationId,
+                    projection -> projection.getActiveMembers() == null ? 0L : projection.getActiveMembers()
+                ));
+        return organizations.stream()
+            .collect(Collectors.toMap(
+                Organization::getId,
+                organization -> priceFor(
+                    organization,
+                    planAccessService.resolvePlan(organization),
+                    activeMembersByOrganizationId.getOrDefault(organization.getId(), 0L)
+                )
+            ));
+    }
+
+    public BigDecimal projectedRevenue(Collection<Organization> organizations) {
+        if (organizations == null || organizations.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        return currentPrices(List.copyOf(organizations)).values().stream()
+            .map(SubscriptionPriceBreakdown::totalAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public Map<SubscriptionPlan, BigDecimal> projectedRevenueByPlan(List<Organization> organizations) {
+        if (organizations == null || organizations.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, SubscriptionPriceBreakdown> pricingByOrganizationId = currentPrices(organizations);
+        return organizations.stream()
+            .collect(Collectors.groupingBy(
+                organization -> planAccessService.resolvePlan(organization),
+                Collectors.mapping(
+                    organization -> pricingByOrganizationId.get(organization.getId()).totalAmount(),
+                    Collectors.reducing(BigDecimal.ZERO, Function.identity(), BigDecimal::add)
+                )
+            ));
+    }
+
+    public SubscriptionPriceBreakdown priceFor(Organization organization, SubscriptionPlan selectedPlan, long activeMembers) {
         BigDecimal baseAmount = BASE_MONTHLY_AMOUNT;
         Integer includedMembers = INCLUDED_ACTIVE_MEMBERS;
+        SubscriptionPlan plan = selectedPlan == null ? BILLMYGYM_PLAN : selectedPlan;
+        if (organization.getOrganizationType() == OrganizationType.DEMO) {
+            return new SubscriptionPriceBreakdown(plan, BigDecimal.ZERO, 0L, null, 0L, BigDecimal.ZERO, BigDecimal.ZERO);
+        }
         long overageMembers = Math.max(activeMembers - includedMembers, 0);
         BigDecimal overageRate = OVERAGE_PER_ACTIVE_MEMBER;
         BigDecimal overageAmount = overageRate.multiply(BigDecimal.valueOf(overageMembers));

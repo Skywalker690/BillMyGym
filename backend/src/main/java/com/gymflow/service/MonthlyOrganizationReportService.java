@@ -3,13 +3,13 @@ package com.gymflow.service;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.Organization;
-import com.gymflow.domain.OrganizationUsageStats;
+import com.gymflow.domain.UsageMetric;
 import com.gymflow.domain.enums.PaymentStatus;
 import com.gymflow.repository.AuditLogRepository;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberPaymentRepository;
 import com.gymflow.repository.MemberRepository;
-import com.gymflow.repository.OrganizationUsageStatsRepository;
+import com.gymflow.repository.UsageMetricRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -32,7 +32,7 @@ public class MonthlyOrganizationReportService {
     private final MemberRepository memberRepository;
     private final MemberMembershipRepository memberMembershipRepository;
     private final MemberPaymentRepository memberPaymentRepository;
-    private final OrganizationUsageStatsRepository organizationUsageStatsRepository;
+    private final UsageMetricRepository usageMetricRepository;
     private final AuditLogRepository auditLogRepository;
 
     public MonthlyOrganizationReport buildReport(Organization organization, YearMonth reportMonth) {
@@ -86,7 +86,11 @@ public class MonthlyOrganizationReportService {
             end.toInstant()
         );
 
-        OrganizationUsageStats usageStats = organizationUsageStatsRepository.findSnapshotOrEmpty(organization, reportMonth);
+        UsageMetric usageStats = usageMetricRepository.findByOrganizationIdAndYearAndMonthAndDeletedFalse(
+            organization.getId(),
+            reportMonth.getYear(),
+            reportMonth.getMonthValue()
+        ).orElseGet(() -> UsageMetric.empty(organization, reportMonth));
         return new MonthlyOrganizationReport(
             reportMonth,
             reportMonth.format(LABEL_FORMATTER),
@@ -97,8 +101,8 @@ public class MonthlyOrganizationReportService {
             deactivatedMembers,
             collectedRevenue,
             pendingRevenue,
-            usageStats.getWhatsappSentCount(),
-            usageStats.getEmailSentCount()
+            usageStats.getMonthlyWhatsappCount(),
+            usageStats.getMonthlyEmailCount()
         );
     }
 

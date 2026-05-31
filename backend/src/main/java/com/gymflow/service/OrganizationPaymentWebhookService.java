@@ -7,17 +7,14 @@ import com.gymflow.api.error.BadRequestException;
 import com.gymflow.api.error.ForbiddenException;
 import com.gymflow.api.error.NotFoundException;
 import com.gymflow.domain.Organization;
-import com.gymflow.domain.OrganizationSubscription;
 import com.gymflow.domain.OrganizationSubscriptionPayment;
 import com.gymflow.domain.ProcessedWebhookEvent;
 import com.gymflow.domain.UsageMetric;
 import com.gymflow.domain.enums.AuditCategory;
 import com.gymflow.domain.enums.SubscriptionPlan;
 import com.gymflow.domain.enums.SubscriptionPaymentStatus;
-import com.gymflow.domain.enums.SubscriptionStatus;
 import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.repository.OrganizationSubscriptionPaymentRepository;
-import com.gymflow.repository.OrganizationSubscriptionRepository;
 import com.gymflow.repository.ProcessedWebhookEventRepository;
 import com.gymflow.security.SecurityUtils;
 import com.gymflow.shared.money.MoneyUtils;
@@ -38,7 +35,6 @@ public class OrganizationPaymentWebhookService {
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final OrganizationSubscriptionPaymentRepository paymentRepository;
-    private final OrganizationSubscriptionRepository subscriptionRepository;
     private final OrganizationRepository organizationRepository;
     private final ProcessedWebhookEventRepository processedWebhookEventRepository;
     private final UsageMetricService usageMetricService;
@@ -183,19 +179,6 @@ public class OrganizationPaymentWebhookService {
         }
 
         billingLifecycleService.activatePaidPeriod(organization, periodStart, periodEnd);
-
-        OrganizationSubscription subscription = subscriptionRepository
-            .findTopByOrganizationIdAndDeletedFalseOrderByEndDateDesc(organization.getId())
-            .filter(existing -> existing.getStartDate().equals(periodStart)
-                && existing.getEndDate().equals(periodEnd))
-            .orElseGet(OrganizationSubscription::new);
-        subscription.setOrganization(organization);
-        subscription.setStartDate(periodStart);
-        subscription.setEndDate(periodEnd);
-        subscription.setAmount(payment.getAmount());
-        subscription.setStatus(SubscriptionStatus.ACTIVE);
-        subscription.setRazorpaySubscriptionId(payment.getRazorpaySubscriptionId());
-        subscriptionRepository.save(subscription);
 
         UsageMetric usage = usageMetricService.refreshMonthlySnapshot(organization);
         applicationEventPublisher.publishEvent(new com.gymflow.subscription.event.SubscriptionPaymentPaidEvent(
