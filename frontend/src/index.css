@@ -49,13 +49,13 @@
 }
 
 :root {
-    --gymflow-ink: #0f172a;
-    --gymflow-forest: #14532d;
-    --gymflow-green: #16a34a;
-    --gymflow-mint: #e7f6ee;
-    --gymflow-page: #eef4f0;
-    --gymflow-amber-bg: #fff7ed;
-    --gymflow-amber-border: #fed7aa;
+    --billmygym-ink: #0f172a;
+    --billmygym-forest: #14532d;
+    --billmygym-green: #16a34a;
+    --billmygym-mint: #e7f6ee;
+    --billmygym-page: #eef4f0;
+    --billmygym-amber-bg: #fff7ed;
+    --billmygym-amber-border: #fed7aa;
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
@@ -128,9 +128,17 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
   body {
     @apply bg-background text-foreground antialiased min-h-screen relative overflow-x-hidden;
-    background-color: var(--gymflow-page);
+    background-color: var(--billmygym-page);
     background-image:
       radial-gradient(circle at top left, rgba(187,247,208,0.7) 0, transparent 32%),
       radial-gradient(circle at top right, rgba(255,247,237,0.95) 0, transparent 34%),
@@ -163,7 +171,7 @@
       0 28px 55px -34px rgba(15, 23, 42, 0.55),
       inset 0 1px 0 rgba(255, 255, 255, 0.82);
   }
-  .gymflow-shell {
+  .billmygym-shell {
     background:
       radial-gradient(circle at top left, rgba(187,247,208,0.55) 0, transparent 28%),
       radial-gradient(circle at top right, rgba(255,247,237,0.75) 0, transparent 30%),
@@ -173,7 +181,7 @@
       0 24px 60px -32px rgba(15,23,42,0.32),
       inset 0 1px 0 rgba(255,255,255,0.92);
   }
-  .gymflow-dark-shell {
+  .billmygym-dark-shell {
     background:
       radial-gradient(circle at top right, rgba(34,197,94,0.16) 0, transparent 28%),
       linear-gradient(180deg, rgba(15,23,42,0.98) 0%, rgba(10,18,31,0.98) 100%);

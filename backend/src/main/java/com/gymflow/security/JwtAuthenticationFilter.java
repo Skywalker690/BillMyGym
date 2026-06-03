@@ -23,6 +23,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final Set<String> PUBLIC_AUTH_ENDPOINTS = Set.of(
         "/api/auth/login",
         "/api/auth/google-login",
+        "/api/auth/legal-policy",
         "/api/auth/forgot-password",
         "/api/auth/verify-otp",
         "/api/auth/change-password"

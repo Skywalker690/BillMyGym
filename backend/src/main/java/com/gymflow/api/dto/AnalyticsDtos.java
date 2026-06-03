@@ -7,7 +7,53 @@ public class AnalyticsDtos {
 
     public record PlatformAnalyticsResponse(
         long totalOrganizations,
-        long activeSubscriptions
+        long activeOrganizations,
+        long trialOrganizations,
+        long pilotOrganizations,
+        long pausedOrganizations,
+        long overdueOrganizations,
+        long deactivatedOrganizations,
+        long expiredOrganizations,
+        long activeSubscriptionRecords,
+        BigDecimal monthlySaasRevenue,
+        BigDecimal previousMonthlySaasRevenue,
+        int revenueGrowthPercent,
+        BigDecimal lifetimeSaasRevenue,
+        BigDecimal projectedMonthlyRevenue,
+        long paymentFailures,
+        long pendingPayments,
+        long whatsappUsage,
+        long emailUsage,
+        long totalCommunicationUsage,
+        long renewalsDueInSevenDays,
+        long pilotsEndingInThirtyDays,
+        long currentMonthNewOrganizations,
+        long previousMonthNewOrganizations,
+        int organizationGrowthPercent,
+        List<PlatformSubscriptionMonthResponse> monthlySubscriptionActivity,
+        List<PlatformBreakdownResponse> organizationsByStatus,
+        List<PlatformBreakdownResponse> organizationsBySubscriptionPlan,
+        List<PlatformBreakdownResponse> paymentsByStatus,
+        List<PlatformBreakdownResponse> lifecycleAlerts
+    ) {
+    }
+
+    public record PlatformBreakdownResponse(
+        String key,
+        String label,
+        long count,
+        BigDecimal amount,
+        int percentage
+    ) {
+    }
+
+    public record PlatformSubscriptionMonthResponse(
+        String month,
+        String label,
+        long paidSubscriptions,
+        long pendingSubscriptions,
+        BigDecimal paidAmount,
+        BigDecimal pendingAmount
     ) {
     }
 
@@ -23,7 +69,17 @@ public class AnalyticsDtos {
         BigDecimal expectedRevenue,
         BigDecimal overdueRevenue,
         long activeMembers,
-        long prepaidMembers
+        long prepaidMembers,
+        long activeMembersCollected,
+        long activeMembersPendingCollection
+    ) {
+    }
+
+    public record RevenueSegmentationResponse(
+        long admissionsThisMonth,
+        BigDecimal admissionRevenue,
+        BigDecimal recurringRevenue,
+        BigDecimal totalRevenue
     ) {
     }
 
@@ -39,6 +95,23 @@ public class AnalyticsDtos {
 
     public record MonthlyRevenueResponse(
         List<MonthlyRevenuePoint> months
+    ) {
+    }
+
+    public record PlatformYearlyReportMonth(
+        int month,
+        String label,
+        long organizationsJoined,
+        BigDecimal revenue
+    ) {
+    }
+
+    public record PlatformYearlyReportResponse(
+        int year,
+        List<Integer> availableYears,
+        long totalOrganizationsJoined,
+        BigDecimal totalRevenue,
+        List<PlatformYearlyReportMonth> months
     ) {
     }
 }

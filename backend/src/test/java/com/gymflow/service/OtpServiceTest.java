@@ -9,7 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.gymflow.domain.Otp;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,14 +29,14 @@ class OtpServiceTest {
     void verifyDoesNotConsumeOtp() {
         Otp otp = otp("123456");
         when(otpRepository.findByEmailAndOtpCodeAndVerifiedFalseAndExpiresAtAfter(
-            eq("admin@gymflow.local"),
+            eq("admin@billmygym.local"),
             eq("123456"),
-            any(LocalDateTime.class)
+            any(Instant.class)
         )).thenReturn(Optional.of(otp));
 
         OtpService otpService = new OtpService(otpRepository, emailService);
 
-        assertTrue(otpService.isOtpValid("admin@gymflow.local", "123456"));
+        assertTrue(otpService.isOtpValid("admin@billmygym.local", "123456"));
         assertFalse(Boolean.TRUE.equals(otp.getVerified()));
     }
 
@@ -44,14 +44,14 @@ class OtpServiceTest {
     void consumeMarksOtpAsUsed() {
         Otp otp = otp("654321");
         when(otpRepository.findByEmailAndOtpCodeAndVerifiedFalseAndExpiresAtAfter(
-            eq("admin@gymflow.local"),
+            eq("admin@billmygym.local"),
             eq("654321"),
-            any(LocalDateTime.class)
+            any(Instant.class)
         )).thenReturn(Optional.of(otp));
 
         OtpService otpService = new OtpService(otpRepository, emailService);
 
-        assertTrue(otpService.consumeOtp("admin@gymflow.local", "654321"));
+        assertTrue(otpService.consumeOtp("admin@billmygym.local", "654321"));
         assertTrue(Boolean.TRUE.equals(otp.getVerified()));
     }
 
@@ -59,22 +59,23 @@ class OtpServiceTest {
     void generateAndSendOtpPersistsAndEmailsCode() {
         OtpService otpService = new OtpService(otpRepository, emailService);
 
-        otpService.generateAndSendOtp("admin@gymflow.local");
+        otpService.generateAndSendOtp("admin@billmygym.local");
 
-        verify(otpRepository).deleteByEmail("admin@gymflow.local");
+        verify(otpRepository).deleteByEmail("admin@billmygym.local");
         verify(otpRepository).save(any(Otp.class));
         verify(emailService).sendOtpEmail(
-            eq("admin@gymflow.local"),
+            eq("admin@billmygym.local"),
             matches("\\d{6}")
         );
     }
 
     private Otp otp(String code) {
         return Otp.builder()
-            .email("admin@gymflow.local")
+            .email("admin@billmygym.local")
             .otpCode(code)
-            .expiresAt(LocalDateTime.now().plusMinutes(10))
+            .expiresAt(Instant.now().plusSeconds(600))
             .verified(false)
             .build();
     }
 }
+

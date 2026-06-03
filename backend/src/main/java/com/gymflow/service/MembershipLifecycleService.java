@@ -6,20 +6,25 @@ import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.enums.MembershipStatus;
 import com.gymflow.domain.enums.PaymentStatus;
+import com.gymflow.domain.enums.PaymentType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
 public class MembershipLifecycleService {
 
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
+    private static final int DUE_TODAY_WINDOW_DAYS = 0;
+
     public void refreshMembership(MemberMembership membership, int reminderDaysBeforeExpiry) {
-        if (membership.getStatus() == MembershipStatus.COMPLETED) {
+        if (membership.getStatus() == MembershipStatus.OVERDUE) {
             return;
         }
         membership.setStatus(resolveMembershipStatus(
-            LocalDate.now(),
+            LocalDate.now(APP_ZONE),
             membership.getEndDate(),
             reminderDaysBeforeExpiry
         ));
@@ -39,9 +44,6 @@ public class MembershipLifecycleService {
         if (membershipEndDate.isBefore(today)) {
             return MembershipStatus.OVERDUE;
         }
-        if (membershipEndDate.isEqual(today)) {
-            return MembershipStatus.EXPIRED;
-        }
         return MembershipStatus.ACTIVE;
     }
 
@@ -50,7 +52,7 @@ public class MembershipLifecycleService {
             return false;
         }
         long daysUntilExpiry = java.time.temporal.ChronoUnit.DAYS.between(today, membershipEndDate);
-        return daysUntilExpiry <= Math.max(reminderDaysBeforeExpiry, 0);
+        return daysUntilExpiry <= DUE_TODAY_WINDOW_DAYS;
     }
 
     public PaymentCoverageSummary buildCoverageSummary(
@@ -58,21 +60,47 @@ public class MembershipLifecycleService {
         List<MemberPayment> payments,
         int reminderDaysBeforeExpiry
     ) {
-        BigDecimal paidAmount = successfulPaymentTotal(payments);
-        BigDecimal pendingAmount = membership.getPlanAmount().subtract(paidAmount).max(BigDecimal.ZERO);
-        PaymentStatus paymentStatus = resolveCoverageStatus(membership.getPlanAmount(), paidAmount);
+        return buildCoverageSummary(membership, payments, BigDecimal.ZERO, reminderDaysBeforeExpiry);
+    }
+
+    public PaymentCoverageSummary buildCoverageSummary(
+        MemberMembership membership,
+        List<MemberPayment> payments,
+        BigDecimal appliedCreditAmount,
+        int reminderDaysBeforeExpiry
+    ) {
+        return buildCoverageSummary(
+            membership,
+            successfulPaymentTotal(payments),
+            appliedCreditAmount,
+            reminderDaysBeforeExpiry
+        );
+    }
+
+    public PaymentCoverageSummary buildCoverageSummary(
+        MemberMembership membership,
+        BigDecimal paidAmount,
+        BigDecimal appliedCreditAmount,
+        int reminderDaysBeforeExpiry
+    ) {
+        BigDecimal normalizedAppliedCredit = appliedCreditAmount == null ? BigDecimal.ZERO : appliedCreditAmount;
+        BigDecimal coveredAmount = paidAmount.add(normalizedAppliedCredit);
+        BigDecimal pendingAmount = membership.getPlanAmount().subtract(coveredAmount).max(BigDecimal.ZERO);
+        PaymentStatus paymentStatus = resolveCoverageStatus(membership.getPlanAmount(), coveredAmount);
         return new PaymentCoverageSummary(
             membership.getPlanAmount(),
             paidAmount,
+            normalizedAppliedCredit,
             pendingAmount,
             paymentStatus,
-            isExpiringSoon(LocalDate.now(), membership.getEndDate(), reminderDaysBeforeExpiry)
+            isExpiringSoon(LocalDate.now(APP_ZONE), membership.getEndDate(), reminderDaysBeforeExpiry)
         );
     }
 
     public BigDecimal successfulPaymentTotal(List<MemberPayment> payments) {
         return payments.stream()
-            .filter(payment -> payment.getPaymentStatus() == PaymentStatus.PAID || payment.getPaymentStatus() == PaymentStatus.PARTIAL)
+            .filter(payment -> payment.getPaymentStatus() == PaymentStatus.PAID)
+            .filter(this::isMembershipCoveragePayment)
             .map(MemberPayment::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
@@ -81,9 +109,12 @@ public class MembershipLifecycleService {
         if (paidAmount.compareTo(planAmount) >= 0) {
             return PaymentStatus.PAID;
         }
-        if (paidAmount.compareTo(BigDecimal.ZERO) > 0) {
-            return PaymentStatus.PARTIAL;
-        }
         return PaymentStatus.PENDING;
+    }
+
+    private boolean isMembershipCoveragePayment(MemberPayment payment) {
+        return payment.getPaymentType() == PaymentType.MEMBERSHIP
+            || payment.getPaymentType() == PaymentType.NEW_MEMBERSHIP
+            || payment.getPaymentType() == PaymentType.RENEWAL;
     }
 }

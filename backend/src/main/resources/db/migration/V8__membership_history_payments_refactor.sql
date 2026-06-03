@@ -57,7 +57,10 @@ SELECT
     COALESCE(m.membership_start_date, m.joining_date, CURRENT_DATE),
     COALESCE(m.membership_end_date, COALESCE(m.membership_start_date, m.joining_date, CURRENT_DATE) + INTERVAL '1 month'),
     CASE
-        WHEN m.membership_status = 'RENEWED' THEN 'COMPLETED'
+        WHEN m.membership_status = 'RENEWED' THEN 'DEACTIVATED'
+        WHEN m.membership_status = 'EXPIRED' THEN 'OVERDUE'
+        WHEN m.membership_status = 'COMPLETED' THEN 'DEACTIVATED'
+        WHEN m.membership_status = 'PENDING' THEN 'ACTIVE'
         ELSE COALESCE(m.membership_status, 'ACTIVE')
     END,
     COALESCE(m.renewed, FALSE),

@@ -2,12 +2,16 @@ package com.gymflow.repository;
 
 import com.gymflow.domain.Member;
 import com.gymflow.domain.enums.MemberStatus;
+import jakarta.persistence.LockModeType;
+import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,9 +22,46 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     Optional<Member> findByIdAndOrganizationIdAndDeletedFalse(Long id, Long organizationId);
 
-    Optional<Member> findByOrganizationIdAndPhoneAndDeletedFalse(Long organizationId, String phone);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = "organization")
+    @Query("""
+        select member
+        from Member member
+        where member.id = :id
+          and member.organization.id = :organizationId
+          and member.deleted = false
+        """)
+    Optional<Member> findByIdAndOrganizationIdAndDeletedFalseForUpdate(@Param("id") Long id, @Param("organizationId") Long organizationId);
 
     long countByOrganizationIdAndDeletedFalseAndStatus(Long organizationId, MemberStatus status);
+
+    long countByOrganizationIdAndDeletedFalseAndStatusIn(Long organizationId, Collection<MemberStatus> statuses);
+
+    long countByOrganizationIdAndDeletedFalseAndCreatedAtBetween(
+        Long organizationId,
+        OffsetDateTime start,
+        OffsetDateTime end
+    );
+
+    @Query(
+        value = """
+            select extract(year from created_at)::int as year,
+                   extract(month from created_at)::int as month,
+                   count(*) as total
+            from members
+            where organization_id = :organizationId
+              and deleted = false
+              and created_at >= :start
+              and created_at < :end
+            group by extract(year from created_at), extract(month from created_at)
+            """,
+        nativeQuery = true
+    )
+    List<MonthlyMemberJoinProjection> countJoinedMembersByMonth(
+        @Param("organizationId") Long organizationId,
+        @Param("start") OffsetDateTime start,
+        @Param("end") OffsetDateTime end
+    );
 
     @EntityGraph(attributePaths = "organization")
     @Query("""
@@ -29,13 +70,9 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     where member.organization.id = :organizationId
       and member.deleted = false
       and (
-          :search is null
-          or lower(member.fullName) like lower(concat('%', cast(:search as string), '%'))
-          or lower(member.phone) like lower(concat('%', cast(:search as string), '%'))
-          or (
-              member.email is not null
-              and lower(member.email) like lower(concat('%', cast(:search as string), '%'))
-          )
+          :pattern is null
+          or lower(member.fullName) like :pattern
+          or lower(member.phone) like :pattern
       )
       and (:memberStatus is null or member.status = :memberStatus)
       and (
@@ -58,17 +95,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
                   where membership.member = member
                     and membership.deleted = false
                     and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
-                    and membership.endDate between :today and :expiringThrough
-              )
-          )
-          or (
-              :membershipStatus = 'EXPIRED'
-              and exists (
-                  select membership.id
-                  from MemberMembership membership
-                  where membership.member = member
-                    and membership.deleted = false
-                    and membership.status = com.gymflow.domain.enums.MembershipStatus.EXPIRED
+                      and membership.endDate = :today
               )
           )
           or (
@@ -85,13 +112,85 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     """)
     Page<Member> searchDirectory(
         @Param("organizationId") Long organizationId,
-        @Param("search") String search,
+        @Param("pattern") String pattern,
         @Param("memberStatus") MemberStatus memberStatus,
         @Param("membershipStatus") String membershipStatus,
         @Param("today") java.time.LocalDate today,
-        @Param("expiringThrough") java.time.LocalDate expiringThrough,
+        Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = "organization")
+    @Query("""
+    select member
+    from Member member
+    where member.organization.id = :organizationId
+      and member.deleted = false
+      and (
+          :pattern is null
+          or lower(member.fullName) like :pattern
+          or lower(member.phone) like :pattern
+      )
+      and member.status in :memberStatuses
+      and (
+          :membershipStatus is null
+          or (
+              :membershipStatus = 'ACTIVE'
+              and exists (
+                  select membership.id
+                  from MemberMembership membership
+                  where membership.member = member
+                    and membership.deleted = false
+                    and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
+              )
+          )
+          or (
+              :membershipStatus = 'EXPIRING_SOON'
+              and exists (
+                  select membership.id
+                  from MemberMembership membership
+                  where membership.member = member
+                    and membership.deleted = false
+                    and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
+                      and membership.endDate = :today
+              )
+          )
+          or (
+              :membershipStatus = 'OVERDUE'
+              and exists (
+                  select membership.id
+                  from MemberMembership membership
+                  where membership.member = member
+                    and membership.deleted = false
+                    and membership.status = com.gymflow.domain.enums.MembershipStatus.OVERDUE
+              )
+          )
+      )
+    """)
+    Page<Member> searchDirectoryByStatuses(
+        @Param("organizationId") Long organizationId,
+        @Param("pattern") String pattern,
+        @Param("memberStatuses") Collection<MemberStatus> memberStatuses,
+        @Param("membershipStatus") String membershipStatus,
+        @Param("today") java.time.LocalDate today,
         Pageable pageable
     );
 
     long countByOrganizationIdAndDeletedFalse(Long organizationId);
+
+    @Query("""
+        select member.phone
+        from Member member
+        where member.organization.id = :organizationId
+          and member.deleted = false
+          and member.phone is not null
+        """)
+    List<String> findPhonesByOrganizationIdAndDeletedFalse(@Param("organizationId") Long organizationId);
+
+    interface MonthlyMemberJoinProjection {
+        Integer getYear();
+
+        Integer getMonth();
+
+        Long getTotal();
+    }
 }

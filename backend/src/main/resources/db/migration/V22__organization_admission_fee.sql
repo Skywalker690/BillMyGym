@@ -1,0 +1,2 @@
+ALTER TABLE organizations
+    ADD COLUMN IF NOT EXISTS admission_fee NUMERIC(12, 2) NOT NULL DEFAULT 0.00;

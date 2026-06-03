@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 
 @Service
@@ -35,7 +35,7 @@ public class OtpService {
         Otp otp = Otp.builder()
                 .email(email)
                 .otpCode(otpCode)
-                .expiresAt(LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES))
+                .expiresAt(Instant.now().plusSeconds(OTP_EXPIRY_MINUTES * 60L))
                 .verified(false)
                 .build();
 
@@ -51,7 +51,7 @@ public class OtpService {
         return otpRepository.findByEmailAndOtpCodeAndVerifiedFalseAndExpiresAtAfter(
             email,
             otpCode,
-            LocalDateTime.now()
+            Instant.now()
         ).isPresent();
     }
 
@@ -60,7 +60,7 @@ public class OtpService {
         Optional<Otp> otpOptional = otpRepository.findByEmailAndOtpCodeAndVerifiedFalseAndExpiresAtAfter(
             email,
             otpCode,
-            LocalDateTime.now()
+            Instant.now()
         );
 
         if (otpOptional.isEmpty()) {
@@ -74,6 +74,6 @@ public class OtpService {
     @Transactional
     @Scheduled(cron = "0 0 * * * *")
     public void deleteExpiredOtp() {
-        otpRepository.deleteByExpiresAtBefore(LocalDateTime.now());
+        otpRepository.deleteByExpiresAtBefore(Instant.now());
     }
 }

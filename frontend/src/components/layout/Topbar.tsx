@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Bell,
   Building2,
   ChevronDown,
+  FolderPlus,
   LogOut,
   Menu,
   PanelLeft,
@@ -46,6 +46,7 @@ export function Topbar({
   const location = useLocation();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,13 +63,66 @@ export function Topbar({
     setProfileOpen(false);
   }, [location.pathname]);
 
-  const primaryName = (user?.name || user?.email || "GymFlow").split(" ")[0];
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const primaryName = (user?.name || user?.email || "BillMyGym").split(" ")[0];
   const initials = (user?.name || user?.email || "G").trim().charAt(0).toUpperCase();
-  const isOrgAdmin = role === "ORG_ADMIN";
+  const isSuperAdmin = role === "SUPER_ADMIN";
+  const quickLinks = isSuperAdmin
+    ? [
+        {
+          to: "/app/platform-overview",
+          label: "Platform",
+          icon: Shield,
+          iconClassName: "text-emerald-700",
+        },
+        {
+          to: "/app/organizations",
+          label: "Organizations",
+          icon: Building2,
+          iconClassName: "text-emerald-600",
+        },
+        {
+          to: "/app/organizations/new",
+          label: "Add Org",
+          icon: FolderPlus,
+          iconClassName: "text-emerald-700",
+        },
+      ]
+    : [
+        {
+          to: "/app/organization",
+          label: "Organization",
+          icon: Building2,
+          iconClassName: "text-emerald-600",
+        },
+        {
+          to: "/app/settings",
+          label: "Settings",
+          icon: Settings,
+          iconClassName: "text-emerald-700",
+        }
+      ];
 
   return (
-    <header className="sticky top-0 z-40 bg-transparent px-4 py-4 lg:px-8 lg:py-6">
-      <div className="gymflow-shell pointer-events-auto flex min-h-[84px] flex-wrap items-center justify-between gap-4 rounded-[2rem] px-4 py-4 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.28)] backdrop-blur-xl">
+    <header
+      className={cn(
+        "sticky top-0 z-40 overflow-x-clip px-4 py-3 lg:px-8 lg:py-4",
+      )}
+    >
+      <div
+        className={cn(
+          "billmygym-shell pointer-events-auto flex min-h-[84px] min-w-0 flex-wrap items-center justify-between gap-4 overflow-visible rounded-[2rem] border border-transparent px-4 py-4 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.28)] backdrop-blur-xl transition-[border-color,background-color,box-shadow] duration-300",
+          scrolled
+            ? "border-white/80 bg-white/92 shadow-[0_20px_45px_-28px_rgba(15,23,42,0.35)]"
+            : "bg-white/78 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.22)]",
+        )}
+      >
         <div className="flex min-w-0 flex-1 items-center gap-3 lg:gap-6">
           <button
             onClick={onOpenMobileSidebar}
@@ -100,35 +154,19 @@ export function Topbar({
 
         </div>
 
-        <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:gap-3">
-          {isOrgAdmin && (
-            <>
-              <Link
-                to="/app/organization"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-              >
-                <Building2 className="h-4 w-4 text-emerald-600" />
-                <span className="hidden sm:inline">Organization</span>
-              </Link>
-              <Link
-                to="/app/settings"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-              >
-                <Settings className="h-4 w-4 text-emerald-700" />
-                <span className="hidden sm:inline">Settings</span>
-              </Link>
-            </>
-          )}
+        <div className="flex max-w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:gap-3">
+          {quickLinks.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+            >
+              <item.icon className={cn("h-4 w-4", item.iconClassName)} />
+              <span className="hidden sm:inline">{item.label}</span>
+            </Link>
+          ))}
 
-          <Link
-            to={role === "SUPER_ADMIN" ? "/app/platform-overview" : "/app/notifications"}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-          >
-            {role === "SUPER_ADMIN" ? <Shield className="h-4 w-4 text-emerald-700" /> : <Bell className="h-4 w-4 text-amber-600" />}
-            <span className="hidden sm:inline">{role === "SUPER_ADMIN" ? "Platform" : "Alerts"}</span>
-          </Link>
-
-          <div className="relative" ref={profileRef}>
+          <div className="relative z-50" ref={profileRef}>
             <button
               onClick={() => setProfileOpen((open) => !open)}
               className={cn(
@@ -153,7 +191,7 @@ export function Topbar({
             </button>
 
             {profileOpen && (
-              <div className="absolute right-0 mt-4 w-[min(21rem,calc(100vw-1rem))] overflow-hidden rounded-[2rem] border border-white/70 bg-white/95 p-2 shadow-[0_22px_60px_-24px_rgba(15,23,42,0.32)] backdrop-blur-xl">
+              <div className="absolute right-0 top-full z-[60] mt-4 w-[min(21rem,calc(100vw-1rem))] overflow-hidden rounded-[2rem] border border-white/70 bg-white/95 p-2 shadow-[0_22px_60px_-24px_rgba(15,23,42,0.32)] backdrop-blur-xl">
                 <div className="mb-2 flex items-center gap-4 rounded-[1.6rem] border border-white/80 bg-white/70 p-5 shadow-sm">
                   {user?.avatarUrl ? (
                     <img src={user.avatarUrl} alt={primaryName} referrerPolicy="no-referrer" className="h-14 w-14 rounded-[1.1rem] object-cover" />
@@ -205,3 +243,4 @@ export function Topbar({
     </header>
   );
 }
+

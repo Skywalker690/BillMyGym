@@ -4,6 +4,7 @@ import com.gymflow.api.dto.AuthDtos;
 import com.gymflow.api.dto.AuthDtos.GoogleLoginRequest;
 import com.gymflow.api.dto.AuthDtos.LoginRequest;
 import com.gymflow.api.dto.AuthDtos.RegisterOrganizationAdminRequest;
+import com.gymflow.api.dto.AcceptPolicyRequest;
 import com.gymflow.api.dto.ChangePasswordRequest;
 import com.gymflow.api.dto.ForgotPasswordRequest;
 import com.gymflow.api.dto.UpdatePasswordOtpRequest;
@@ -12,10 +13,12 @@ import com.gymflow.api.dto.VerifyOtpRequest;
 import com.gymflow.api.response.ApiResponse;
 import com.gymflow.security.SecurityUtils;
 import com.gymflow.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,14 +38,26 @@ public class AuthController {
             .body(ApiResponse.success("Organization admin registered successfully and welcome email queued"));
     }
 
+    @PostMapping("/signup")
+    public ResponseEntity<?> signupOrgAdmin(@Valid @RequestBody RegisterOrganizationAdminRequest request) {
+        authService.publicRegisterOrganizationAdmin(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ApiResponse.success("Signed up successfully and welcome email queued"));
+    }
+
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Login successful", authService.login(request)));
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(ApiResponse.success("Login successful", authService.login(request, httpRequest)));
     }
 
     @PostMapping("/google-login")
-    public ResponseEntity<?> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Google login successful", authService.loginWithGoogle(request)));
+    public ResponseEntity<?> googleLogin(@Valid @RequestBody GoogleLoginRequest request, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(ApiResponse.success("Google login successful", authService.loginWithGoogle(request, httpRequest)));
+    }
+
+    @GetMapping("/legal-policy")
+    public ResponseEntity<?> legalPolicyMetadata() {
+        return ResponseEntity.ok(ApiResponse.success("Legal policy metadata fetched successfully", authService.legalPolicyMetadata()));
     }
 
     @PostMapping("/forgot-password")
@@ -58,6 +73,27 @@ public class AuthController {
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         return ResponseEntity.ok(authService.changePassword(request));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        return ResponseEntity.ok(ApiResponse.success("Logout successful"));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> currentUser() {
+        return ResponseEntity.ok(ApiResponse.success(
+            "Current user fetched successfully",
+            authService.getCurrentUser(SecurityUtils.currentUser().email())
+        ));
+    }
+
+    @PostMapping("/consent")
+    public ResponseEntity<?> acceptConsent(@Valid @RequestBody AcceptPolicyRequest request, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(ApiResponse.success(
+            "Legal consent recorded successfully",
+            authService.acceptPolicy(SecurityUtils.currentUser().email(), request, httpRequest)
+        ));
     }
 
     @PostMapping("/password/request-otp")

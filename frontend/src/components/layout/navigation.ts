@@ -1,9 +1,13 @@
 import {
   Activity,
+  BarChart3,
+  ClipboardList,
   Bell,
   Building2,
   Clock3,
+  CreditCard,
   LayoutDashboard,
+  Gift,
   type LucideIcon,
   Settings,
   Users,
@@ -18,7 +22,10 @@ export interface NavItemConfig {
   section: string;
 }
 
-export const getSidebarNavItems = (role: AppRole | null | undefined): NavItemConfig[] => {
+export const getSidebarNavItems = (
+  role: AppRole | null | undefined,
+  referralsEnabled: boolean = true,
+): NavItemConfig[] => {
   if (role === "SUPER_ADMIN") {
     return [
       {
@@ -33,10 +40,22 @@ export const getSidebarNavItems = (role: AppRole | null | undefined): NavItemCon
         icon: Building2,
         section: "Platform",
       },
+      {
+        label: "Reports",
+        href: "/app/platform-reports",
+        icon: BarChart3,
+        section: "Platform",
+      },
+      {
+        label: "Audit Logs",
+        href: "/app/audit-logs",
+        icon: ClipboardList,
+        section: "Platform",
+      },
     ];
   }
 
-  return [
+  const orgAdminItems: NavItemConfig[] = [
     {
       label: "Dashboard",
       href: "/app/dashboard",
@@ -50,21 +69,32 @@ export const getSidebarNavItems = (role: AppRole | null | undefined): NavItemCon
       section: "Operations",
     },
     {
+      label: "Reports",
+      href: "/app/reports",
+      icon: BarChart3,
+      section: "Operations",
+    },
+    {
       label: "Reminders",
       href: "/app/reminders",
       icon: Clock3,
       section: "Operations",
     },
     {
-      label: "Notifications",
-      href: "/app/notifications",
-      icon: Bell,
-      section: "Operations",
+      label: "Billing",
+      href: "/app/subscription",
+      icon: CreditCard,
+      section: "Billing",
     },
   ];
+
+  return orgAdminItems;
 };
 
-export const getProfileNavItems = (role: AppRole | null | undefined): NavItemConfig[] => {
+export const getProfileNavItems = (
+  role: AppRole | null | undefined,
+  referralsEnabled: boolean = true,
+): NavItemConfig[] => {
   if (role === "SUPER_ADMIN") {
     return [
       {
@@ -73,10 +103,28 @@ export const getProfileNavItems = (role: AppRole | null | undefined): NavItemCon
         icon: Building2,
         section: "Account",
       },
+      {
+        label: "Reports",
+        href: "/app/platform-reports",
+        icon: BarChart3,
+        section: "Account",
+      },
+      {
+        label: "Audit Logs",
+        href: "/app/audit-logs",
+        icon: ClipboardList,
+        section: "Account",
+      },
+      {
+        label: "Referrals",
+        href: "/app/referrals/analytics",
+        icon: Gift,
+        section: "Account",
+      },
     ];
   }
 
-  return [
+  const items: NavItemConfig[] = [
     {
       label: "Organization Profile",
       href: "/app/organization",
@@ -90,10 +138,43 @@ export const getProfileNavItems = (role: AppRole | null | undefined): NavItemCon
       section: "Account",
     },
   ];
+
+  if (referralsEnabled) {
+    items.push({
+      label: "Referrals",
+      href: "/app/referrals",
+      icon: Gift,
+      section: "Account",
+    });
+  }
+
+  return items;
 };
 
 export const getPageContext = (pathname: string, role: AppRole | null | undefined) => {
+  if (pathname.startsWith("/app/members/") && pathname.endsWith("/renew")) {
+    return {
+      eyebrow: "Renewal Desk",
+      title: "Membership Renewal",
+      description: "Renew an existing member without mixing profile edits into the billing workflow.",
+    };
+  }
+
+  if (pathname.startsWith("/app/members/") && pathname.endsWith("/edit")) {
+    return {
+      eyebrow: "Member Workspace",
+      title: "Edit Member",
+      description: "Review and update only the selected member profile details.",
+    };
+  }
+
   const directMatches: Array<{ match: string; eyebrow: string; title: string; description: string }> = [
+    {
+      match: "/app/platform-reports",
+      eyebrow: "Platform Reports",
+      title: "Reports",
+      description: "Year-wise organization joins and revenue in one monthly platform report.",
+    },
     {
       match: "/app/platform-overview",
       eyebrow: "Platform Command",
@@ -111,6 +192,12 @@ export const getPageContext = (pathname: string, role: AppRole | null | undefine
       eyebrow: "Platform Directory",
       title: "Organizations",
       description: "Manage tenants, ownership, and platform rollout from one place.",
+    },
+    {
+      match: "/app/audit-logs",
+      eyebrow: "Audit Command",
+      title: "Audit Logs",
+      description: "Review the latest organization-admin login activity from one dedicated audit log.",
     },
     {
       match: "/app/dashboard",
@@ -131,20 +218,26 @@ export const getPageContext = (pathname: string, role: AppRole | null | undefine
       description: "Search, review, and update your member directory with payment-aware history.",
     },
     {
-      match: "/app/reminders",
-      eyebrow: "Renewal Monitoring",
-      title: "Reminders",
-      description: "Track expired and overdue memberships before revenue slips through.",
+      match: "/app/reports",
+      eyebrow: "Financial Reports",
+      title: "Reports",
+      description: "Month-wise revenue, admissions, dues, and export-ready financial summaries.",
     },
-    {
-      match: "/app/notifications",
-      eyebrow: "Admin Inbox",
-      title: "Notifications",
-      description: "Review digests and system notices delivered to organization admins.",
+      {
+        match: "/app/reminders",
+        eyebrow: "Renewal Monitoring",
+        title: "Reminders",
+        description: "Track expired and overdue memberships before revenue slips through.",
+      },
+      {
+        match: "/app/subscription",
+        eyebrow: "SaaS Billing",
+      title: "Subscription",
+      description: "Review your BillMyGym access status, usage, billing period, and payment ledger.",
     },
     {
       match: "/app/settings",
-      eyebrow: "GymFlow Controls",
+      eyebrow: "BillMyGym Controls",
       title: "Settings",
       description: "Configure reminder windows, branding, and org-level operational defaults.",
     },
@@ -153,6 +246,18 @@ export const getPageContext = (pathname: string, role: AppRole | null | undefine
       eyebrow: "Workspace Identity",
       title: "Organization Profile",
       description: "Maintain the business details, contacts, and visible org profile data.",
+    },
+    {
+      match: "/app/referrals/analytics",
+      eyebrow: "Platform Command",
+      title: "Referral Analytics",
+      description: "Monitor platform-wide referral signups and distributed rewards.",
+    },
+    {
+      match: "/app/referrals",
+      eyebrow: "Growth",
+      title: "Referrals",
+      description: "Refer new organizations to GymFlow and earn subscription rewards.",
     },
   ];
 
@@ -164,12 +269,13 @@ export const getPageContext = (pathname: string, role: AppRole | null | undefine
   return role === "SUPER_ADMIN"
     ? {
         eyebrow: "Platform Command",
-        title: "GymFlow",
+        title: "BillMyGym",
         description: "Manage tenants and monitor platform operations from a single command surface.",
       }
     : {
         eyebrow: "Operations Hub",
-        title: "GymFlow",
+        title: "BillMyGym",
         description: "Run your membership, billing, and renewal workflow from one focused workspace.",
       };
 };
+

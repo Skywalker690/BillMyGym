@@ -13,7 +13,6 @@ import com.gymflow.security.AuthenticatedUser;
 import com.gymflow.security.SecurityUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,6 +22,7 @@ public class OrganizationSettingService {
     private final OrganizationRepository organizationRepository;
     private final OrganizationSettingRepository settingRepository;
     private final AuditLogService auditLogService;
+    private final ReportCacheService reportCacheService;
 
     @Transactional
     public SettingsResponse getCurrentSettings() {
@@ -31,7 +31,6 @@ public class OrganizationSettingService {
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboardReports", "memberReports", "revenueReports"}, allEntries = true)
     public SettingsResponse updateCurrentSettings(UpdateSettingsRequest request) {
         Long organizationId = requireOrgId();
         OrganizationSetting setting = getOrCreateSettings(organizationId);
@@ -42,14 +41,14 @@ public class OrganizationSettingService {
         if (request.emailEnabled() != null) {
             setting.setEmailEnabled(request.emailEnabled());
         }
-        if (request.reminderDaysBeforeExpiry() != null) {
-            setting.setReminderDaysBeforeExpiry(request.reminderDaysBeforeExpiry());
-        }
         if (request.brandingName() != null) {
             setting.setBrandingName(request.brandingName());
         }
         if (request.monthlyMembershipFee() != null) {
             setting.getOrganization().setMonthlyMembershipFee(request.monthlyMembershipFee());
+        }
+        if (request.admissionFee() != null) {
+            setting.getOrganization().setAdmissionFee(request.admissionFee());
         }
 
         auditLogService.log(
@@ -58,6 +57,7 @@ public class OrganizationSettingService {
             AuditCategory.ORGANIZATION,
             "SETTINGS"
         );
+        reportCacheService.evictOrganization(organizationId);
         return toResponse(setting);
     }
 
@@ -78,9 +78,9 @@ public class OrganizationSettingService {
         return new SettingsResponse(
             setting.isWhatsappEnabled(),
             setting.isEmailEnabled(),
-            setting.getReminderDaysBeforeExpiry(),
             setting.getBrandingName(),
-            setting.getOrganization().getMonthlyMembershipFee()
+            setting.getOrganization().getMonthlyMembershipFee(),
+            setting.getOrganization().getAdmissionFee()
         );
     }
 

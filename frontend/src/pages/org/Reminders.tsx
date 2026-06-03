@@ -1,11 +1,14 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Clock, Play, AlertCircle, Settings as SettingsIcon } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertCircle, BellRing, Clock3, Play, Settings as SettingsIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
+import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
 
 export default function Reminders() {
+  const { isDemoWorkspace } = useDemoPlanPreview();
   const queryClient = useQueryClient();
 
   const { data: reminderReport, isLoading } = useQuery({
@@ -13,7 +16,7 @@ export default function Reminders() {
     queryFn: async () => {
       const res = await api.get("/reports/reminders");
       return res.data;
-    }
+    },
   });
 
   const runMutation = useMutation({
@@ -24,7 +27,9 @@ export default function Reminders() {
       const result = response.data;
       toast.success(`Reminder run complete: ${result.digestsSent ?? 0} digest(s) sent`);
     },
-    onError: () => toast.error("Failed to run reminders"),
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Failed to run reminders");
+    },
   });
 
   if (isLoading) {
@@ -33,135 +38,156 @@ export default function Reminders() {
 
   const settings = reminderReport?.settings;
   const logs = reminderReport?.recentReminderLogs ?? [];
+  const manualQuota = reminderReport?.manualQuota;
   const lastRun = logs[0];
+  const manualRunsUsed = Number(manualQuota?.usedThisMonth ?? 0);
+  const manualRunLimit = Number(manualQuota?.monthlyLimit ?? 20);
+  const unlimitedManualRuns = Boolean(manualQuota?.unlimited);
+  const canRunManual = Boolean(manualQuota?.canRun ?? true);
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      <div className="flex justify-between items-center bg-white/40 dark:bg-slate-900/40 p-6 rounded-[2rem] backdrop-blur-xl border border-white/60 dark:border-white/10 shadow-sm">
-        <div>
-          <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight">Reminders</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">Manage and track automated membership reminders.</p>
+    <div className="mx-auto max-w-7xl space-y-8 p-8">
+      <section className="billmygym-shell rounded-[2rem] p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.26em] text-emerald-700">Renewal Monitoring</div>
+            <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">Reminders Command</h1>
+            <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-600">
+              Control the reminder engine, audit delivery runs, and keep renewals moving before they convert into revenue leakage.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link to="/app/settings">
+              <Button variant="outline" className="h-11 rounded-full border-white/80 bg-white/75 px-5 font-bold">
+                <SettingsIcon className="mr-2 h-4 w-4" />
+                Configure
+              </Button>
+            </Link>
+            <Button
+              className="h-11 rounded-full bg-slate-950 px-5 font-bold text-white hover:bg-slate-800"
+              onClick={() => {
+                if (confirm("Run reminders manually right now?")) {
+                  runMutation.mutate();
+                }
+              }}
+              disabled={runMutation.isPending || !canRunManual}
+            >
+              <Play className="mr-2 h-4 w-4" />
+              {runMutation.isPending ? "Processing..." : canRunManual ? "Run Now" : "Monthly Limit Reached"}
+            </Button>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1 space-y-6">
-          <div className="glass-panel overflow-hidden">
-            <div className="p-6 border-b border-black/5 dark:border-white/5 bg-indigo-50/50 dark:bg-indigo-900/10">
-              <h2 className="text-xl font-bold tracking-tight text-indigo-900 dark:text-indigo-300 flex items-center">
-                <Clock className="w-5 h-5 mr-3 text-indigo-600 dark:text-indigo-400" />
+      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="space-y-6">
+          <div className="glass-panel overflow-hidden rounded-[1.9rem]">
+            <div className="border-b border-white/70 p-6">
+              <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-slate-950">
+                <Clock3 className="h-5 w-5 text-emerald-700" />
                 Control Panel
               </h2>
+              <p className="mt-2 text-sm font-medium text-slate-500">Current digest delivery channel state and workflow status.</p>
             </div>
-            <div className="p-6 space-y-6">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Current Configuration</h3>
-                <ul className="space-y-4 text-sm text-slate-700 dark:text-slate-300 font-medium">
-                  <li className="flex justify-between border-b border-black/5 dark:border-white/5 pb-2"><span>Remind before expiry:</span> <span className="font-bold text-slate-900 dark:text-white">{settings?.reminderDaysBeforeExpiry} days</span></li>
-                  <li className="flex justify-between border-b border-black/5 dark:border-white/5 pb-2"><span>WhatsApp:</span> <span className={settings?.whatsappEnabled ? "text-green-600 dark:text-green-400 font-bold" : "text-slate-400 dark:text-slate-500"}>{settings?.whatsappEnabled ? "Enabled" : "Disabled"}</span></li>
-                  <li className="flex justify-between border-b border-black/5 dark:border-white/5 pb-2"><span>Email:</span> <span className={settings?.emailEnabled ? "text-green-600 dark:text-green-400 font-bold" : "text-slate-400 dark:text-slate-500"}>{settings?.emailEnabled ? "Enabled" : "Disabled"}</span></li>
-                </ul>
-                <div className="mt-6">
-                  <Link to="/app/settings">
-                    <Button variant="outline" className="w-full rounded-xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-black/5 dark:border-white/20 hover:bg-white/80 dark:hover:bg-slate-700/80 font-semibold h-11">
-                      <SettingsIcon className="w-4 h-4 mr-2" /> Modify Settings
-                    </Button>
-                  </Link>
+            <div className="space-y-4 p-6">
+              <SignalRow label="Manual runs used" value={unlimitedManualRuns ? `${manualRunsUsed} this month` : `${manualRunsUsed} / ${manualRunLimit}`} />
+              <SignalRow label="WhatsApp digest" value={settings?.whatsappEnabled ? "Enabled" : "Disabled"} />
+              <SignalRow label="Email digest" value={settings?.emailEnabled ? "Enabled" : "Disabled"} />
+              {unlimitedManualRuns ? (
+                <div className="rounded-[1.4rem] border border-sky-100 bg-sky-50/80 p-4 text-sm font-semibold text-sky-900">
+                  This demo workspace has unlimited manual runs for showcase use only. Scheduled reminder jobs still remain separate from manual control-page runs.
                 </div>
-              </div>
-
-              <div className="pt-6 border-t border-black/5 dark:border-white/5">
-                <Button
-                  className="w-full rounded-xl h-12 shadow-lg shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-base"
-                  onClick={() => {
-                    if (confirm("Are you sure you want to run reminders manually? This will process notifications for eligible members immediately.")) {
-                      runMutation.mutate();
-                    }
-                  }}
-                  disabled={runMutation.isPending}
-                >
-                  <Play className="w-5 h-5 mr-3 fill-current" />
-                  {runMutation.isPending ? "Processing..." : "Run Reminders Now"}
-                </Button>
-                <p className="text-xs text-slate-500 dark:text-slate-400 text-center mt-4 font-medium flex items-center justify-center">
-                  <AlertCircle className="w-3.5 h-3.5 mr-1.5" /> Automated processes normally handle this.
-                </p>
-              </div>
+              ) : (
+                <div className="rounded-[1.4rem] border border-amber-100 bg-amber-50/70 p-4 text-sm font-semibold text-amber-900">
+                  Manual execution is capped at 20 runs per month for each organization. Scheduled reminder jobs are not counted in this limit.
+                </div>
+              )}
+              {isDemoWorkspace && (
+                <Badge className="w-fit border-sky-200 bg-sky-100 text-sky-800">Demo purpose only</Badge>
+              )}
+              {!canRunManual && (
+                <div className="rounded-[1.4rem] border border-rose-100 bg-rose-50/80 p-4 text-sm font-semibold text-rose-900">
+                  The monthly manual reminder limit has been reached. The run button will unlock again at the start of next month.
+                </div>
+              )}
             </div>
           </div>
 
           {lastRun && (
-            <div className="glass-panel overflow-hidden">
-              <div className="p-6 border-b border-black/5 dark:border-white/5">
-                <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Latest Digest</h2>
+            <div className="glass-panel overflow-hidden rounded-[1.9rem]">
+              <div className="border-b border-white/70 p-6">
+                <h2 className="text-2xl font-black tracking-tight text-slate-950">Latest Digest</h2>
               </div>
-              <div className="p-6">
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <div className="p-5 bg-white/50 dark:bg-slate-800/50 border border-black/5 dark:border-white/5 rounded-2xl">
-                    <div className="text-3xl font-extrabold text-slate-900 dark:text-white">{lastRun.memberCount ?? 0}</div>
-                    <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-2">Members Covered</div>
-                  </div>
-                  <div className="p-5 bg-white/50 dark:bg-slate-800/50 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl shadow-sm shadow-indigo-500/10">
-                    <div className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">{lastRun.status}</div>
-                    <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-2">Status</div>
-                  </div>
-                </div>
-                <div className="text-xs font-medium text-center text-slate-500 dark:text-slate-400 mt-6 bg-slate-50 dark:bg-slate-900 px-4 py-2 rounded-lg">
-                  Last digest sent at {new Date(lastRun.sentAt || lastRun.createdAt).toLocaleString()}
+              <div className="grid gap-4 p-6 sm:grid-cols-2">
+                <MiniStat label="Members Covered" value={lastRun.memberCount ?? 0} />
+                <MiniStat label="Last Status" value={lastRun.status} />
+                <div className="sm:col-span-2 rounded-[1.4rem] border border-white/80 bg-white/72 p-4 text-sm font-semibold text-slate-600">
+                  Last activity at {new Date(lastRun.sentAt || lastRun.createdAt).toLocaleString()}
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        <div className="md:col-span-2">
-          <div className="glass-panel overflow-hidden h-full flex flex-col">
-            <div className="p-6 border-b border-black/5 dark:border-white/5">
-              <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Reminder Workflow Logs</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">History of all admin digest notifications sent by the scheduler.</p>
-            </div>
-            <div className="flex-1 p-6">
-              {logs.length === 0 ? (
-                <div className="py-16 text-center text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center h-full">
-                  <Clock className="w-16 h-16 mx-auto text-slate-300 dark:text-slate-600 mb-6 opacity-50" />
-                  <p className="font-medium text-lg">No reminder logs found yet.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-black/5 dark:border-white/5">
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400">
-                      <tr>
-                        <th className="px-6 py-4 font-bold tracking-wider uppercase text-xs">Date & Time</th>
-                        <th className="px-6 py-4 font-bold tracking-wider uppercase text-xs text-right">Channel</th>
-                        <th className="px-6 py-4 font-bold tracking-wider uppercase text-xs text-right">Members</th>
-                        <th className="px-6 py-4 font-bold tracking-wider uppercase text-xs text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-black/5 dark:divide-white/5 bg-white/30 dark:bg-slate-900/30">
-                      {logs.map((log: any) => (
-                        <tr key={log.id} className="hover:bg-white/60 dark:hover:bg-slate-800 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap text-slate-900 dark:text-white font-semibold">
-                            {new Date(log.sentAt || log.createdAt).toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-slate-600 dark:text-slate-300 font-medium text-right">
-                            {log.channel}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-slate-600 dark:text-slate-300 font-medium text-right">
-                            {log.memberCount ?? 0}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-indigo-600 dark:text-indigo-400 text-right font-bold tracking-wide">
-                            {log.status}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+        <div className="glass-panel overflow-hidden rounded-[1.9rem]">
+          <div className="border-b border-white/70 p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-black tracking-tight text-slate-950">Reminder Workflow Logs</h2>
+                <p className="mt-2 text-sm font-medium text-slate-500">History of digest notifications sent by the scheduler.</p>
+              </div>
+              <div className="rounded-2xl border border-white/80 bg-white/75 p-3 shadow-sm">
+                <BellRing className="h-5 w-5 text-emerald-700" />
+              </div>
             </div>
           </div>
+          <div className="p-6">
+            {logs.length === 0 ? (
+              <div className="py-16 text-center text-slate-500">
+                <Clock3 className="mx-auto mb-4 h-14 w-14 opacity-40" />
+                <p className="text-sm font-semibold">No reminder logs found yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {logs.map((log: any) => (
+                  <div key={log.id} className="rounded-[1.4rem] border border-white/80 bg-white/72 p-4 shadow-sm">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="text-sm font-black text-slate-950">{new Date(log.sentAt || log.createdAt).toLocaleString()}</div>
+                        <div className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{log.channel}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="border-slate-200 bg-white text-slate-700">{log.memberCount ?? 0} members</Badge>
+                        <Badge className={log.status === "SENT" ? "border-emerald-200 bg-emerald-100 text-emerald-800" : "border-amber-200 bg-amber-100 text-amber-800"}>
+                          {log.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </section>
+    </div>
+  );
+}
+
+function SignalRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.35rem] border border-white/80 bg-white/72 px-4 py-3 shadow-sm">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{label}</div>
+      <div className="mt-1 text-lg font-black text-slate-950">{value}</div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-[1.4rem] border border-white/80 bg-white/72 p-4 shadow-sm">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{label}</div>
+      <div className="mt-2 text-2xl font-black text-slate-950">{value}</div>
     </div>
   );
 }

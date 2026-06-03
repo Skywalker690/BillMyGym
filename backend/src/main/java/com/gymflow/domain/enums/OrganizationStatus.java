@@ -1,7 +1,8 @@
 package com.gymflow.domain.enums;
 
 public enum OrganizationStatus {
+    TRIAL,
     ACTIVE,
-    INACTIVE,
-    SUSPENDED
+    PAUSED,
+    DEACTIVATED
 }

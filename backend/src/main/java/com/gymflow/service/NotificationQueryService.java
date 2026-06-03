@@ -40,7 +40,7 @@ public class NotificationQueryService {
     private List<NotificationResponse> listReminderLogs(Long organizationId, int limit) {
         return notificationLogRepository.findByOrganizationIdAndTypeInAndDeletedFalseOrderByCreatedAtDesc(
                 organizationId,
-                List.of(NotificationType.ORGANIZATION_RENEWAL_DIGEST),
+                List.of(NotificationType.ORGANIZATION_RENEWAL_DIGEST, NotificationType.INDIVIDUAL_WHATSAPP_REMINDER),
                 PageRequest.of(0, Math.max(1, limit))
             ).stream()
             .map(this::toResponse)

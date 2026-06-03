@@ -1,16 +1,17 @@
 package com.gymflow.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.gymflow.api.error.BadRequestException;
 import com.gymflow.api.dto.PaymentDtos.RecordPaymentRequest;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.Organization;
-import com.gymflow.domain.OrganizationSetting;
 import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.PaymentStatus;
 import com.gymflow.domain.enums.PaymentType;
@@ -18,6 +19,7 @@ import com.gymflow.domain.enums.Role;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberPaymentRepository;
 import com.gymflow.security.AuthenticatedUser;
+import com.gymflow.shared.idempotency.IdempotencyService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -44,7 +46,10 @@ class PaymentLedgerServiceTest {
     private AuditLogService auditLogService;
 
     @Mock
-    private OrganizationSettingService organizationSettingService;
+    private IdempotencyService idempotencyService;
+
+    @Mock
+    private ReportCacheService reportCacheService;
 
     private final MembershipLifecycleService membershipLifecycleService = new MembershipLifecycleService();
 
@@ -56,12 +61,13 @@ class PaymentLedgerServiceTest {
             memberMembershipRepository,
             memberPaymentRepository,
             membershipLifecycleService,
-            organizationSettingService,
-            auditLogService
+            auditLogService,
+            idempotencyService,
+            reportCacheService
         );
         SecurityContextHolder.getContext().setAuthentication(
             new UsernamePasswordAuthenticationToken(
-                new AuthenticatedUser(1L, "admin@gymflow.local", Role.ORG_ADMIN, 100L),
+                new AuthenticatedUser(1L, "admin@billmygym.local", Role.ORG_ADMIN, 100L),
                 null,
                 List.of()
             )
@@ -76,16 +82,16 @@ class PaymentLedgerServiceTest {
     @Test
     void allowsManualPaymentWithoutGatewayTransactionId() {
         MemberMembership membership = membership(200L, 100L);
-        when(memberMembershipRepository.findByIdAndOrganizationIdAndDeletedFalse(200L, 100L))
+        when(idempotencyService.requireKey("payment-key")).thenReturn("payment-key");
+        when(idempotencyService.findExisting(100L, null, com.gymflow.domain.enums.MembershipOperationType.PAYMENT_RECORD, "payment-key"))
+            .thenReturn(Optional.empty());
+        when(memberMembershipRepository.findByIdAndOrganizationIdAndDeletedFalseForUpdate(200L, 100L))
             .thenReturn(Optional.of(membership));
         when(memberPaymentRepository.findByMembershipIdAndDeletedFalseOrderByPaymentDateAscCreatedAtAsc(200L))
             .thenReturn(List.of());
-        OrganizationSetting setting = new OrganizationSetting();
-        setting.setReminderDaysBeforeExpiry(3);
-        when(organizationSettingService.getOrCreateSettings(100L)).thenReturn(setting);
         when(memberPaymentRepository.save(any(MemberPayment.class))).thenAnswer(invocation -> {
             MemberPayment payment = invocation.getArgument(0);
-            payment.setPaymentStatus(PaymentStatus.PARTIAL);
+            payment.setPaymentStatus(PaymentStatus.PAID);
             return payment;
         });
 
@@ -94,15 +100,38 @@ class PaymentLedgerServiceTest {
             new BigDecimal("1000.00"),
             LocalDate.of(2026, 5, 16),
             PaymentType.NEW_MEMBERSHIP,
-            PaymentStatus.PARTIAL,
+            PaymentStatus.PAID,
             "manual payment"
         );
 
-        var response = paymentLedgerService.recordPayment(request);
+        var response = paymentLedgerService.recordPayment(request, "payment-key");
 
-        assertEquals(PaymentStatus.PARTIAL, response.paymentStatus());
+        assertEquals(PaymentStatus.PAID, response.paymentStatus());
         assertEquals("2026-05", response.billingMonth());
         verify(memberPaymentRepository).save(any(MemberPayment.class));
+    }
+
+    @Test
+    void rejectsNonPaidPaymentStatuses() {
+        MemberMembership membership = membership(200L, 100L);
+        when(idempotencyService.requireKey("payment-key")).thenReturn("payment-key");
+        when(idempotencyService.findExisting(100L, null, com.gymflow.domain.enums.MembershipOperationType.PAYMENT_RECORD, "payment-key"))
+            .thenReturn(Optional.empty());
+        when(memberMembershipRepository.findByIdAndOrganizationIdAndDeletedFalseForUpdate(200L, 100L))
+            .thenReturn(Optional.of(membership));
+        when(memberPaymentRepository.findByMembershipIdAndDeletedFalseOrderByPaymentDateAscCreatedAtAsc(200L))
+            .thenReturn(List.of());
+
+        RecordPaymentRequest request = new RecordPaymentRequest(
+            200L,
+            new BigDecimal("1000.00"),
+            LocalDate.of(2026, 5, 16),
+            PaymentType.NEW_MEMBERSHIP,
+            PaymentStatus.PENDING,
+            "invalid status"
+        );
+
+        assertThrows(BadRequestException.class, () -> paymentLedgerService.recordPayment(request, "payment-key"));
     }
 
     private MemberMembership membership(Long membershipId, Long organizationId) {
@@ -137,3 +166,4 @@ class PaymentLedgerServiceTest {
         }
     }
 }
+

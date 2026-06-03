@@ -1,9 +1,11 @@
 package com.gymflow.config;
 
 import com.gymflow.security.JwtAuthenticationFilter;
+import com.gymflow.security.LegalConsentGuardFilter;
 import com.gymflow.security.RateLimitingFilter;
 import com.gymflow.security.RestAccessDeniedHandler;
 import com.gymflow.security.RestAuthenticationEntryPoint;
+import com.gymflow.security.SubscriptionGuardFilter;
 import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +29,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final LegalConsentGuardFilter legalConsentGuardFilter;
     private final RateLimitingFilter rateLimitingFilter;
+    private final SubscriptionGuardFilter subscriptionGuardFilter;
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
 
@@ -47,9 +51,12 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/login",
                     "/api/auth/google-login",
+                    "/api/auth/legal-policy",
                     "/api/auth/forgot-password",
                     "/api/auth/verify-otp",
-                    "/api/auth/change-password"
+                    "/api/auth/change-password",
+                    "/api/subscription/webhook",
+                    "/api/whatsapp/webhook"
                 ).permitAll()
                 .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
                 .requestMatchers("/actuator/**").denyAll()
@@ -57,7 +64,9 @@ public class SecurityConfig {
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(rateLimitingFilter, JwtAuthenticationFilter.class);
+            .addFilterAfter(legalConsentGuardFilter, JwtAuthenticationFilter.class)
+            .addFilterAfter(subscriptionGuardFilter, LegalConsentGuardFilter.class)
+            .addFilterAfter(rateLimitingFilter, SubscriptionGuardFilter.class);
 
         return http.build();
     }

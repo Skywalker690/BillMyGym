@@ -7,6 +7,7 @@ import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.enums.MembershipStatus;
 import com.gymflow.domain.enums.PaymentStatus;
+import com.gymflow.domain.enums.PaymentType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -35,7 +36,7 @@ class MembershipLifecycleServiceTest {
         );
 
         assertEquals(MembershipStatus.ACTIVE, status);
-        assertEquals(true, membershipLifecycleService.isExpiringSoon(
+        assertEquals(false, membershipLifecycleService.isExpiringSoon(
             LocalDate.of(2026, 5, 16),
             LocalDate.of(2026, 5, 17),
             1
@@ -54,31 +55,31 @@ class MembershipLifecycleServiceTest {
     }
 
     @Test
-    void marksMembershipAsExpiredOnExpiryDate() {
+    void marksMembershipAsActiveOnExpiryDate() {
         MembershipStatus status = membershipLifecycleService.resolveMembershipStatus(
             LocalDate.of(2026, 5, 16),
             LocalDate.of(2026, 5, 16),
             1
         );
 
-        assertEquals(MembershipStatus.EXPIRED, status);
+        assertEquals(MembershipStatus.ACTIVE, status);
     }
 
     @Test
-    void buildsPartialCoverageSummary() {
+    void buildsPendingCoverageSummaryForIncompletePayment() {
         MemberMembership membership = new MemberMembership();
         membership.setPlanAmount(new BigDecimal("3600.00"));
 
         MemberPayment payment = new MemberPayment();
         payment.setAmount(new BigDecimal("1000.00"));
-        payment.setPaymentStatus(PaymentStatus.PARTIAL);
+        payment.setPaymentStatus(PaymentStatus.PAID); // Or whatever we use to denote a payment record now
 
         membership.setEndDate(LocalDate.now().plusDays(10));
         PaymentCoverageSummary summary = membershipLifecycleService.buildCoverageSummary(membership, List.of(payment), 3);
 
         assertEquals(new BigDecimal("1000.00"), summary.paidAmount());
         assertEquals(new BigDecimal("2600.00"), summary.pendingAmount());
-        assertEquals(PaymentStatus.PARTIAL, summary.paymentStatus());
+        assertEquals(PaymentStatus.PENDING, summary.paymentStatus());
         assertEquals(false, summary.expiringSoon());
     }
 
@@ -97,6 +98,24 @@ class MembershipLifecycleServiceTest {
         assertEquals(new BigDecimal("12000.00"), summary.paidAmount());
         assertEquals(0, BigDecimal.ZERO.compareTo(summary.pendingAmount()));
         assertEquals(PaymentStatus.PAID, summary.paymentStatus());
-        assertEquals(true, summary.expiringSoon());
+        assertEquals(false, summary.expiringSoon());
+    }
+
+    @Test
+    void ignoresAdmissionPaymentsWhenComputingMembershipCoverage() {
+        MemberMembership membership = new MemberMembership();
+        membership.setPlanAmount(new BigDecimal("3000.00"));
+
+        MemberPayment payment = new MemberPayment();
+        payment.setAmount(new BigDecimal("3000.00"));
+        payment.setPaymentStatus(PaymentStatus.PAID);
+        payment.setPaymentType(PaymentType.ADMISSION);
+
+        membership.setEndDate(LocalDate.now().plusDays(10));
+        PaymentCoverageSummary summary = membershipLifecycleService.buildCoverageSummary(membership, List.of(payment), 3);
+
+        assertEquals(BigDecimal.ZERO, summary.paidAmount());
+        assertEquals(new BigDecimal("3000.00"), summary.pendingAmount());
+        assertEquals(PaymentStatus.PENDING, summary.paymentStatus());
     }
 }

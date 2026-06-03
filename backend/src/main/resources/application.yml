@@ -2,7 +2,7 @@ spring:
   profiles:
     active: local
   application:
-    name: gymMax
+    name: billmygym
   jackson:
     time-zone: Asia/Kolkata
   datasource:
@@ -24,6 +24,13 @@ spring:
     port: 587
     username: ${MAIL_ID}
     password: ${APP_PASS}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
 
 server:
   port: ${SERVER_PORT:8080}
@@ -34,6 +41,22 @@ jwt:
 google:
   client:
     id: ${GOOGLE_CLIENT_ID}
+
+razorpay:
+  key-id: ${RAZORPAY_KEY_ID:}
+  key-secret: ${RAZORPAY_KEY_SECRET:}
+  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+
+gymflow:
+  payments:
+    enabled: ${GYMFLOW_PAYMENTS_ENABLED:false}
+  whatsapp:
+    enabled: ${GYMFLOW_WHATSAPP_ENABLED:false}
+    api-url: ${GYMFLOW_WHATSAPP_API_URL:https://graph.facebook.com}
+    access-token: ${GYMFLOW_WHATSAPP_ACCESS_TOKEN:}
+    phone-number-id: ${GYMFLOW_WHATSAPP_PHONE_NUMBER_ID:}
+    business-account-id: ${GYMFLOW_WHATSAPP_BUSINESS_ACCOUNT_ID:}
+    version: ${GYMFLOW_WHATSAPP_VERSION:v23.0}
 
 app:
   rate-limit:
@@ -50,3 +73,4 @@ app:
     notifications:
       max-requests: 60
       window-seconds: 60
+

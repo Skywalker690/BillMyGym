@@ -10,6 +10,7 @@ import com.gymflow.domain.Organization;
 import com.gymflow.domain.OrganizationSetting;
 import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.MembershipStatus;
+import com.gymflow.domain.enums.NotificationStatus;
 import com.gymflow.domain.enums.NotificationType;
 import com.gymflow.domain.enums.OrganizationStatus;
 import com.gymflow.repository.MemberMembershipRepository;
@@ -18,6 +19,7 @@ import com.gymflow.repository.OrganizationRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -47,6 +49,9 @@ class ReminderServiceTest {
     @Mock
     private NotificationLogRepository notificationLogRepository;
 
+    @Mock
+    private ReportCacheService reportCacheService;
+
     @Test
     void marksMembershipsAsSentWhenDigestDispatchSucceeds() {
         ReminderService reminderService = new ReminderService(
@@ -56,7 +61,8 @@ class ReminderServiceTest {
             organizationDigestBuilderService,
             notificationDispatcherService,
             organizationRepository,
-            notificationLogRepository
+            notificationLogRepository,
+            reportCacheService
         );
 
         Organization organization = new Organization();
@@ -71,7 +77,6 @@ class ReminderServiceTest {
         MemberMembership membership = new MemberMembership();
         membership.setOrganization(organization);
         membership.setMember(member);
-        membership.setPlanName("Plan");
         membership.setPlanAmount(new BigDecimal("1000.00"));
         membership.setStartDate(LocalDate.of(2026, 5, 1));
         membership.setEndDate(LocalDate.of(2026, 5, 15));
@@ -79,13 +84,25 @@ class ReminderServiceTest {
         setId(membership, 13L);
 
         OrganizationSetting setting = new OrganizationSetting();
-        when(memberMembershipRepository.findReminderCandidatesForDay(org.mockito.ArgumentMatchers.eq(11L), org.mockito.ArgumentMatchers.any()))
-            .thenReturn(List.of(membership));
-        when(notificationLogRepository.existsByOrganizationIdAndNotificationDateAndTypeAndDeletedFalse(
+        when(memberMembershipRepository.findReminderCandidatesForDay(
             org.mockito.ArgumentMatchers.eq(11L),
             org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.eq(NotificationType.ORGANIZATION_RENEWAL_DIGEST)
+            org.mockito.ArgumentMatchers.any()
+        ))
+            .thenReturn(List.of(membership));
+        when(notificationLogRepository.existsByOrganizationIdAndNotificationDateAndTypeAndStatusAndDeletedFalse(
+            org.mockito.ArgumentMatchers.eq(11L),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.eq(NotificationType.ORGANIZATION_RENEWAL_DIGEST),
+            org.mockito.ArgumentMatchers.eq(NotificationStatus.SENT)
         )).thenReturn(false);
+        when(notificationLogRepository.countByOrganizationIdAndTypeAndDeletedFalseAndCreatedAtBetween(
+            org.mockito.ArgumentMatchers.eq(11L),
+            org.mockito.ArgumentMatchers.eq(NotificationType.MANUAL_REMINDER_TRIGGER),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any()
+        )).thenReturn(0L);
+        when(organizationRepository.findByIdAndDeletedFalse(11L)).thenReturn(Optional.of(organization));
         when(organizationSettingService.getOrCreateSettings(11L)).thenReturn(setting);
         when(organizationDigestBuilderService.buildDigest(org.mockito.ArgumentMatchers.eq(organization), org.mockito.ArgumentMatchers.eq(setting), org.mockito.ArgumentMatchers.anyList()))
             .thenReturn(new OrganizationDigestBuilderService.DigestContent("Brand", "wa", "subject", "email", 1));

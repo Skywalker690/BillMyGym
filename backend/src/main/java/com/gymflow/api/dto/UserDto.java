@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -21,8 +21,12 @@ public class UserDto {
     private String googleId;
     private String avatarUrl;
     private Long clientCrmId;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
     private Boolean termsAccepted;
+    private Boolean privacyAccepted;
     private String policyVersion;
+    private Instant policyAcceptedAt;
+    private String consentMessage;
+    private Boolean consentRequired;
 
 }

@@ -6,9 +6,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,7 +18,13 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
-@Table(name = "members")
+@Table(name = "members", indexes = {
+    @Index(name = "idx_members_org_deleted", columnList = "organization_id, deleted"),
+    @Index(name = "idx_members_org_status_deleted", columnList = "organization_id, status, deleted"),
+    @Index(name = "idx_members_org_created_deleted", columnList = "organization_id, created_at DESC, deleted"),
+    @Index(name = "idx_members_org_phone_deleted_btree", columnList = "organization_id, phone, deleted"),
+    @Index(name = "idx_members_org_name_deleted_btree", columnList = "organization_id, full_name, deleted")
+})
 public class Member extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -26,10 +34,8 @@ public class Member extends BaseEntity {
     @Column(nullable = false)
     private String fullName;
 
-    @Column(nullable = false)
+    @Column
     private String phone;
-
-    private String email;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -42,6 +48,7 @@ public class Member extends BaseEntity {
     @Column(length = 1000)
     private String deactivationReason;
 
-    @Column(length = 1000)
-    private String notes;
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
 }

@@ -6,10 +6,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
-@Table(name = "otps")
+@Table(name = "otps", indexes = {
+    @Index(name = "idx_otps_email_code_verified", columnList = "email, otp_code, verified"),
+    @Index(name = "idx_otps_email_created", columnList = "email, created_at DESC"),
+    @Index(name = "idx_otps_expires", columnList = "expires_at")
+})
 @Data
 @Builder
 @NoArgsConstructor
@@ -26,18 +30,18 @@ public class Otp {
     private String otpCode;
 
     @Column(nullable = false)
-    private LocalDateTime expiresAt;
+    private Instant expiresAt;
 
     @Column(nullable = false)
     @Builder.Default
     private Boolean verified = false;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        createdAt = Instant.now();
         if (verified == null) {
             verified = false;
         }

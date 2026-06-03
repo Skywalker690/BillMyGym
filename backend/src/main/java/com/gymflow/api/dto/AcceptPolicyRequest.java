@@ -14,8 +14,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AcceptPolicyRequest {
-    @NotNull(message = "Policy acceptance flag is required")
-    private Boolean accepted;
+    @NotNull(message = "Terms acceptance flag is required")
+    private Boolean termsAccepted;
+
+    @NotNull(message = "Privacy acceptance flag is required")
+    private Boolean privacyAccepted;
 
     @NotBlank(message = "Policy version is required")
     private String version;

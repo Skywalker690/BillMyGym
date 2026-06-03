@@ -3,6 +3,7 @@ package com.gymflow.domain;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -14,7 +15,10 @@ import java.time.YearMonth;
 @Entity
 @Getter
 @Setter
-@Table(name = "usage_metrics")
+@Table(name = "usage_metrics", indexes = {
+    @Index(name = "idx_usage_metrics_org_month", columnList = "organization_id, year, month, deleted"),
+    @Index(name = "idx_usage_metrics_month", columnList = "year, month, deleted")
+})
 public class UsageMetric extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

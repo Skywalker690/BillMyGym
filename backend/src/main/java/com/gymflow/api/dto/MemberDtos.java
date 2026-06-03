@@ -3,7 +3,6 @@ package com.gymflow.api.dto;
 import com.gymflow.domain.enums.MemberStatus;
 import com.gymflow.domain.enums.MembershipStatus;
 import com.gymflow.domain.enums.PaymentStatus;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -14,11 +13,9 @@ public class MemberDtos {
 
     public record MemberRequest(
         @NotBlank String fullName,
-        @NotBlank String phone,
-        @Email String email,
+        String phone,
         MemberStatus status,
-        String deactivationReason,
-        String notes
+        String deactivationReason
     ) {
     }
 
@@ -27,13 +24,11 @@ public class MemberDtos {
         Long organizationId,
         String fullName,
         String phone,
-        String email,
         MemberStatus status,
         OffsetDateTime deactivatedAt,
         String deactivationReason,
         boolean deleted,
-        OffsetDateTime deletedAt,
-        String notes
+        OffsetDateTime deletedAt
     ) {
     }
 
@@ -47,7 +42,9 @@ public class MemberDtos {
         boolean expiringSoon,
         PaymentStatus paymentStatus,
         BigDecimal paidAmount,
-        BigDecimal pendingAmount
+        BigDecimal appliedCreditAmount,
+        BigDecimal pendingAmount,
+        BigDecimal walletBalance
     ) {
     }
 
@@ -56,9 +53,7 @@ public class MemberDtos {
         Long organizationId,
         String fullName,
         String phone,
-        String email,
         MemberStatus status,
-        String notes,
         CurrentMembershipSummary currentMembership
     ) {
     }
@@ -70,7 +65,8 @@ public class MemberDtos {
         long activeMemberships,
         long expiringSoonMemberships,
         long expiredMemberships,
-        long overdueMemberships
+        long overdueMemberships,
+        SubscriptionDtos.MemberLimitResponse memberLimit
     ) {
     }
 
@@ -83,6 +79,21 @@ public class MemberDtos {
         int totalPages,
         boolean first,
         boolean last
+    ) {
+    }
+
+    public record BulkMemberImportIssue(
+        Integer rowNumber,
+        String field,
+        String message
+    ) {
+    }
+
+    public record BulkMemberImportResponse(
+        int totalRows,
+        int importedCount,
+        int limit,
+        List<BulkMemberImportIssue> errors
     ) {
     }
 }

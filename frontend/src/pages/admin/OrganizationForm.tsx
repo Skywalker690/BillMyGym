@@ -1,233 +1,523 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Building2, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
+import { foundingPartnerDescription } from "@/lib/subscriptionLabels";
 
-const orgSchema = z.object({
+const KERALA_DISTRICTS = [
+  "Thiruvananthapuram",
+  "Kollam",
+  "Pathanamthitta",
+  "Alappuzha",
+  "Kottayam",
+  "Idukki",
+  "Ernakulam",
+  "Thrissur",
+  "Palakkad",
+  "Malappuram",
+  "Kozhikode",
+  "Wayanad",
+  "Kannur",
+  "Kasaragod",
+] as const;
+
+const schema = z.object({
   name: z.string().min(1, "Organization name is required"),
+  place: z.string().min(1, "Place is required"),
   district: z.string().min(1, "District is required"),
+  monthlyMembershipFee: z.coerce.number().min(0, "Monthly membership fee must be zero or more"),
+  admissionFee: z.coerce.number().min(0, "Admission fee must be zero or more"),
+  organizationType: z.enum(["REGULAR", "DEMO"]),
+  subscriptionPlan: z.literal("BILLMYGYM"),
   adminName: z.string().min(1, "Admin name is required"),
-  adminEmail: z.string().email("Invalid email address"),
+  adminEmail: z.string().email("Enter a valid admin email"),
   adminPhone: z.string().min(1, "Admin phone is required"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  logoUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  mapLocationLink: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  password: z.string().min(8, "Temporary password must be at least 8 characters"),
+  logoUrl: z.string().optional(),
+  mapLocationLink: z.string().optional(),
   address: z.string().optional(),
   description: z.string().optional(),
 });
 
-type OrgFormValues = z.infer<typeof orgSchema>;
+type FormInput = z.input<typeof schema>;
+type Values = z.output<typeof schema>;
+type Step = 0 | 1 | 2;
+
+const stepMeta = [
+  { id: 0 as Step, title: "Organization Details", caption: "Name, type, place, and district." },
+  { id: 1 as Step, title: "Admin Details", caption: "Primary admin access and temporary password." },
+  { id: 2 as Step, title: "Geographical Details", caption: "Logo, map, address, and description." },
+];
 
 export default function OrganizationForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [step, setStep] = useState(1);
-
-  const { register, handleSubmit, trigger, watch, formState: { errors, isSubmitting } } = useForm<OrgFormValues>({
-    resolver: zodResolver(orgSchema),
-    mode: "onTouched"
+  const [step, setStep] = useState<Step>(0);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    watch,
+    trigger,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<FormInput, any, Values>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      organizationType: "REGULAR",
+      subscriptionPlan: "BILLMYGYM",
+      password: "password123",
+      monthlyMembershipFee: 0,
+      admissionFee: 0,
+      district: "",
+      place: "",
+      logoUrl: "",
+      mapLocationLink: "",
+      address: "",
+      description: "",
+    },
   });
-  const values = watch();
+
+  const organizationType = watch("organizationType");
+  const watchedName = watch("name");
+  const watchedPlace = watch("place");
+  const watchedDistrict = watch("district");
+  const watchedMonthlyMembershipFee = watch("monthlyMembershipFee");
+  const watchedAdmissionFee = watch("admissionFee");
+  const watchedAdminName = watch("adminName");
+  const watchedAdminEmail = watch("adminEmail");
+  const watchedAdminPhone = watch("adminPhone");
+  const watchedPassword = watch("password");
+  const watchedAddress = watch("address");
+  const watchedMapUrl = watch("mapLocationLink");
+  const watchedLogoUrl = watch("logoUrl");
+  const watchedDescription = watch("description");
+  const specialAccess = organizationType === "DEMO";
 
   const mutation = useMutation({
-    mutationFn: (data: OrgFormValues) => api.post("/auth/register", {
-      organizationName: data.name,
-      district: data.district,
-      logoUrl: data.logoUrl || null,
-      mapLocationLink: data.mapLocationLink || null,
-      address: data.address || null,
-      adminFullName: data.adminName,
-      adminPhoneNumber: data.adminPhone,
-      adminEmail: data.adminEmail,
-      organizationDescription: data.description || null,
-      password: data.password,
-    }),
+    mutationFn: (data: Values) =>
+      api.post("/auth/register", {
+        organizationName: data.name,
+        place: data.place,
+        district: data.district,
+        logoUrl: data.logoUrl || null,
+        mapLocationLink: data.mapLocationLink || null,
+        address: data.address || null,
+        adminFullName: data.adminName,
+        adminPhoneNumber: data.adminPhone,
+        adminEmail: data.adminEmail,
+        organizationDescription: data.description || null,
+        monthlyMembershipFee: data.monthlyMembershipFee,
+        admissionFee: data.admissionFee,
+        organizationType: data.organizationType,
+        subscriptionPlan: "BILLMYGYM",
+        password: data.password,
+      }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organizationsDirectory"] });
       queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["platformAnalytics"] });
+      queryClient.invalidateQueries({ queryKey: ["platformYearlyReport"] });
       toast.success("Organization provisioned successfully");
       navigate("/app/organizations");
     },
     onError: () => toast.error("Failed to provision organization"),
   });
 
-  const onSubmit = (data: OrgFormValues) => {
-    mutation.mutate(data);
-  };
+  const onSubmit = (values: Values) => mutation.mutate(values);
 
   const nextStep = async () => {
-    let isValid = false;
-    if (step === 1) {
-      isValid = await trigger(["name", "district"]);
-    } else if (step === 2) {
-      isValid = await trigger(["adminName", "adminEmail", "adminPhone", "password"]);
+    const fieldsByStep: Record<Step, Array<keyof Values>> = {
+      0: ["name", "organizationType", "place", "district", "monthlyMembershipFee", "admissionFee"],
+      1: ["adminName", "adminEmail", "adminPhone", "password"],
+      2: [],
+    };
+
+    const valid = await trigger(fieldsByStep[step]);
+    if (!valid) {
+      toast.error("Please complete the required fields before moving ahead.");
+      return;
     }
-    
-    if (isValid) setStep(step + 1);
+    if (step < 2) setStep((current) => (current + 1) as Step);
+  };
+
+  const previousStep = () => {
+    if (step > 0) setStep((current) => (current - 1) as Step);
+  };
+
+  const openReview = async () => {
+    const valid = await trigger();
+    if (!valid) {
+      toast.error("Please complete the required fields before reviewing.");
+      return;
+    }
+    setReviewOpen(true);
   };
 
   return (
-    <div className="p-8 max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center space-x-4 mb-8 bg-white/40 dark:bg-slate-900/40 p-6 rounded-[2rem] backdrop-blur-xl border border-white/60 dark:border-white/10 shadow-sm">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/app/organizations")} className="rounded-full mr-2 hover:bg-white/50 dark:hover:bg-white/10">
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Provision Organization</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">Create a new tenant workspace and admin account.</p>
-        </div>
+    <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <Button variant="ghost" onClick={() => navigate("/app/organizations")} className="px-0 text-slate-600 hover:text-slate-950">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Back to Organizations
+      </Button>
+
+      <div className="grid gap-3 rounded-[1.7rem] border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-3">
+        {stepMeta.map((item, index) => {
+          const active = step === item.id;
+          const complete = step > item.id;
+          return (
+            <div
+              key={item.id}
+              className={`rounded-[1.3rem] border px-4 py-3 transition ${
+                active
+                  ? "border-slate-950 bg-slate-950 text-white"
+                  : complete
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+                    : "border-slate-200 bg-slate-50 text-slate-600"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-black ${
+                    active ? "bg-white text-slate-950" : complete ? "bg-emerald-500 text-white" : "bg-white text-slate-700"
+                  }`}
+                >
+                  {complete ? <Check className="h-4 w-4" /> : index + 1}
+                </div>
+                <div>
+                  <div className="text-sm font-black">{item.title}</div>
+                  <div className={`text-xs font-semibold ${active ? "text-slate-300" : "text-slate-500"}`}>{item.caption}</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      <div className="flex items-center mb-10 bg-white/30 dark:bg-slate-900/30 p-4 rounded-2xl backdrop-blur-md">
-        <div className={`flex flex-col items-center flex-1 ${step >= 1 ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'} transition-colors`}>
-           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold mb-2 shadow-sm ${step >= 1 ? 'bg-indigo-600 text-white shadow-indigo-500/30' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'} transition-colors`}>1</div>
-           <span className="text-sm font-bold uppercase tracking-wider">Org Info</span>
-        </div>
-        <div className={`h-1 flex-1 rounded-full ${step >= 2 ? 'bg-indigo-600 dark:bg-indigo-500' : 'bg-slate-200 dark:bg-slate-800'} transition-colors`}></div>
-        <div className={`flex flex-col items-center flex-1 ${step >= 2 ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'} transition-colors`}>
-           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold mb-2 shadow-sm ${step >= 2 ? 'bg-indigo-600 text-white shadow-indigo-500/30' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'} transition-colors`}>2</div>
-           <span className="text-sm font-bold uppercase tracking-wider">Admin Account</span>
-        </div>
-        <div className={`h-1 flex-1 rounded-full ${step >= 3 ? 'bg-indigo-600 dark:bg-indigo-500' : 'bg-slate-200 dark:bg-slate-800'} transition-colors`}></div>
-        <div className={`flex flex-col items-center flex-1 ${step >= 3 ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'} transition-colors`}>
-           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold mb-2 shadow-sm ${step >= 3 ? 'bg-indigo-600 text-white shadow-indigo-500/30' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'} transition-colors`}>3</div>
-           <span className="text-sm font-bold uppercase tracking-wider">Review & Submit</span>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit(onSubmit)}>
-        {step === 1 && (
-          <div className="glass-panel overflow-hidden">
-            <div className="p-6 border-b border-black/5 dark:border-white/5">
-              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center"><Building2 className="w-5 h-5 mr-3 text-indigo-600 dark:text-indigo-400" /> Organization Details</h2>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 ml-8">Basic information about the new gym or facility.</p>
+      <form className="space-y-6">
+        <div className="glass-panel overflow-visible rounded-[2rem]">
+          <div className="border-b border-black/5 p-6">
+            <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">
+              Step {step + 1} of {stepMeta.length}
             </div>
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="font-semibold text-slate-700 dark:text-slate-300">Business Name <span className="text-red-500">*</span></Label>
-                  <Input id="name" {...register("name")} placeholder="e.g. Iron Athletics" className="bg-white/50 dark:bg-slate-900/50 border-black/5 dark:border-white/10 rounded-xl focus-visible:ring-indigo-500/50 h-11 backdrop-blur-sm" />
-                  {errors.name && <p className="text-red-500 text-sm font-medium">{errors.name.message}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="district" className="font-semibold text-slate-700 dark:text-slate-300">District <span className="text-red-500">*</span></Label>
-                  <Input id="district" {...register("district")} placeholder="e.g. Downtown" className="bg-white/50 dark:bg-slate-900/50 border-black/5 dark:border-white/10 rounded-xl focus-visible:ring-indigo-500/50 h-11 backdrop-blur-sm" />
-                  {errors.district && <p className="text-red-500 text-sm font-medium">{errors.district.message}</p>}
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="address" className="font-semibold text-slate-700 dark:text-slate-300">Full Address</Label>
-                <Input id="address" {...register("address")} placeholder="123 Fitness Way, City" className="bg-white/50 dark:bg-slate-900/50 border-black/5 dark:border-white/10 rounded-xl focus-visible:ring-indigo-500/50 h-11 backdrop-blur-sm" />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="logoUrl" className="font-semibold text-slate-700 dark:text-slate-300">Logo URL</Label>
-                  <Input id="logoUrl" type="url" {...register("logoUrl")} placeholder="https://..." className="bg-white/50 dark:bg-slate-900/50 border-black/5 dark:border-white/10 rounded-xl focus-visible:ring-indigo-500/50 h-11 backdrop-blur-sm" />
-                  {errors.logoUrl && <p className="text-red-500 text-sm font-medium">{errors.logoUrl.message}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="mapLocationLink" className="font-semibold text-slate-700 dark:text-slate-300">Google Maps Link</Label>
-                  <Input id="mapLocationLink" type="url" {...register("mapLocationLink")} placeholder="https://maps.google.com/..." className="bg-white/50 dark:bg-slate-900/50 border-black/5 dark:border-white/10 rounded-xl focus-visible:ring-indigo-500/50 h-11 backdrop-blur-sm" />
-                  {errors.mapLocationLink && <p className="text-red-500 text-sm font-medium">{errors.mapLocationLink.message}</p>}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description" className="font-semibold text-slate-700 dark:text-slate-300">Description</Label>
-                <textarea 
-                  id="description" 
-                  {...register("description")} 
-                  className="w-full p-4 rounded-xl border border-black/5 dark:border-white/10 bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 min-h-[100px] backdrop-blur-sm shadow-sm"
-                />
-              </div>
-
-              <div className="flex justify-end pt-6 border-t border-black/5 dark:border-white/5">
-                <Button type="button" onClick={nextStep} className="rounded-full px-8 shadow-md shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-11">Next Step</Button>
-              </div>
-            </div>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">{stepMeta[step].title}</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">{stepMeta[step].caption}</p>
           </div>
-        )}
 
-        {step === 2 && (
-          <div className="glass-panel overflow-hidden">
-            <div className="p-6 border-b border-black/5 dark:border-white/5">
-              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center"><User className="w-5 h-5 mr-3 text-indigo-600 dark:text-indigo-400" /> Admin Credentials</h2>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 ml-8">This will be the first ORG_ADMIN account for this organization.</p>
-            </div>
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="adminName" className="font-semibold text-slate-700 dark:text-slate-300">Full Name <span className="text-red-500">*</span></Label>
-                  <Input id="adminName" {...register("adminName")} placeholder="Manager Name" className="bg-white/50 dark:bg-slate-900/50 border-black/5 dark:border-white/10 rounded-xl focus-visible:ring-indigo-500/50 h-11 backdrop-blur-sm" />
-                  {errors.adminName && <p className="text-red-500 text-sm font-medium">{errors.adminName.message}</p>}
+          <div className="p-6">
+            {step === 0 && (
+              <div className="grid gap-5 md:grid-cols-2">
+                <Field label="Organization Name" error={errors.name?.message}>
+                  <Input {...register("name")} className="h-12 rounded-2xl bg-white/75" placeholder="GymMax Downtown" />
+                </Field>
+
+                <Field label="Organization Type" error={errors.organizationType?.message}>
+                  <select
+                    {...register("organizationType")}
+                    className="h-12 w-full rounded-2xl border border-black/5 bg-white/75 px-4 text-sm font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  >
+                    <option value="REGULAR">Regular</option>
+                    <option value="DEMO">Demo</option>
+                  </select>
+                </Field>
+
+                <Field label="Place" error={errors.place?.message}>
+                  <Input {...register("place")} className="h-12 rounded-2xl bg-white/75" placeholder="Kakkanad" />
+                </Field>
+
+                <Field label="District" error={errors.district?.message}>
+                  <DistrictCombobox
+                    value={watchedDistrict}
+                    onChange={(value) => {
+                      setValue("district", value, { shouldValidate: true, shouldDirty: true });
+                    }}
+                  />
+                </Field>
+
+                <Field label="Monthly Membership Fee (INR)" error={errors.monthlyMembershipFee?.message}>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    {...register("monthlyMembershipFee", { valueAsNumber: true })}
+                    className="h-12 rounded-2xl bg-white/75"
+                    placeholder="299"
+                  />
+                </Field>
+
+                <Field label="Admission Fee (INR)" error={errors.admissionFee?.message}>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    {...register("admissionFee", { valueAsNumber: true })}
+                    className="h-12 rounded-2xl bg-white/75"
+                    placeholder="499"
+                  />
+                </Field>
+
+                {specialAccess && (
+                  <div className="md:col-span-2 rounded-[1.5rem] border border-sky-200 bg-sky-50 p-4 text-sm font-semibold text-slate-700">
+                    {foundingPartnerDescription()}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {step === 1 && (
+              <div className="grid gap-5 md:grid-cols-2">
+                <Field label="Admin Name" error={errors.adminName?.message}>
+                  <Input {...register("adminName")} className="h-12 rounded-2xl bg-white/75" placeholder="Anand Joseph" />
+                </Field>
+
+                <Field label="Admin Email" error={errors.adminEmail?.message}>
+                  <Input type="email" {...register("adminEmail")} className="h-12 rounded-2xl bg-white/75" placeholder="admin@gymmax.com" />
+                </Field>
+
+                <Field label="Phone Number" error={errors.adminPhone?.message}>
+                  <Input {...register("adminPhone")} className="h-12 rounded-2xl bg-white/75" placeholder="+91 98XXXXXXX" />
+                </Field>
+
+                <Field label="Temporary Password" error={errors.password?.message}>
+                  <Input type="text" {...register("password")} className="h-12 rounded-2xl bg-white/75 font-semibold tracking-[0.08em]" />
+                </Field>
+
+                <div className="md:col-span-2 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-slate-700">
+                  The temporary password defaults to <span className="font-black text-slate-950">password123</span>, and you can change it before creating the organization.
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="adminPhone" className="font-semibold text-slate-700 dark:text-slate-300">Phone Number <span className="text-red-500">*</span></Label>
-                  <Input id="adminPhone" {...register("adminPhone")} placeholder="+1 234 567 890" className="bg-white/50 dark:bg-slate-900/50 border-black/5 dark:border-white/10 rounded-xl focus-visible:ring-indigo-500/50 h-11 backdrop-blur-sm" />
-                  {errors.adminPhone && <p className="text-red-500 text-sm font-medium">{errors.adminPhone.message}</p>}
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="grid gap-5 md:grid-cols-2">
+                <Field label="Logo URL">
+                  <Input {...register("logoUrl")} className="h-12 rounded-2xl bg-white/75" placeholder="https://..." />
+                </Field>
+
+                <Field label="Map URL">
+                  <Input {...register("mapLocationLink")} className="h-12 rounded-2xl bg-white/75" placeholder="https://maps.google.com/..." />
+                </Field>
+
+                <div className="md:col-span-2">
+                  <Field label="Address">
+                    <Input {...register("address")} className="h-12 rounded-2xl bg-white/75" placeholder="Full street address" />
+                  </Field>
+                </div>
+
+                <div className="md:col-span-2">
+                  <Field label="Description">
+                    <textarea
+                      {...register("description")}
+                      className="min-h-[140px] w-full rounded-[1.5rem] border border-black/5 bg-white/75 p-4 text-sm text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500/40"
+                      placeholder="Add a quick internal profile for this gym, branch, or launch context."
+                    />
+                  </Field>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="adminEmail" className="font-semibold text-slate-700 dark:text-slate-300">Email Address (Login ID) <span className="text-red-500">*</span></Label>
-                <Input id="adminEmail" type="email" {...register("adminEmail")} placeholder="manager@gym.com" className="bg-white/50 dark:bg-slate-900/50 border-black/5 dark:border-white/10 rounded-xl focus-visible:ring-indigo-500/50 h-11 backdrop-blur-sm" />
-                {errors.adminEmail && <p className="text-red-500 text-sm font-medium">{errors.adminEmail.message}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password" className="font-semibold text-slate-700 dark:text-slate-300">Temporary Password <span className="text-red-500">*</span></Label>
-                <Input id="password" type="password" {...register("password")} placeholder="Temporary password" className="bg-white/50 dark:bg-slate-900/50 border-black/5 dark:border-white/10 rounded-xl focus-visible:ring-indigo-500/50 h-11 backdrop-blur-sm" />
-                {errors.password && <p className="text-red-500 text-sm font-medium">{errors.password.message}</p>}
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Admin will be able to change this after login.</p>
-              </div>
-
-              <div className="flex justify-between pt-6 border-t border-black/5 dark:border-white/5">
-                <Button type="button" variant="outline" onClick={() => setStep(1)} className="rounded-full px-6 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/50 dark:border-white/20 hover:bg-white/80 dark:hover:bg-slate-700/80 font-medium">Back</Button>
-                <Button type="button" onClick={nextStep} className="rounded-full px-8 shadow-md shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-11">Review details</Button>
-              </div>
-            </div>
+            )}
           </div>
-        )}
 
-        {step === 3 && (
-          <div className="glass-panel overflow-hidden">
-            <div className="p-6 border-b border-black/5 dark:border-white/5">
-              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Review & Provision</h2>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Verify all details before creating the instance.</p>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/5 bg-slate-50/80 px-6 py-5">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={previousStep}
+              disabled={step === 0}
+              className="rounded-full border-white/80 bg-white px-5 font-black"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Previous
+            </Button>
+
+            {step < 2 ? (
+              <Button type="button" onClick={nextStep} className="rounded-full bg-slate-950 px-6 font-black text-white hover:bg-slate-800">
+                Next
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            ) : (
+              <Button type="button" onClick={openReview} disabled={isSubmitting || mutation.isPending} className="rounded-full bg-emerald-600 px-7 font-black text-white hover:bg-emerald-700">
+                Review & Submit
+              </Button>
+            )}
+          </div>
+        </div>
+      </form>
+
+      {reviewOpen && (
+        <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-950/35 p-4 sm:items-center">
+          <div className="w-full max-w-4xl rounded-[2rem] border border-white/80 bg-white shadow-[0_30px_90px_rgba(15,23,42,0.22)]">
+            <div className="border-b border-slate-100 px-6 py-5">
+              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Final Review</div>
+              <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Check the organization details before creating it.</h3>
             </div>
-            <div className="p-6 space-y-6">
-              <div className="bg-white/50 dark:bg-slate-800/50 p-6 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm space-y-4">
-                 <div>
-                   <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Workspace</h4>
-                   <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div className="text-slate-500 dark:text-slate-400 font-medium">Name:</div><div className="font-bold text-slate-900 dark:text-white">{values.name || "Untitled organization"}</div>
-                      <div className="text-slate-500 dark:text-slate-400 font-medium">District:</div><div className="font-bold text-slate-900 dark:text-white">{values.district || "-"}</div>
-                      <div className="text-slate-500 dark:text-slate-400 font-medium">Admin:</div><div className="font-bold text-slate-900 dark:text-white">{values.adminName || "-"}</div>
-                      <div className="text-slate-500 dark:text-slate-400 font-medium">Email:</div><div className="font-bold text-slate-900 dark:text-white">{values.adminEmail || "-"}</div>
-                   </div>
-                   <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400 mt-4 text-center">All data looks good. We will execute the provision on the backend.</p>
-                 </div>
-              </div>
-
-              <div className="flex justify-between pt-6 border-t border-black/5 dark:border-white/5">
-                <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full px-6 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/50 dark:border-white/20 hover:bg-white/80 dark:hover:bg-slate-700/80 font-medium">Back</Button>
-                <Button type="submit" disabled={isSubmitting} className="rounded-full px-8 shadow-md shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-11">
-                  {isSubmitting ? "Provisioning..." : "Create Organization"}
+            <div className="grid gap-4 px-6 py-5 md:grid-cols-3">
+              <ReviewColumn
+                title="Organization"
+                rows={[
+                  { label: "Name", value: watchedName },
+                  { label: "Type", value: organizationType === "REGULAR" ? "Regular" : "Demo" },
+                  { label: "Place", value: watchedPlace },
+                  { label: "District", value: watchedDistrict },
+                  { label: "Monthly Fee", value: `INR ${Number(watchedMonthlyMembershipFee ?? 0).toLocaleString("en-IN")}` },
+                  { label: "Admission Fee", value: `INR ${Number(watchedAdmissionFee ?? 0).toLocaleString("en-IN")}` },
+                ]}
+              />
+              <ReviewColumn
+                title="Admin"
+                rows={[
+                  { label: "Name", value: watchedAdminName },
+                  { label: "Email", value: watchedAdminEmail },
+                  { label: "Phone", value: watchedAdminPhone },
+                  { label: "Temp Password", value: watchedPassword },
+                ]}
+              />
+              <ReviewColumn
+                title="Location"
+                rows={[
+                  { label: "Logo URL", value: watchedLogoUrl || "Not added" },
+                  { label: "Map URL", value: watchedMapUrl || "Not added" },
+                  { label: "Address", value: watchedAddress || "Not added" },
+                  { label: "Description", value: watchedDescription || "Not added" },
+                ]}
+              />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 px-6 py-5">
+              <div className="text-sm font-semibold text-slate-500">This review window appears only right before submission.</div>
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" onClick={() => setReviewOpen(false)} className="rounded-full border-white/80 bg-white px-5 font-black">
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => handleSubmit(onSubmit)()}
+                  disabled={isSubmitting || mutation.isPending}
+                  className="rounded-full bg-emerald-600 px-7 font-black text-white hover:bg-emerald-700"
+                >
+                  {isSubmitting || mutation.isPending ? "Provisioning..." : "Create Organization"}
                 </Button>
               </div>
             </div>
           </div>
-        )}
-      </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DistrictCombobox({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!wrapperRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredDistricts = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return KERALA_DISTRICTS;
+    return KERALA_DISTRICTS.filter((district) => district.toLowerCase().includes(normalized));
+  }, [query]);
+
+  return (
+    <div ref={wrapperRef} className="relative z-30">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="flex h-12 w-full items-center justify-between rounded-2xl border border-black/5 bg-white/75 px-4 text-left text-sm font-semibold text-slate-900 shadow-sm outline-none transition hover:border-emerald-200 focus:ring-2 focus:ring-emerald-500/40"
+      >
+        <span className={value ? "text-slate-900" : "text-slate-400"}>{value || "Choose a Kerala district"}</span>
+        <ChevronDown className={`h-4 w-4 text-slate-400 transition ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-2 w-full overflow-hidden rounded-[1.4rem] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.14)]">
+          <div className="border-b border-slate-100 p-3">
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search district..."
+              className="h-11 rounded-xl bg-slate-50"
+              autoFocus
+            />
+          </div>
+          <div className="max-h-72 overflow-y-auto p-2">
+            {filteredDistricts.length === 0 ? (
+              <div className="rounded-xl px-3 py-6 text-center text-sm font-semibold text-slate-500">
+                No district matches your search.
+              </div>
+            ) : (
+              filteredDistricts.map((district) => (
+                <button
+                  key={district}
+                  type="button"
+                  onClick={() => {
+                    onChange(district);
+                    setQuery("");
+                    setOpen(false);
+                  }}
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-800"
+                >
+                  <span>{district}</span>
+                  {value === district && <Check className="h-4 w-4 text-emerald-600" />}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <Label className="font-semibold text-slate-700">{label}</Label>
+      {children}
+      {error && <p className="text-xs font-semibold text-rose-600">{error}</p>}
+    </div>
+  );
+}
+
+function ReviewColumn({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: Array<{ label: string; value: string }>;
+}) {
+  return (
+    <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50/70 p-4">
+      <div className="text-lg font-black text-slate-950">{title}</div>
+      <div className="mt-5 space-y-3">
+        {rows.map((row) => (
+          <div key={row.label} className="rounded-[1.1rem] border border-white/80 bg-white p-4 shadow-sm">
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{row.label}</div>
+            <div className="mt-1 break-words text-sm font-black text-slate-950">{row.value}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

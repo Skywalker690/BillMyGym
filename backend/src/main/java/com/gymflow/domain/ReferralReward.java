@@ -1,6 +1,6 @@
 package com.gymflow.domain;
 
-import com.gymflow.domain.enums.SubscriptionStatus;
+import com.gymflow.domain.enums.RewardType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,30 +13,28 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Entity
 @Getter
 @Setter
-@Table(name = "organization_subscriptions")
-public class OrganizationSubscription extends BaseEntity {
+@Table(name = "referral_rewards")
+public class ReferralReward extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "organization_id", nullable = false)
+    @JoinColumn(name = "org_id", nullable = false)
     private Organization organization;
 
-    @Column(nullable = false)
-    private LocalDate startDate;
-
-    @Column(nullable = false)
-    private LocalDate endDate;
-
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private SubscriptionStatus status = SubscriptionStatus.ACTIVE;
+    @Column(nullable = false, length = 50)
+    private RewardType rewardType;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal amount = BigDecimal.ZERO;
 
     @Column(nullable = false)
-    private BigDecimal amount;
+    private int monthsRewarded = 0;
 
-    private String razorpaySubscriptionId;
+    @Column(nullable = false)
+    private boolean rewardUsed = false;
+
 }

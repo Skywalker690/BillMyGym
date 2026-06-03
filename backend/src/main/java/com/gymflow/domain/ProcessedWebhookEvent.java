@@ -1,0 +1,27 @@
+package com.gymflow.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Getter
+@Setter
+@Table(name = "processed_webhook_events", indexes = {
+    @Index(name = "idx_processed_webhook_events_type_processed", columnList = "event_type, processed_at DESC, deleted")
+})
+public class ProcessedWebhookEvent extends BaseEntity {
+
+    @Column(name = "event_id", nullable = false, unique = true, length = 255)
+    private String eventId;
+
+    @Column(name = "event_type", nullable = false, length = 100)
+    private String eventType;
+
+    @Column(name = "processed_at", nullable = false)
+    private Instant processedAt;
+}
