@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 import path from "path";
 import { defineConfig, loadEnv } from "vite";
+import { getActiveApiOrigin, getApiPathPrefix } from "./app.config";
 
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 
@@ -23,8 +24,11 @@ export default defineConfig(({ mode }) => {
       hmr: process.env.DISABLE_HMR !== "true",
       watch: process.env.DISABLE_HMR === "true" ? null : {},
       proxy: {
-        "/api": {
-          target: env.VITE_BACKEND_ORIGIN || "http://localhost:8080",
+        [getApiPathPrefix()]: {
+          target: getActiveApiOrigin(mode, {
+            apiOriginOverride: env.VITE_API_ORIGIN,
+            apiTargetOverride: env.VITE_API_TARGET,
+          }),
           changeOrigin: true,
         },
       },

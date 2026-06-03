@@ -251,9 +251,9 @@ export default function OrganizationsList() {
         />
         <MetricCard
           icon={Crown}
-          label="Demo Workspaces"
-          value={summary?.totalPilotOrganizations ?? 0}
-          detail="Showcase environments"
+          label="Trial Organizations"
+          value={summary?.totalTrialOrganizations ?? 0}
+          detail="Currently in free trial"
           tone="sky"
         />
       </section>

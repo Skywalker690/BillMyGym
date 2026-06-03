@@ -57,6 +57,25 @@ const stepMeta = [
   { id: 2 as Step, title: "Geographical Details", caption: "Logo, map, address, and description." },
 ];
 
+function generateTemporaryPassword() {
+  const groups = ["ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnopqrstuvwxyz", "23456789", "!@#$%"];
+  const allCharacters = groups.join("");
+  const bytes = new Uint32Array(14);
+  crypto.getRandomValues(bytes);
+
+  const password = [
+    ...groups.map((group, index) => group[bytes[index] % group.length]),
+    ...Array.from(bytes.slice(groups.length), (byte) => allCharacters[byte % allCharacters.length]),
+  ];
+
+  for (let index = password.length - 1; index > 0; index--) {
+    const swapIndex = bytes[index] % (index + 1);
+    [password[index], password[swapIndex]] = [password[swapIndex], password[index]];
+  }
+
+  return password.join("");
+}
+
 export default function OrganizationForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -74,7 +93,7 @@ export default function OrganizationForm() {
     defaultValues: {
       organizationType: "REGULAR",
       subscriptionPlan: "BILLMYGYM",
-      password: "password123",
+      password: generateTemporaryPassword(),
       monthlyMembershipFee: 0,
       admissionFee: 0,
       district: "",
@@ -291,7 +310,7 @@ export default function OrganizationForm() {
                 </Field>
 
                 <div className="md:col-span-2 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-slate-700">
-                  The temporary password defaults to <span className="font-black text-slate-950">password123</span>, and you can change it before creating the organization.
+                  A strong temporary password has been generated. You can change it before creating the organization.
                 </div>
               </div>
             )}

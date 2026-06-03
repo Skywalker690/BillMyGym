@@ -2,14 +2,33 @@ spring:
   config:
     activate:
       on-profile: prod
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
 
 gymflow:
   payments:
-    enabled: true
+    enabled: ${GYMFLOW_PAYMENTS_ENABLED:false}
   whatsapp:
-    enabled: true
+    enabled: ${GYMFLOW_WHATSAPP_ENABLED:false}
     api-url: ${GYMFLOW_WHATSAPP_API_URL:https://graph.facebook.com}
     access-token: ${GYMFLOW_WHATSAPP_ACCESS_TOKEN:}
     phone-number-id: ${GYMFLOW_WHATSAPP_PHONE_NUMBER_ID:}
     business-account-id: ${GYMFLOW_WHATSAPP_BUSINESS_ACCOUNT_ID:}
     version: ${GYMFLOW_WHATSAPP_VERSION:v23.0}
+    webhook-verify-token: ${GYMFLOW_WHATSAPP_WEBHOOK_VERIFY_TOKEN:}
+    app-secret: ${GYMFLOW_WHATSAPP_APP_SECRET:}
+
+razorpay:
+  key-id: ${RAZORPAY_KEY_ID:}
+  key-secret: ${RAZORPAY_KEY_SECRET:}
+  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+
+app:
+  public-url: ${APP_PUBLIC_URL}
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS}

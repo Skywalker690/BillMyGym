@@ -70,6 +70,9 @@ public class AuthService {
     @Value("${google.client.id}")
     private String googleClientId;
 
+    @Value("${app.public-url}")
+    private String appPublicUrl;
+
     @Transactional
     public void registerOrganizationAdmin(RegisterOrganizationAdminRequest request) {
         if (SecurityUtils.currentUser().role() != Role.SUPER_ADMIN) {
@@ -121,7 +124,7 @@ public class AuthService {
         whatsAppDeliveryService.sendOrganizationWelcome(
             savedOrganization,
             request.adminFullName(),
-            "https://gymmax.com/login"
+            appUrl("/login")
         );
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -186,7 +189,7 @@ public class AuthService {
         whatsAppDeliveryService.sendOrganizationWelcome(
             savedOrganization,
             request.adminFullName(),
-            "https://gymmax.com/login"
+            appUrl("/login")
         );
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -551,6 +554,14 @@ public class AuthService {
         String device = requestContext.device() == null ? "Unknown device" : requestContext.device();
         String browser = requestContext.browser() == null ? "Unknown browser" : requestContext.browser();
         return device + " / " + browser;
+    }
+
+    private String appUrl(String path) {
+        String baseUrl = appPublicUrl == null ? "" : appPublicUrl.trim().replaceAll("/+$", "");
+        if (path == null || path.isBlank() || "/".equals(path.trim())) {
+            return baseUrl;
+        }
+        return baseUrl + (path.startsWith("/") ? path : "/" + path);
     }
 }
 

@@ -121,7 +121,7 @@ function AppLayoutShell({
         onLogout={onLogout}
       />
 
-      <div className={`min-h-screen min-w-0 overflow-x-clip transition-all duration-500 ${sidebarCollapsed ? "lg:pl-28" : "lg:pl-80"}`}>
+      <div className={`min-h-screen min-w-0 overflow-x-clip transition-all duration-500 ${sidebarCollapsed ? "lg:pl-28" : "lg:pl-[19.5rem]"}`}>
         <Topbar
           user={user}
           role={role}

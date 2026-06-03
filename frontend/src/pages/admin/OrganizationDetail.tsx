@@ -329,7 +329,7 @@ export default function OrganizationDetail() {
   const basePlanAmount = Number(pricing?.baseAmount ?? 299);
 
   function downloadSampleCsv() {
-    const csv = "fullName,phone\nAarav Nair,9876543210\nDiya Joseph,9123456789\n";
+    const csv = "fullName,phone,lastSubscriptionDate\nAarav Nair,9876543210,2026-05-20\nDiya Joseph,9123456789,20 May 2026\n";
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -345,7 +345,14 @@ export default function OrganizationDetail() {
       return field === "file" ? "CSV file" : field;
     }
     const [, rowNumber, rowField] = match;
-    const fieldLabel = rowField === "fullName" ? "Full name" : rowField === "phone" ? "Phone number" : rowField;
+    const fieldLabel =
+      rowField === "fullName"
+        ? "Full name"
+        : rowField === "phone"
+          ? "Phone number"
+          : rowField === "lastSubscriptionDate"
+            ? "Last subscription date"
+            : rowField;
     return `Row ${rowNumber} - ${fieldLabel}`;
   }
 
@@ -523,7 +530,7 @@ export default function OrganizationDetail() {
                 Bulk Member Import
               </h2>
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                Super admins can import up to 200 members into this gym at a time with a simple CSV containing only full name and phone number.
+                Super admins can import up to 200 members into this gym at a time with full name, phone number, and the member's last subscription date.
               </p>
             </div>
             <div className="space-y-5 p-6">
@@ -532,7 +539,7 @@ export default function OrganizationDetail() {
                   <div>
                     <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">CSV Rules</div>
                     <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-slate-600">
-                      Use only `fullName` and `phone`. Phone numbers must be unique inside this gym for bulk import, including against existing members.
+                      Use `fullName`, `phone`, and `lastSubscriptionDate`. The next membership expiry is calculated as the same date in the next month.
                     </p>
                   </div>
                   <Button
@@ -546,9 +553,9 @@ export default function OrganizationDetail() {
                   </Button>
                 </div>
                 <div className="mt-4 rounded-[1.3rem] border border-white/80 bg-slate-950 p-4 text-xs font-semibold text-emerald-100 shadow-inner">
-                  <div>fullName,phone</div>
-                  <div>Aarav Nair,9876543210</div>
-                  <div>Diya Joseph,9123456789</div>
+                  <div>fullName,phone,lastSubscriptionDate</div>
+                  <div>Aarav Nair,9876543210,2026-05-20</div>
+                  <div>Diya Joseph,9123456789,20 May 2026</div>
                 </div>
               </div>
 
@@ -570,11 +577,12 @@ export default function OrganizationDetail() {
                   <div>
                     <div className="text-sm font-black text-slate-950">Upload file for {organization.name}</div>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
-                      Maximum 200 member rows per upload. Blank phone numbers are not allowed in this importer.
+                      Maximum 200 member rows per upload. Blank phone numbers and blank subscription dates are not allowed in this importer.
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge className="border-slate-200 bg-white text-slate-700">2 columns only</Badge>
+                      <Badge className="border-slate-200 bg-white text-slate-700">3 columns only</Badge>
                       <Badge className="border-slate-200 bg-white text-slate-700">200 row limit</Badge>
+                      <Badge className="border-slate-200 bg-white text-slate-700">1-month expiry calculation</Badge>
                       <Badge className="border-slate-200 bg-white text-slate-700">Org-specific phone uniqueness</Badge>
                     </div>
                   </div>

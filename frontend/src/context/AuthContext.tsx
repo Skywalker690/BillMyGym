@@ -1,6 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import api from "@/lib/api";
+import api, {
+  clearStoredAuth,
+  clearStoredUser,
+  persistAuthToken,
+  persistStoredUser,
+  readAuthToken,
+  readStoredUser,
+} from "@/lib/api";
 
 type Role = "SUPER_ADMIN" | "ORG_ADMIN" | null;
 
@@ -44,10 +51,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const AUTH_TOKEN_KEY = "billmygym_token";
-const AUTH_USER_KEY = "billmygym_user";
-const LEGACY_AUTH_TOKEN_KEY = "gymflow_token";
-const LEGACY_AUTH_USER_KEY = "gymflow_user";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -59,22 +62,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let active = true;
 
     const bootstrapAuth = async () => {
-      const storedToken = localStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem(LEGACY_AUTH_TOKEN_KEY);
-      const storedUser = localStorage.getItem(AUTH_USER_KEY) || localStorage.getItem(LEGACY_AUTH_USER_KEY);
+      const storedToken = readAuthToken();
+      const storedUser = readStoredUser();
 
       if (storedToken) {
         setToken(storedToken);
-        localStorage.setItem(AUTH_TOKEN_KEY, storedToken);
-        localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
+        persistAuthToken(storedToken);
       }
       if (storedUser) {
         try {
           setUser(JSON.parse(storedUser));
-          localStorage.setItem(AUTH_USER_KEY, storedUser);
-          localStorage.removeItem(LEGACY_AUTH_USER_KEY);
+          persistStoredUser(storedUser);
         } catch {
-          localStorage.removeItem(AUTH_USER_KEY);
-          localStorage.removeItem(LEGACY_AUTH_USER_KEY);
+          clearStoredUser();
         }
       }
 
@@ -121,16 +121,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = (newToken: string, newUser: User) => {
     setToken(newToken);
-    localStorage.setItem(AUTH_TOKEN_KEY, newToken);
-    localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
+    persistAuthToken(newToken);
     persistUser(newUser, setUser);
   };
 
   const updateUser = (nextUser: User | null) => {
     if (!nextUser) {
       setUser(null);
-      localStorage.removeItem(AUTH_USER_KEY);
-      localStorage.removeItem(LEGACY_AUTH_USER_KEY);
+      clearStoredUser();
       return;
     }
     persistUser(nextUser, setUser);
@@ -207,8 +205,7 @@ export function useAuth() {
 
 function persistUser(nextUser: User, setUser: (user: User | null) => void) {
   setUser(nextUser);
-  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(nextUser));
-  localStorage.removeItem(LEGACY_AUTH_USER_KEY);
+  persistStoredUser(JSON.stringify(nextUser));
 }
 
 function clearAuth(
@@ -217,8 +214,5 @@ function clearAuth(
 ) {
   setToken(null);
   setUser(null);
-  localStorage.removeItem(AUTH_TOKEN_KEY);
-  localStorage.removeItem(AUTH_USER_KEY);
-  localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
-  localStorage.removeItem(LEGACY_AUTH_USER_KEY);
+  clearStoredAuth();
 }

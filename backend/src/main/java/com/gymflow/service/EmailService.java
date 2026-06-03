@@ -28,7 +28,6 @@ public class EmailService {
 
     private static final String PLAN_NAME = "BillMyGym Plan";
     private static final String SENDER_NAME = "BillMyGym";
-    private static final String APP_URL = "https://gymmax.com";
     private static final String FONT_STACK = "Arial,Helvetica,sans-serif";
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 
@@ -38,6 +37,9 @@ public class EmailService {
 
     @Value("${spring.mail.username}")
     private String fromEmail;
+
+    @Value("${app.public-url}")
+    private String appPublicUrl;
 
     @Async("emailTaskExecutor")
     public void sendOrganizationAdminWelcomeEmail(
@@ -880,9 +882,13 @@ public class EmailService {
 
     private String appUrl(String path) {
         if (path == null || path.isBlank() || "/".equals(path.trim())) {
-            return APP_URL;
+            return normalizedAppPublicUrl();
         }
-        return APP_URL + (path.startsWith("/") ? path : "/" + path);
+        return normalizedAppPublicUrl() + (path.startsWith("/") ? path : "/" + path);
+    }
+
+    private String normalizedAppPublicUrl() {
+        return appPublicUrl == null ? "" : appPublicUrl.trim().replaceAll("/+$", "");
     }
 
     private String formatRole(String role) {

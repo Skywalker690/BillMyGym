@@ -30,6 +30,7 @@ import com.gymflow.repository.MemberRepository;
 import com.gymflow.repository.OrganizationRepository;
 import com.gymflow.security.AuthenticatedUser;
 import com.gymflow.security.SecurityUtils;
+import com.gymflow.shared.money.MoneyUtils;
 import jakarta.transaction.Transactional;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -37,11 +38,15 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -60,6 +65,15 @@ public class MemberService {
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
     private static final int DUE_TODAY_WINDOW_DAYS = 0;
     private static final int BULK_IMPORT_LIMIT = 200;
+    private static final int BULK_IMPORT_MEMBERSHIP_DURATION_MONTHS = 1;
+    private static final List<DateTimeFormatter> BULK_IMPORT_DATE_FORMATTERS = List.of(
+        DateTimeFormatter.ISO_LOCAL_DATE,
+        new DateTimeFormatterBuilder().parseCaseInsensitive().appendPattern("d MMM uuuu").toFormatter(Locale.ENGLISH),
+        new DateTimeFormatterBuilder().parseCaseInsensitive().appendPattern("d MMMM uuuu").toFormatter(Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("d/M/uuuu"),
+        DateTimeFormatter.ofPattern("d-M-uuuu"),
+        DateTimeFormatter.ofPattern("d.M.uuuu")
+    );
     private static final Set<MemberStatus> INACTIVE_MEMBER_STATUSES = Set.of(
         MemberStatus.DEACTIVATED
     );
@@ -258,6 +272,9 @@ public class MemberService {
                 issues.add(new BulkMemberImportIssue(row.rowNumber(), "phone", "Phone number is required for bulk import."));
                 continue;
             }
+            if (row.lastSubscriptionDateText() == null || row.lastSubscriptionDateText().isBlank()) {
+                issues.add(new BulkMemberImportIssue(row.rowNumber(), "lastSubscriptionDate", "Last subscription date is required."));
+            }
             duplicateRowsByPhone.computeIfAbsent(row.normalizedPhone(), ignored -> new ArrayList<>()).add(row.rowNumber());
         }
 
@@ -306,17 +323,22 @@ public class MemberService {
         List<Member> members = parseResult.rows().stream()
             .map(row -> toImportedMember(row, organization))
             .toList();
-        memberRepository.saveAll(members);
+        List<Member> savedMembers = memberRepository.saveAll(members);
+        List<MemberMembership> memberships = new ArrayList<>();
+        for (int index = 0; index < savedMembers.size(); index++) {
+            memberships.add(toImportedMembership(savedMembers.get(index), parseResult.rows().get(index), organization));
+        }
+        memberMembershipRepository.saveAll(memberships);
 
         auditLogService.log(
             "MEMBER_BULK_IMPORTED",
-            "Bulk imported " + members.size() + " members for organization id=" + organizationId,
+            "Bulk imported " + savedMembers.size() + " members for organization id=" + organizationId,
             AuditCategory.MEMBER,
             "MEMBER"
         );
         auditLogService.logOrganizationActivity(
             "ADMIN_BULK_IMPORTED_MEMBERS",
-            "Bulk imported " + members.size() + " members",
+            "Bulk imported " + savedMembers.size() + " members with membership expiry dates",
             AuditActivityScope.ADMIN_ACTIVITY,
             AuditEventStatus.INFO,
             "MEMBER",
@@ -325,7 +347,7 @@ public class MemberService {
         );
 
         reportCacheService.evictOrganization(organizationId);
-        return new BulkMemberImportResponse(parseResult.totalRows(), members.size(), BULK_IMPORT_LIMIT, List.of());
+        return new BulkMemberImportResponse(parseResult.totalRows(), savedMembers.size(), BULK_IMPORT_LIMIT, List.of());
     }
 
     @Transactional
@@ -510,6 +532,20 @@ public class MemberService {
         return member;
     }
 
+    private MemberMembership toImportedMembership(Member member, ParsedImportRow row, Organization organization) {
+        MemberMembership membership = new MemberMembership();
+        membership.setMember(member);
+        membership.setOrganization(organization);
+        membership.setDurationMonths(BULK_IMPORT_MEMBERSHIP_DURATION_MONTHS);
+        membership.setPlanAmount(MoneyUtils.normalize(
+            organization.getMonthlyMembershipFee() == null ? BigDecimal.ZERO : organization.getMonthlyMembershipFee()
+        ));
+        membership.setStartDate(row.lastSubscriptionDate());
+        membership.setEndDate(row.lastSubscriptionDate().plusMonths(BULK_IMPORT_MEMBERSHIP_DURATION_MONTHS));
+        membershipLifecycleService.refreshMembership(membership, DUE_TODAY_WINDOW_DAYS);
+        return membership;
+    }
+
     private CsvImportParseResult parseImportRows(String content) {
         List<ParsedImportRow> rows = new ArrayList<>();
         List<BulkMemberImportIssue> issues = new ArrayList<>();
@@ -537,18 +573,20 @@ public class MemberService {
             }
 
             totalRows++;
-            if (parsedLine.columns().size() != 2) {
+            if (parsedLine.columns().size() != 3) {
                 issues.add(new BulkMemberImportIssue(
                     index + 1,
                     "row",
-                    "Each row must contain exactly 2 columns: full name and phone number."
+                    "Each row must contain exactly 3 columns: full name, phone number, and last subscription date."
                 ));
                 continue;
             }
 
             String fullName = normalizeFullName(parsedLine.columns().get(0));
             String phone = normalizePhone(parsedLine.columns().get(1));
-            rows.add(new ParsedImportRow(index + 1, fullName, phone));
+            String lastSubscriptionDateText = normalizeDateText(parsedLine.columns().get(2));
+            LocalDate lastSubscriptionDate = parseImportDate(index + 1, lastSubscriptionDateText, issues);
+            rows.add(new ParsedImportRow(index + 1, fullName, phone, lastSubscriptionDateText, lastSubscriptionDate));
         }
 
         return new CsvImportParseResult(rows, issues, totalRows);
@@ -582,13 +620,15 @@ public class MemberService {
     }
 
     private boolean looksLikeHeader(List<String> columns) {
-        if (columns.size() != 2) {
+        if (columns.size() != 3) {
             return false;
         }
         String first = normalizeHeader(columns.get(0));
         String second = normalizeHeader(columns.get(1));
+        String third = normalizeHeader(columns.get(2));
         return Set.of("fullname", "membername", "name").contains(first)
-            && Set.of("phone", "phonenumber", "mobilenumber", "mobile").contains(second);
+            && Set.of("phone", "phonenumber", "mobilenumber", "mobile").contains(second)
+            && Set.of("lastsubscriptiondate", "subscriptiondate", "lastsubscribeddate", "lastpaymentdate").contains(third);
     }
 
     private String normalizeHeader(String value) {
@@ -611,6 +651,33 @@ public class MemberService {
         }
         String trimmed = value.trim().replaceAll("\\s+", "");
         return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private String normalizeDateText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim().replaceAll("\\s+", " ");
+        return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private LocalDate parseImportDate(int rowNumber, String value, List<BulkMemberImportIssue> issues) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        for (DateTimeFormatter formatter : BULK_IMPORT_DATE_FORMATTERS) {
+            try {
+                return LocalDate.parse(value, formatter);
+            } catch (DateTimeParseException ignored) {
+                // Try the next accepted import format.
+            }
+        }
+        issues.add(new BulkMemberImportIssue(
+            rowNumber,
+            "lastSubscriptionDate",
+            "Use a valid date such as 2026-05-20 or 20 May 2026."
+        ));
+        return null;
     }
 
     private String stripBom(String value) {
@@ -643,7 +710,9 @@ public class MemberService {
     private record ParsedImportRow(
         int rowNumber,
         String fullName,
-        String phone
+        String phone,
+        String lastSubscriptionDateText,
+        LocalDate lastSubscriptionDate
     ) {
         private String normalizedPhone() {
             return phone;
