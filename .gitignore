@@ -14,3 +14,4 @@ backend.zip
 .env
 /backend/boot.err
 /backend/boot.log
+/backend/src/main/resources/.env-aws
