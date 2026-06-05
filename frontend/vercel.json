@@ -1,10 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://api.billmygym.tech/api/:path*"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
