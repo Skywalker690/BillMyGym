@@ -150,6 +150,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
   const normalizedDurationMonths = Number.isFinite(watchedDurationMonths) && watchedDurationMonths > 0
     ? watchedDurationMonths
     : 1;
+  const isBrandNewMember = isCreate && !existingMember;
   const calculatedPlanAmount = resolveMembershipTotal(organizationMonthlyFee, normalizedDurationMonths);
   const calculatedCollectedAmount = resolveCollectedAmount(mode, calculatedPlanAmount, organizationAdmissionFee, existingMember);
   const durationMonthsField = register("durationMonths", { valueAsNumber: true });
@@ -303,6 +304,9 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
   return (
     <div className="mx-auto max-w-6xl space-y-5 px-3 pb-16 pt-3 sm:space-y-6 sm:p-6 lg:space-y-8 lg:p-8">
       <section className="billmygym-shell relative overflow-hidden rounded-[1.8rem] p-4 sm:rounded-[2rem] sm:p-6 lg:p-8">
+        {isBrandNewMember && (
+          <div className="absolute inset-0 lg:hidden bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.24),_transparent_42%),linear-gradient(135deg,rgba(255,251,235,0.96),rgba(254,240,138,0.5))]" />
+        )}
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-4">
             <Button
@@ -313,11 +317,17 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div className="flex h-16 w-16 items-center justify-center rounded-[1.7rem] bg-white/75 text-emerald-700 shadow-[0_18px_35px_-24px_rgba(21,128,61,0.55)]">
+            <div className={`hidden sm:flex h-16 w-16 items-center justify-center rounded-[1.7rem] bg-white/75 ${
+              isBrandNewMember
+                ? "text-amber-700 shadow-[0_18px_35px_-24px_rgba(217,119,6,0.5)] lg:text-emerald-700 lg:shadow-[0_18px_35px_-24px_rgba(21,128,61,0.55)]"
+                : "text-emerald-700 shadow-[0_18px_35px_-24px_rgba(21,128,61,0.55)]"
+            }`}>
               {isEdit ? <UserCog className="h-8 w-8" /> : <UserPlus className="h-8 w-8" />}
             </div>
             <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700 sm:tracking-[0.28em]">
+              <div className={`hidden sm:block text-[10px] font-black uppercase tracking-[0.22em] sm:tracking-[0.28em] ${
+                isBrandNewMember ? "text-amber-700 lg:text-emerald-700" : "text-emerald-700"
+              }`}>
                 {isCreate ? "New Member Onboarding" : isEdit ? "Member Update" : "Membership Renewal"}
               </div>
               <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
@@ -327,18 +337,24 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
           </div>
 
           {(isCreate || isRenew) && (
-            <div className={`grid w-full grid-cols-2 gap-2 sm:gap-3 lg:w-auto ${isCreate && existingMember ? "xl:grid-cols-2" : "xl:grid-cols-3"}`}>
-              <HeroChip label="Monthly Fee" value={`INR ${organizationMonthlyFee.toLocaleString("en-IN")}`} />
+            <div className={`hidden sm:grid w-full grid-cols-2 gap-2 sm:gap-3 lg:w-auto ${isCreate && existingMember ? "xl:grid-cols-2" : "xl:grid-cols-3"}`}>
+              <HeroChip
+                label="Monthly Fee"
+                value={`INR ${organizationMonthlyFee.toLocaleString("en-IN")}`}
+                tone={isBrandNewMember ? "amber" : "emerald"}
+              />
               {(!isCreate || !existingMember) && (
                 <HeroChip
                   label="Admission Fee"
                   value={`INR ${organizationAdmissionFee.toLocaleString("en-IN")}`}
+                  tone={isBrandNewMember ? "amber" : "emerald"}
                 />
               )}
               <HeroChip
                 label="Payment Collected"
                 value={`INR ${watchedInitialPaymentAmount.toLocaleString("en-IN")}`}
                 className={!isCreate || !existingMember ? "col-span-2 xl:col-span-1" : ""}
+                tone={isBrandNewMember ? "amber" : "emerald"}
               />
             </div>
           )}
@@ -395,12 +411,24 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
 
           {(isCreate || isRenew) && (
           <div className="space-y-6">
-            <div className="overflow-hidden rounded-[1.9rem] border border-white/85 bg-white/90 shadow-[0_20px_50px_-30px_rgba(15,23,42,0.22)]">
-              <div className="relative overflow-hidden border-b border-black/5 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_42%),linear-gradient(135deg,rgba(255,255,255,0.82),rgba(236,253,245,0.62))] p-6">
+            <div className={`overflow-hidden rounded-[1.9rem] border shadow-[0_20px_50px_-30px_rgba(15,23,42,0.22)] ${
+              isBrandNewMember
+                ? "border-amber-200/70 bg-amber-50/45 lg:border-white/85 lg:bg-white/90"
+                : "border-white/85 bg-white/90"
+            }`}>
+              <div className={`relative overflow-hidden border-b border-black/5 p-6 ${
+                isBrandNewMember
+                  ? "bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.24),_transparent_44%),linear-gradient(135deg,rgba(255,251,235,0.96),rgba(254,240,138,0.58))] lg:bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_42%),linear-gradient(135deg,rgba(255,255,255,0.82),rgba(236,253,245,0.62))]"
+                  : "bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_42%),linear-gradient(135deg,rgba(255,255,255,0.82),rgba(236,253,245,0.62))]"
+              }`}>
                 <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/12 text-emerald-700 shadow-sm">
+                      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm ${
+                        isBrandNewMember
+                          ? "bg-amber-500/12 text-amber-700 lg:bg-emerald-500/12 lg:text-emerald-700"
+                          : "bg-emerald-500/12 text-emerald-700"
+                      }`}>
                         <CreditCard className="h-5 w-5" />
                       </div>
                       <div>
@@ -411,10 +439,14 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                     </div>
 
                     {isCreate && (
-                      <div className="mt-5 rounded-[1.5rem] border border-emerald-200 bg-white/80 p-4 shadow-sm">
+                      <div className={`mt-5 rounded-[1.5rem] border bg-white/80 p-4 shadow-sm ${
+                        isBrandNewMember
+                          ? "border-amber-200 lg:border-emerald-200"
+                          : "border-emerald-200"
+                      }`}>
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                           <div>
-                            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">Admission Fee Control</div>
+                      
                             <div className="mt-1 text-lg font-black text-slate-950">Existing gym member</div>
                           </div>
                           <button
@@ -442,12 +474,20 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                     )}
 
                     <div className="mt-5 flex flex-wrap items-center gap-3">
-                      <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-emerald-700">
+                      <div className={`inline-flex items-center gap-2 rounded-full border bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] ${
+                        isBrandNewMember
+                          ? "border-amber-200/70 text-amber-700 lg:border-white/80 lg:text-emerald-700"
+                          : "border-white/80 text-emerald-700"
+                      }`}>
                         <Sparkles className="h-3.5 w-3.5" />
                         Monthly fee INR {organizationMonthlyFee.toLocaleString("en-IN")}
                       </div>
                       {(!isCreate || !existingMember) && (
-                        <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-amber-700">
+                        <div className={`inline-flex items-center gap-2 rounded-full border bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] ${
+                          isBrandNewMember
+                            ? "border-amber-200/70 text-amber-700"
+                            : "border-white/80 text-amber-700"
+                        }`}>
                           <Sparkles className="h-3.5 w-3.5" />
                           Admission fee INR {organizationAdmissionFee.toLocaleString("en-IN")}
                         </div>
@@ -469,31 +509,53 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2">
-                <Field label="Duration Months" >
-                  <Input
-                    type="number"
-                    min="1"
-                    {...durationMonthsField}
-                    className="h-12 rounded-2xl border-black/5 bg-white/70 text-center text-lg font-black tracking-tight"
-                  />
-                </Field>
-                <Field label="Start Date">
-                  <Input type="date" {...register("startDate")} className="h-12 rounded-2xl border-black/5 bg-white/70" />
-                </Field>
+              <div className="p-6">
+                <div className="grid grid-cols-[0.88fr_1.12fr] gap-3 lg:grid-cols-2 lg:gap-6">
+                  <div className={`rounded-[1.45rem] border p-3 shadow-sm lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none ${
+                    isBrandNewMember
+                      ? "border-amber-200/80 bg-white/85 lg:border-0 lg:bg-transparent"
+                      : "border-emerald-100 bg-white/85 lg:border-0 lg:bg-transparent"
+                  }`}>
+                    <Field label="Duration Months" >
+                      <Input
+                        type="number"
+                        min="1"
+                        {...durationMonthsField}
+                        className="h-12 rounded-2xl border-black/5 bg-white/70 text-center text-lg font-black tracking-tight"
+                      />
+                    </Field>
+                  </div>
+                  <div className={`rounded-[1.45rem] border p-3 shadow-sm lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none ${
+                    isBrandNewMember
+                      ? "border-amber-200/80 bg-white/85 lg:border-0 lg:bg-transparent"
+                      : "border-emerald-100 bg-white/85 lg:border-0 lg:bg-transparent"
+                  }`}>
+                    <Field label="Start Date">
+                      <Input type="date" {...register("startDate")} className="h-12 rounded-2xl border-black/5 bg-white/70 min-w-0" />
+                    </Field>
+                  </div>
+                </div>
                 <input type="hidden" {...planAmountField} />
-                <div className="md:col-span-2">
+                <div className="mt-6">
                   <Field label="Payment Collected" hint="Final amount tracked ">
-                    <div className="rounded-[1.5rem] border-2 border-emerald-300 bg-emerald-50/80 p-3 shadow-[0_18px_45px_-30px_rgba(5,150,105,0.65)] sm:p-4">
+                    <div className={`rounded-[1.5rem] border-2 p-3 shadow-[0_18px_45px_-30px_rgba(5,150,105,0.65)] sm:p-4 ${
+                      isBrandNewMember
+                        ? "border-amber-300 bg-amber-50/85 shadow-[0_18px_45px_-30px_rgba(217,119,6,0.6)] lg:border-emerald-300 lg:bg-emerald-50/80 lg:shadow-[0_18px_45px_-30px_rgba(5,150,105,0.65)]"
+                        : "border-emerald-300 bg-emerald-50/80"
+                    }`}>
                       <Input
                         type="number"
                         min="0"
                         step="0.01"
                         {...paymentCollectedField}
                         readOnly
-                        className="h-14 rounded-2xl border-0 bg-white text-center text-2xl font-black tracking-tight text-emerald-900 shadow-sm sm:h-16 sm:text-3xl"
+                        className={`h-14 rounded-2xl border-0 bg-white text-center text-2xl font-black tracking-tight shadow-sm sm:h-16 sm:text-3xl ${
+                          isBrandNewMember ? "text-amber-900 lg:text-emerald-900" : "text-emerald-900"
+                        }`}
                       />
-                      <div className="mt-3 text-center text-xs font-semibold leading-5 text-emerald-800 sm:text-sm">
+                      <div className={`mt-3 text-center text-xs font-semibold leading-5 sm:text-sm ${
+                        isBrandNewMember ? "text-amber-800 lg:text-emerald-800" : "text-emerald-800"
+                      }`}>
                         {isCreate ? (
                           existingMember
                             ? `${normalizedDurationMonths} month${normalizedDurationMonths > 1 ? "s" : ""} membership`
@@ -516,7 +578,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
             type="submit" 
             disabled={isSubmitting || mutation.isPending} 
             className={`w-full sm:w-auto h-14 px-12 rounded-full text-lg font-black shadow-xl transition-all ${
-              isCreate && !existingMember 
+              isBrandNewMember 
                 ? "bg-amber-500 text-amber-950 hover:bg-amber-400 border border-amber-300" 
                 : "bg-emerald-600 text-white hover:bg-emerald-500 border border-emerald-500"
             }`}
@@ -542,10 +604,26 @@ function Field({ label, error, hint, children }: { label: string; error?: string
   );
 }
 
-function HeroChip({ label, value, className = "" }: { label: string; value: string; className?: string }) {
+function HeroChip({
+  label,
+  value,
+  className = "",
+  tone = "emerald",
+}: {
+  label: string;
+  value: string;
+  className?: string;
+  tone?: "emerald" | "amber";
+}) {
   return (
-    <div className={`rounded-2xl border border-white/80 bg-white/75 px-3 py-3 shadow-sm sm:px-4 ${className}`}>
-      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">{label}</div>
+    <div className={`rounded-2xl border px-3 py-3 shadow-sm sm:px-4 ${
+      tone === "amber"
+        ? "border-amber-200/70 bg-amber-50/90 lg:border-white/80 lg:bg-white/75"
+        : "border-white/80 bg-white/75"
+    } ${className}`}>
+      <div className={`text-[10px] font-black uppercase tracking-[0.22em] ${
+        tone === "amber" ? "text-amber-700 lg:text-emerald-700" : "text-emerald-700"
+      }`}>{label}</div>
       <div className="mt-1 text-base font-black text-slate-950 sm:text-lg">{value}</div>
     </div>
   );

@@ -75,11 +75,18 @@ docker logs -f billmygym
 
 
 #DB Tunnel
+psql -h elyndorlabs-db.cf6kgsg80y2k.ap-south-1.rds.amazonaws.com -U postgres -d billmygym
+
+
+
 
 cd .\Downloads\
 ssh -i elyndorlabs.pem -L 5433:elyndorlabs-db.cf6kgsg80y2k.ap-south-1.rds.amazonaws.com:5432 ec2-user@13.127.80.218
 
-psql -h elyndorlabs-db.cf6kgsg80y2k.ap-south-1.rds.amazonaws.com -U postgres -d billmygym
+
+aws ecr get-login-password --region ap-south-1 \
+| docker login --username AWS --password-stdin \
+811165582901.dkr.ecr.ap-south-1.amazonaws.com/billmygym
 
 
 docker stop billmygym
