@@ -9,7 +9,6 @@ import com.gymflow.security.SubscriptionGuardFilter;
 import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -32,6 +31,10 @@ public class SecurityConfig {
 
     private static final String SUPER_ADMIN = "SUPER_ADMIN";
     private static final String ORG_ADMIN = "ORG_ADMIN";
+    private static final List<String> ALLOWED_ORIGINS = List.of(
+        "http://localhost:5173",
+        "https://www.billmygym.tech"
+    );
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final LegalConsentGuardFilter legalConsentGuardFilter;
@@ -39,9 +42,6 @@ public class SecurityConfig {
     private final SubscriptionGuardFilter subscriptionGuardFilter;
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
-
-    @Value("${app.cors.allowed-origins}")
-    private List<String> allowedOrigins;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -134,7 +134,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(allowedOrigins);
+        configuration.setAllowedOrigins(ALLOWED_ORIGINS);
         configuration.setAllowedMethods(Arrays.asList("GET", "PATCH", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization", "X-Rate-Limit-Remaining", "X-Rate-Limit-Retry-After", "Retry-After"));
