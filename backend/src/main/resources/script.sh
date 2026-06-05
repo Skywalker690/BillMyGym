@@ -82,7 +82,7 @@ docker run -d \
   --name billmygym \
   --restart unless-stopped \
   --env-file /home/ec2-user/billmygym.env \
-  -p 8083:8083 \
+  -p 8080:8080 \
   --memory="600m" \
   --memory-swap="800m" \
   -e SPRING_FLYWAY_ENABLED=false \

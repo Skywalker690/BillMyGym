@@ -48,6 +48,20 @@ public final class SecurityUtils {
         return new AuthenticatedUser(null, authentication.getName(), null, null);
     }
 
+    public static AuthenticatedUser currentUserOrNull() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof AuthenticatedUser user) {
+            return user;
+        }
+
+        return null;
+    }
+
     public static AuthenticatedUser requireRole(Role expectedRole) {
         AuthenticatedUser user = currentUser();
         if (user.role() != expectedRole) {

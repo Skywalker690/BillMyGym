@@ -30,3 +30,10 @@ razorpay:
 
 app:
   public-url: ${APP_PUBLIC_URL}
+
+logging:
+  level:
+    root: INFO
+    com.gymflow: INFO
+    org.springframework.web: INFO
+    org.springframework.security: INFO

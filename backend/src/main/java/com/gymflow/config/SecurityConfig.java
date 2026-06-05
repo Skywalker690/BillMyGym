@@ -1,5 +1,6 @@
 package com.gymflow.config;
 
+import com.gymflow.security.ApiFailureLoggingFilter;
 import com.gymflow.security.JwtAuthenticationFilter;
 import com.gymflow.security.LegalConsentGuardFilter;
 import com.gymflow.security.RateLimitingFilter;
@@ -38,6 +39,7 @@ public class SecurityConfig {
             "https://api.billmygym.tech"
     );
 
+    private final ApiFailureLoggingFilter apiFailureLoggingFilter;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final LegalConsentGuardFilter legalConsentGuardFilter;
     private final RateLimitingFilter rateLimitingFilter;
@@ -120,6 +122,7 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .addFilterBefore(apiFailureLoggingFilter, JwtAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(legalConsentGuardFilter, JwtAuthenticationFilter.class)
             .addFilterAfter(subscriptionGuardFilter, LegalConsentGuardFilter.class)

@@ -3,6 +3,7 @@ package com.gymflow.api;
 import com.gymflow.api.error.AppException;
 import com.gymflow.api.response.ApiErrorResponse;
 import com.gymflow.api.response.ApiFieldError;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -22,13 +23,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class ApiExceptionHandler {
 
     @ExceptionHandler(AppException.class)
-    public ResponseEntity<ApiErrorResponse> handleAppException(AppException ex) {
+    public ResponseEntity<ApiErrorResponse> handleAppException(AppException ex, HttpServletRequest request) {
+        logAppException(ex, request);
         return ResponseEntity.status(ex.getStatus())
             .body(ApiErrorResponse.of(ex.getMessage(), ex.getErrorCode()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
+        log.warn("Validation failed for {} {} with {} field errors", request.getMethod(), request.getRequestURI(), ex.getErrorCount());
         List<ApiFieldError> errors = ex.getBindingResult().getFieldErrors().stream()
             .map(this::toFieldError)
             .toList();
@@ -37,7 +40,8 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ApiErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
+    public ResponseEntity<ApiErrorResponse> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
+        log.warn("Constraint violation for {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         List<ApiFieldError> errors = ex.getConstraintViolations().stream()
             .map(violation -> new ApiFieldError(violation.getPropertyPath().toString(), violation.getMessage()))
             .toList();
@@ -46,19 +50,22 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ApiErrorResponse> handleUnreadableMessage(HttpMessageNotReadableException ex) {
+    public ResponseEntity<ApiErrorResponse> handleUnreadableMessage(HttpMessageNotReadableException ex, HttpServletRequest request) {
+        log.warn("Malformed request body for {} {}", request.getMethod(), request.getRequestURI());
         return ResponseEntity.badRequest()
             .body(ApiErrorResponse.of("Malformed request body", "MALFORMED_REQUEST"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+    public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
+        log.warn("Bad request for {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         return ResponseEntity.badRequest()
             .body(ApiErrorResponse.of(ex.getMessage(), "BAD_REQUEST"));
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ApiErrorResponse> handleBadCredentials(BadCredentialsException ex) {
+    public ResponseEntity<ApiErrorResponse> handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
+        log.warn("Authentication failed for {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
             .body(ApiErrorResponse.of(ex.getMessage(), "BAD_CREDENTIALS"));
     }
@@ -79,5 +86,29 @@ public class ApiExceptionHandler {
 
     private ApiFieldError toFieldError(FieldError error) {
         return new ApiFieldError(error.getField(), error.getDefaultMessage());
+    }
+
+    private void logAppException(AppException ex, HttpServletRequest request) {
+        String template = "Application error for {} {} status={} code={} message={}";
+        if (ex.getStatus().is5xxServerError()) {
+            log.error(
+                template,
+                request.getMethod(),
+                request.getRequestURI(),
+                ex.getStatus().value(),
+                ex.getErrorCode(),
+                ex.getMessage(),
+                ex
+            );
+            return;
+        }
+        log.warn(
+            template,
+            request.getMethod(),
+            request.getRequestURI(),
+            ex.getStatus().value(),
+            ex.getErrorCode(),
+            ex.getMessage()
+        );
     }
 }
