@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
+import { readCachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
 
 type ReminderLog = {
   id: number;
@@ -145,13 +146,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: subscriptionStatus } = useQuery<SubscriptionStatusSnapshot>({
-    queryKey: ["subscriptionStatus", "dashboard-demo-flag"],
-    queryFn: async () => {
-      const res = await api.get("/subscription/status");
-      return res.data;
-    },
-  });
+  const subscriptionStatus = readCachedSubscriptionStatus() as SubscriptionStatusSnapshot | null;
 
   if (isLoading) {
     return <div className="p-8">Loading dashboard...</div>;

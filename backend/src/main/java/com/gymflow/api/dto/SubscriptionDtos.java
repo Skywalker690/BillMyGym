@@ -47,6 +47,8 @@ public class SubscriptionDtos {
         OrganizationType organizationType,
         OrganizationStatus organizationStatus,
         SubscriptionPlan subscriptionPlan,
+        BigDecimal monthlyMembershipFee,
+        BigDecimal admissionFee,
         BigDecimal monthlyAmount,
         BigDecimal lifetimeSubscriptionRevenue,
         Instant joinedAt,

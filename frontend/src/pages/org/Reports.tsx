@@ -22,6 +22,7 @@ import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
+import { readCachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
 
 type ReportPeriod = "monthly" | "yearly";
 type ReportRange = "current_month" | "last_month" | "current_year" | "custom";
@@ -145,14 +146,7 @@ export default function Reports() {
   const [customTo, setCustomTo] = useState(() => todayInIndiaIso());
   const [exportingType, setExportingType] = useState<"csv" | "pdf" | null>(null);
 
-  const { data: subscription, isLoading: subscriptionLoading } = useQuery({
-    queryKey: ["reportsSubscriptionStatus"],
-    queryFn: async () => {
-      const res = await api.get("/subscription/status");
-      return res.data;
-    },
-    staleTime: 60_000,
-  });
+  const subscription = readCachedSubscriptionStatus();
 
   const previewPlan = isDemoWorkspace ? effectivePlan : subscription?.subscriptionPlan ?? "BILLMYGYM";
   const params = useMemo(() => {
@@ -230,10 +224,6 @@ export default function Reports() {
     } finally {
       setExportingType(null);
     }
-  }
-
-  if (subscriptionLoading) {
-    return <div className="p-8">Loading reports access...</div>;
   }
 
   const summary = report?.summary ?? {};

@@ -5,13 +5,14 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, CreditCard, Info, Sparkles, UserCog, UserPlus } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CreditCard, Sparkles, UserCog, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
+import { fetchAndCacheSubscriptionStatus, readCachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
 
 type MemberFormMode = "create" | "edit" | "renew";
 
@@ -33,6 +34,13 @@ const scaleCurrency = (value: number) => Number(value.toFixed(2));
 const resolveMembershipTotal = (monthlyFee: number, durationMonths: number) => scaleCurrency(monthlyFee * durationMonths);
 const resolveCollectedAmount = (mode: MemberFormMode, membershipTotal: number, admissionFee: number, existingMember: boolean) =>
   mode === "create" && !existingMember ? scaleCurrency(membershipTotal + admissionFee) : scaleCurrency(membershipTotal);
+const hasMemberPricing = (value: unknown): value is { monthlyMembershipFee?: number | string | null; admissionFee?: number | string | null } => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const pricing = value as { monthlyMembershipFee?: unknown; admissionFee?: unknown };
+  return pricing.monthlyMembershipFee !== undefined || pricing.admissionFee !== undefined;
+};
 
 export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode }) {
   const { id } = useParams();
@@ -44,7 +52,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
   const isEdit = mode === "edit";
   const isRenew = mode === "renew";
   const canLoadMember = Boolean((isEdit || isRenew) && memberId);
-  const [existingMember, setExistingMember] = useState(true);
+  const [existingMember, setExistingMember] = useState(false);
 
   const { data: member, isLoading: memberLoading } = useQuery({
     queryKey: ["member", memberId],
@@ -68,11 +76,21 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
     refetchOnWindowFocus: false,
   });
 
-  const { data: organization } = useQuery({
-    queryKey: ["memberFormOrganization", user?.organizationId],
+  const { data: organizationPricing, isLoading: pricingLoading, isError: pricingError } = useQuery({
+    queryKey: ["memberFormOrganizationPricing", user?.organizationId],
     queryFn: async () => {
-      const res = await api.get(`/organizations/${user?.organizationId}`);
-      return res.data;
+      const cachedStatus = readCachedSubscriptionStatus();
+      if (hasMemberPricing(cachedStatus)) {
+        return cachedStatus;
+      }
+
+      const subscriptionStatus = await fetchAndCacheSubscriptionStatus();
+      if (hasMemberPricing(subscriptionStatus)) {
+        return subscriptionStatus;
+      }
+
+      const settingsResponse = await api.get("/settings");
+      return settingsResponse.data;
     },
     enabled: Boolean(user?.organizationId),
     staleTime: 60_000,
@@ -93,10 +111,9 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
   });
   const selectedStatus = watch("status");
   const watchedDurationMonths = Number(watch("durationMonths") ?? 1);
-  const watchedPlanAmount = Number(watch("planAmount") ?? 0);
   const watchedInitialPaymentAmount = Number(watch("initialPaymentAmount") ?? 0);
-  const organizationMonthlyFee = Number(organization?.monthlyMembershipFee ?? 0);
-  const organizationAdmissionFee = Number(organization?.admissionFee ?? 0);
+  const organizationMonthlyFee = Number(organizationPricing?.monthlyMembershipFee ?? 0);
+  const organizationAdmissionFee = Number(organizationPricing?.admissionFee ?? 0);
   const normalizedDurationMonths = Number.isFinite(watchedDurationMonths) && watchedDurationMonths > 0
     ? watchedDurationMonths
     : 1;
@@ -141,7 +158,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
   }, [member, isEdit, isRenew, reset, memberships]);
 
   useEffect(() => {
-    if (!organization || isEdit) {
+    if (!organizationPricing || isEdit) {
       return;
     }
     setValue("planAmount", calculatedPlanAmount, { shouldDirty: false });
@@ -152,7 +169,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
     existingMember,
     isEdit,
     mode,
-    organization,
+    organizationPricing,
     setValue,
   ]);
 
@@ -199,9 +216,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
             });
           }
           
-          const membershipAmount = isAdmissionApplicable 
-            ? (data.planAmount && data.planAmount > 0 ? data.planAmount : 0) 
-            : data.initialPaymentAmount;
+          const membershipAmount = data.planAmount && data.planAmount > 0 ? data.planAmount : 0;
             
           if (membershipAmount > 0) {
             // Record membership fee payment
@@ -248,6 +263,10 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
   }
 
   if ((isEdit || isRenew) && memberLoading) return <div className="p-8">Loading member...</div>;
+  if ((isCreate || isRenew) && pricingLoading) return <div className="p-8">Loading organization pricing...</div>;
+  if ((isCreate || isRenew) && (pricingError || !organizationPricing)) {
+    return <div className="p-8">Unable to load organization pricing. Please open Organization Profile and confirm the monthly and admission fees.</div>;
+  }
 
   const currentMembership = memberships?.[0];
 
@@ -286,7 +305,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                   value={`INR ${organizationAdmissionFee.toLocaleString("en-IN")}`}
                 />
               )}
-              <HeroChip label="Total Amount" value={`INR ${watchedPlanAmount.toLocaleString("en-IN")}`} />
+              <HeroChip label="Payment Collected" value={`INR ${watchedInitialPaymentAmount.toLocaleString("en-IN")}`} />
             </div>
           )}
         </div>
@@ -402,14 +421,16 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                     </div>
                   </div>
 
-                  <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-[360px] lg:grid-cols-1">
-                    <PricingChip label="Membership Total" value={`INR ${watchedPlanAmount.toLocaleString("en-IN")}`} tone="slate" />
-                    <PricingChip
-                      label="Payment Collected"
-                      value={`INR ${watchedInitialPaymentAmount.toLocaleString("en-IN")}`}
-                      tone="emerald"
-                      tooltip={isCreate ? (existingMember ? "Admission fee for existing gym member" : "Membership total plus one-time admission fee") : "Renewal collects only the membership total"}
-                    />
+                  <div className="w-full lg:w-[380px]">
+                    <div className="rounded-[1.4rem] border border-emerald-200 bg-white/90 p-4 shadow-[0_18px_42px_-28px_rgba(5,150,105,0.65)] sm:p-5">
+                      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">Payment Collected</div>
+                      <div className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+                        INR {watchedInitialPaymentAmount.toLocaleString("en-IN")}
+                      </div>
+                      <div className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                        {isCreate ? (existingMember ? "Final membership payment" : "Final membership and admission payment") : "Final renewal payment"}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -423,33 +444,33 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                     className="h-12 rounded-2xl border-black/5 bg-white/70 text-center text-lg font-black tracking-tight"
                   />
                 </Field>
-                <Field
-                  label="Membership Total"
-                >
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    {...planAmountField}
-                    readOnly
-                    className="h-12 rounded-2xl border-black/5 bg-slate-100 text-slate-700"
-                  />
-                </Field>
                 <Field label="Start Date">
                   <Input type="date" {...register("startDate")} className="h-12 rounded-2xl border-black/5 bg-white/70" />
                 </Field>
-                <Field
-                  label="Payment Collected"
-                >
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    {...paymentCollectedField}
-                    readOnly
-                    className="h-12 rounded-2xl border-black/5 bg-slate-100 text-slate-700"
-                  />
-                </Field>
+                <input type="hidden" {...planAmountField} />
+                <div className="md:col-span-2">
+                  <Field label="Payment Collected" hint="Final amount tracked in the payment ledger.">
+                    <div className="rounded-[1.5rem] border-2 border-emerald-300 bg-emerald-50/80 p-3 shadow-[0_18px_45px_-30px_rgba(5,150,105,0.65)] sm:p-4">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        {...paymentCollectedField}
+                        readOnly
+                        className="h-14 rounded-2xl border-0 bg-white text-center text-2xl font-black tracking-tight text-emerald-900 shadow-sm sm:h-16 sm:text-3xl"
+                      />
+                      <div className="mt-3 text-center text-xs font-semibold leading-5 text-emerald-800 sm:text-sm">
+                        {isCreate ? (
+                          existingMember
+                            ? `${normalizedDurationMonths} month${normalizedDurationMonths > 1 ? "s" : ""} membership`
+                            : `${normalizedDurationMonths} month${normalizedDurationMonths > 1 ? "s" : ""} membership plus admission`
+                        ) : (
+                          `${normalizedDurationMonths} month${normalizedDurationMonths > 1 ? "s" : ""} renewal`
+                        )}
+                      </div>
+                    </div>
+                  </Field>
+                </div>
               </div>
             </div>
           </div>
@@ -483,43 +504,6 @@ function Field({ label, error, hint, children }: { label: string; error?: string
       </div>
       {children}
       {error && <p className="text-red-500 text-sm font-medium">{error}</p>}
-    </div>
-  );
-}
-
-function PricingChip({
-  label,
-  value,
-  tone,
-  tooltip,
-}: {
-  label: string;
-  value: string;
-  tone: "slate" | "emerald" | "amber";
-  tooltip?: string;
-}) {
-  const toneClasses = {
-    slate: "border-slate-200 bg-white/80 text-slate-900",
-    emerald: "border-emerald-200 bg-emerald-50/80 text-emerald-900",
-    amber: "border-amber-200 bg-amber-50/80 text-amber-900",
-  }[tone];
-
-  return (
-    <div className={`rounded-2xl border px-4 py-3 shadow-sm ${toneClasses}`}>
-      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] opacity-70">
-        <span>{label}</span>
-        {tooltip && (
-          <div className="group relative">
-            <span className="flex h-4 w-4 items-center justify-center rounded-full border border-current/20 bg-white/70 text-current/80 transition-colors duration-200 hover:bg-white">
-              <Info className="h-2.5 w-2.5" />
-            </span>
-            <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-max -translate-x-1/2 rounded-full bg-slate-950 px-3 py-1.5 text-[10px] font-semibold normal-case tracking-normal text-white opacity-0 shadow-lg transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
-              {tooltip}
-            </div>
-          </div>
-        )}
-      </div>
-      <div className="mt-1 text-lg font-black">{value}</div>
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
+import { readCachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
 
 const PAGE_SIZE = 40;
 const INDIAN_TIME_ZONE = "Asia/Kolkata";
@@ -70,14 +71,7 @@ export default function MembersList() {
     staleTime: 60_000,
   });
 
-  const { data: subscriptionStatus } = useQuery({
-    queryKey: ["memberMessagingSubscriptionStatus"],
-    queryFn: async () => {
-      const res = await api.get("/subscription/status");
-      return res.data;
-    },
-    staleTime: 60_000,
-  });
+  const subscriptionStatus = readCachedSubscriptionStatus();
 
   const reminderPreviewQuery = useQuery({
     queryKey: ["whatsappReminderPreview", reminderMember?.id],

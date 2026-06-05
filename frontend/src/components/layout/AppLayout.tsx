@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Sidebar } from "./Sidebar";
 import { getPageContext, getProfileNavItems, getSidebarNavItems, type AppRole } from "./navigation";
 import { ScrollToTopButton } from "./ScrollToTopButton";
 import { Topbar } from "./Topbar";
-import api from "../../lib/api";
 import { DemoPlanPreviewProvider } from "@/context/DemoPlanPreviewContext";
+import { readCachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
@@ -16,29 +15,12 @@ export default function AppLayout() {
   const role = user?.role ?? null;
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const { data: referralsEnabled = true } = useQuery({
-    queryKey: ["referralSettings"],
-    queryFn: () => api.get("/referrals/settings").then((res) => Boolean(res.data)),
-    staleTime: 30_000,
-  });
-  const { data: subscriptionStatus } = useQuery({
-    queryKey: ["layoutSubscriptionStatus", user?.organizationId],
-    queryFn: () => api.get("/subscription/status").then((res) => res.data),
-    enabled: role === "ORG_ADMIN" && Boolean(user?.organizationId),
-    staleTime: 60_000,
-    refetchInterval: role === "ORG_ADMIN" ? 60_000 : false,
-    refetchOnWindowFocus: true,
-  });
+  const referralsEnabled = true;
+  const subscriptionStatus = readCachedSubscriptionStatus();
 
   useEffect(() => {
     setMobileSidebarOpen(false);
   }, [location.pathname]);
-
-  useEffect(() => {
-    if (role === "ORG_ADMIN" && !referralsEnabled && location.pathname.startsWith("/app/referrals")) {
-      navigate("/app/dashboard", { replace: true });
-    }
-  }, [location.pathname, navigate, referralsEnabled, role]);
 
   useEffect(() => {
     if (role !== "ORG_ADMIN" || !subscriptionStatus) {

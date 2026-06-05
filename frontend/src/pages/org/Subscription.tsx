@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
+import { fetchAndCacheSubscriptionStatus, readCachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
 import {
   organizationStatusDescription,
   organizationStatusLabel,
@@ -218,13 +219,18 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
   const [paymentHistoryPage, setPaymentHistoryPage] = useState<PaymentHistoryPage | null>(null);
   const [useGymCoins, setUseGymCoins] = useState(false);
 
-  const { data: subscription, isLoading } = useQuery<SubscriptionStatus>({
+  const { data: subscription, isLoading } = useQuery<SubscriptionStatus | null>({
     queryKey: ["subscriptionStatus"],
     queryFn: async () => {
-      const res = await api.get("/subscription/status");
-      return res.data;
+      const cachedStatus = readCachedSubscriptionStatus();
+      if (cachedStatus) {
+        return cachedStatus as SubscriptionStatus;
+      }
+      return await fetchAndCacheSubscriptionStatus() as SubscriptionStatus;
     },
-    staleTime: 60_000,
+    initialData: () => readCachedSubscriptionStatus() as SubscriptionStatus | undefined,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
@@ -263,13 +269,18 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
           "X-Idempotency-Key": crypto.randomUUID(),
         },
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Subscription payment verified.");
       setPurchaseSuccess({ amount: manualOrder?.amount ?? 0 });
       setManualOrder(null);
       setManualPaymentId("");
       setManualSignature("");
-      queryClient.invalidateQueries({ queryKey: ["subscriptionStatus"] });
+      try {
+        const nextStatus = await fetchAndCacheSubscriptionStatus();
+        queryClient.setQueryData(["subscriptionStatus"], nextStatus);
+      } catch {
+        // The successful verification response is authoritative enough for the success state.
+      }
     },
     onError: (error: any) => toast.error(error?.response?.data?.message || "Payment verification failed."),
   });
@@ -294,7 +305,12 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
         toast.success("BillMyGym activated in local payment mode.");
         setPurchaseSuccess({ amount: order.amount });
         setManualOrder(null);
-        queryClient.invalidateQueries({ queryKey: ["subscriptionStatus"] });
+        try {
+          const nextStatus = await fetchAndCacheSubscriptionStatus();
+          queryClient.setQueryData(["subscriptionStatus"], nextStatus);
+        } catch {
+          // The local activation succeeded; cache refresh can recover on the next login.
+        }
         return;
       }
 

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import api from "../lib/api";
+import { fetchAndCacheSubscriptionStatus } from "@/lib/subscriptionStatusCache";
 
 declare global {
   interface Window {
@@ -74,7 +75,7 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const completeLogin = (payload: any, fallbackEmail: string) => {
+  const completeLogin = async (payload: any, fallbackEmail: string) => {
     const { accessToken, role, organizationId, user } = payload;
 
     const nextUser = {
@@ -85,6 +86,14 @@ export default function Login() {
     };
 
     login(accessToken, nextUser);
+
+    if (nextUser.role === "ORG_ADMIN") {
+      try {
+        await fetchAndCacheSubscriptionStatus();
+      } catch {
+        // Subscription guards still run on protected APIs; this cache is only for shell state.
+      }
+    }
 
     if (nextUser.consentRequired || !nextUser.termsAccepted || !nextUser.privacyAccepted) {
       navigate("/consent");
@@ -101,7 +110,7 @@ export default function Login() {
     setIsLoading(true);
     try {
       const response = await api.post("/auth/login", { email: loginEmail, password: loginPassword });
-      completeLogin(response.data, loginEmail);
+      await completeLogin(response.data, loginEmail);
     } catch (error: any) {
       const message = error?.response?.data?.message || error?.message || "Unable to sign in right now.";
       toast.error(message);
@@ -119,7 +128,7 @@ export default function Login() {
     setIsGoogleLoading(true);
     try {
       const response = await api.post("/auth/google-login", { idToken: credential });
-      completeLogin(response.data, "Google User");
+      await completeLogin(response.data, "Google User");
     } catch (error: any) {
       const message = error?.response?.data?.message || "Google sign-in is unavailable right now.";
       toast.error(message);

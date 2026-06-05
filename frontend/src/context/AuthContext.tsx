@@ -8,6 +8,7 @@ import api, {
   readAuthToken,
   readStoredUser,
 } from "@/lib/api";
+import { clearCachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
 
 type Role = "SUPER_ADMIN" | "ORG_ADMIN" | null;
 
@@ -51,11 +52,13 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const LEGAL_POLICY_STORAGE_KEY = "billmygym_legal_policy";
+let legalPolicyRequest: Promise<LegalPolicyMetadata | null> | null = null;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [legalPolicy, setLegalPolicy] = useState<LegalPolicyMetadata | null>(null);
+  const [legalPolicy, setLegalPolicy] = useState<LegalPolicyMetadata | null>(() => readStoredLegalPolicy());
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -78,14 +81,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      try {
-        const legalResponse = await api.get("/auth/legal-policy");
+      if (!readStoredLegalPolicy()) {
+        const loadedPolicy = await loadLegalPolicyOnce();
         if (active) {
-          setLegalPolicy(legalResponse.data);
-        }
-      } catch {
-        if (active) {
-          setLegalPolicy(null);
+          setLegalPolicy(loadedPolicy);
         }
       }
 
@@ -208,6 +207,52 @@ function persistUser(nextUser: User, setUser: (user: User | null) => void) {
   persistStoredUser(JSON.stringify(nextUser));
 }
 
+function readStoredLegalPolicy() {
+  if (!isBrowser()) {
+    return null;
+  }
+
+  try {
+    const serializedPolicy = window.localStorage.getItem(LEGAL_POLICY_STORAGE_KEY);
+    return serializedPolicy ? JSON.parse(serializedPolicy) as LegalPolicyMetadata : null;
+  } catch {
+    window.localStorage.removeItem(LEGAL_POLICY_STORAGE_KEY);
+    return null;
+  }
+}
+
+function persistLegalPolicy(policy: LegalPolicyMetadata) {
+  if (!isBrowser()) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(LEGAL_POLICY_STORAGE_KEY, JSON.stringify(policy));
+  } catch {
+    // Legal metadata is an optimization; the app can still use fallback text.
+  }
+}
+
+function loadLegalPolicyOnce() {
+  if (!legalPolicyRequest) {
+    legalPolicyRequest = api.get("/auth/legal-policy")
+      .then((response) => {
+        persistLegalPolicy(response.data);
+        return response.data as LegalPolicyMetadata;
+      })
+      .catch(() => null)
+      .finally(() => {
+        legalPolicyRequest = null;
+      });
+  }
+
+  return legalPolicyRequest;
+}
+
+function isBrowser() {
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
 function clearAuth(
   setToken: (token: string | null) => void,
   setUser: (user: User | null) => void
@@ -215,4 +260,5 @@ function clearAuth(
   setToken(null);
   setUser(null);
   clearStoredAuth();
+  clearCachedSubscriptionStatus();
 }

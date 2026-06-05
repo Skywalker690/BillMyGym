@@ -280,6 +280,8 @@ public class SubscriptionService {
             organization.getOrganizationType(),
             organization.getStatus(),
             resolvedPlan,
+            organization.getMonthlyMembershipFee(),
+            organization.getAdmissionFee(),
             monthlyAmount,
             lifetimeSubscriptionRevenue,
             organization.getCreatedAt() == null ? null : organization.getCreatedAt().toInstant(),
