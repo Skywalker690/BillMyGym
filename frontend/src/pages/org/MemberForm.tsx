@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
+import { persistMemberPricing, readCachedMemberPricing, toMemberPricing, type MemberPricing } from "@/lib/memberPricingCache";
 import { fetchAndCacheSubscriptionStatus, readCachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
 
 type MemberFormMode = "create" | "edit" | "renew";
@@ -34,13 +35,6 @@ const scaleCurrency = (value: number) => Number(value.toFixed(2));
 const resolveMembershipTotal = (monthlyFee: number, durationMonths: number) => scaleCurrency(monthlyFee * durationMonths);
 const resolveCollectedAmount = (mode: MemberFormMode, membershipTotal: number, admissionFee: number, existingMember: boolean) =>
   mode === "create" && !existingMember ? scaleCurrency(membershipTotal + admissionFee) : scaleCurrency(membershipTotal);
-const hasMemberPricing = (value: unknown): value is { monthlyMembershipFee?: number | string | null; admissionFee?: number | string | null } => {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-  const pricing = value as { monthlyMembershipFee?: unknown; admissionFee?: unknown };
-  return pricing.monthlyMembershipFee !== undefined || pricing.admissionFee !== undefined;
-};
 
 export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode }) {
   const { id } = useParams();
@@ -76,24 +70,63 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
     refetchOnWindowFocus: false,
   });
 
-  const { data: organizationPricing, isLoading: pricingLoading, isError: pricingError } = useQuery({
-    queryKey: ["memberFormOrganizationPricing", user?.organizationId],
+  const { data: organizationPricing, isLoading: pricingLoading } = useQuery<MemberPricing>({
+    queryKey: ["memberFormOrganizationPricing", "v2", user?.organizationId],
     queryFn: async () => {
-      const cachedStatus = readCachedSubscriptionStatus();
-      if (hasMemberPricing(cachedStatus)) {
-        return cachedStatus;
+      const organizationId = user?.organizationId ?? null;
+
+      const cachedPricing = readCachedMemberPricing(organizationId);
+      if (cachedPricing) {
+        return cachedPricing;
       }
 
-      const subscriptionStatus = await fetchAndCacheSubscriptionStatus();
-      if (hasMemberPricing(subscriptionStatus)) {
-        return subscriptionStatus;
+      const statusPricing = toMemberPricing(readCachedSubscriptionStatus(), organizationId);
+      if (statusPricing) {
+        persistMemberPricing(organizationId, statusPricing);
+        return statusPricing;
       }
 
-      const settingsResponse = await api.get("/settings");
-      return settingsResponse.data;
+      try {
+        const subscriptionStatus = await fetchAndCacheSubscriptionStatus();
+        const liveStatusPricing = toMemberPricing(subscriptionStatus, organizationId);
+        if (liveStatusPricing) {
+          persistMemberPricing(organizationId, liveStatusPricing);
+          return liveStatusPricing;
+        }
+      } catch {
+        // Fall through to narrower pricing sources and the last-known-good cache.
+      }
+
+      try {
+        const settingsResponse = await api.get("/settings");
+        const settingsPricing = toMemberPricing(settingsResponse.data, organizationId);
+        if (settingsPricing) {
+          persistMemberPricing(organizationId, settingsPricing);
+          return settingsPricing;
+        }
+      } catch {
+        // Settings can be blocked in some subscription states on older backend builds.
+      }
+
+      if (organizationId) {
+        try {
+          const organizationResponse = await api.get(`/organizations/${organizationId}`);
+          const organizationPricing = toMemberPricing(organizationResponse.data, organizationId);
+          if (organizationPricing) {
+            persistMemberPricing(organizationId, organizationPricing);
+            return organizationPricing;
+          }
+        } catch {
+          // Organization profile data is a final live fallback.
+        }
+      }
+
+      throw new Error("Organization pricing is unavailable");
     },
     enabled: Boolean(user?.organizationId),
-    staleTime: 60_000,
+    retry: 1,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const { register, watch, setValue, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<MemberFormInput, unknown, MemberFormValues>({
@@ -264,9 +297,6 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
 
   if ((isEdit || isRenew) && memberLoading) return <div className="p-8">Loading member...</div>;
   if ((isCreate || isRenew) && pricingLoading) return <div className="p-8">Loading organization pricing...</div>;
-  if ((isCreate || isRenew) && (pricingError || !organizationPricing)) {
-    return <div className="p-8">Unable to load organization pricing. Please open Organization Profile and confirm the monthly and admission fees.</div>;
-  }
 
   const currentMembership = memberships?.[0];
 
@@ -297,7 +327,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
           </div>
 
           {(isCreate || isRenew) && (
-            <div className={`grid w-full gap-3 lg:w-auto ${isCreate && existingMember ? "sm:grid-cols-2 xl:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
+            <div className={`grid w-full grid-cols-2 gap-2 sm:gap-3 lg:w-auto ${isCreate && existingMember ? "xl:grid-cols-2" : "xl:grid-cols-3"}`}>
               <HeroChip label="Monthly Fee" value={`INR ${organizationMonthlyFee.toLocaleString("en-IN")}`} />
               {(!isCreate || !existingMember) && (
                 <HeroChip
@@ -305,7 +335,11 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                   value={`INR ${organizationAdmissionFee.toLocaleString("en-IN")}`}
                 />
               )}
-              <HeroChip label="Payment Collected" value={`INR ${watchedInitialPaymentAmount.toLocaleString("en-IN")}`} />
+              <HeroChip
+                label="Payment Collected"
+                value={`INR ${watchedInitialPaymentAmount.toLocaleString("en-IN")}`}
+                className={!isCreate || !existingMember ? "col-span-2 xl:col-span-1" : ""}
+              />
             </div>
           )}
         </div>
@@ -333,12 +367,12 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3 p-4 sm:gap-6 sm:p-6 md:grid-cols-2">
                 <Field label="Full Name" error={errors.fullName?.message}>
-                  <Input {...register("fullName")} disabled={isRenew} className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" />
+                  <Input {...register("fullName")} disabled={isRenew} placeholder="Full Name" className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" />
                 </Field>
-                <Field label="Phone" hint="Optional. You can add or update it later from edit member." error={errors.phone?.message}>
-                  <Input {...register("phone")} disabled={isRenew} placeholder="Optional phone number" className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" />
+                <Field label="Phone" error={errors.phone?.message}>
+                  <Input {...register("phone")} disabled={isRenew} placeholder="Optional " className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" />
                 </Field>
                 {(isEdit || isRenew) && (
                   <Field label="Status">
@@ -421,7 +455,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                     </div>
                   </div>
 
-                  <div className="w-full lg:w-[380px]">
+                  <div className="hidden lg:block lg:w-[380px]">
                     <div className="rounded-[1.4rem] border border-emerald-200 bg-white/90 p-4 shadow-[0_18px_42px_-28px_rgba(5,150,105,0.65)] sm:p-5">
                       <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">Payment Collected</div>
                       <div className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
@@ -436,7 +470,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
               </div>
 
               <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2">
-                <Field label="Duration Months" hint="Changing this updates the membership total and collected amount automatically.">
+                <Field label="Duration Months" >
                   <Input
                     type="number"
                     min="1"
@@ -449,7 +483,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                 </Field>
                 <input type="hidden" {...planAmountField} />
                 <div className="md:col-span-2">
-                  <Field label="Payment Collected" hint="Final amount tracked in the payment ledger.">
+                  <Field label="Payment Collected" hint="Final amount tracked ">
                     <div className="rounded-[1.5rem] border-2 border-emerald-300 bg-emerald-50/80 p-3 shadow-[0_18px_45px_-30px_rgba(5,150,105,0.65)] sm:p-4">
                       <Input
                         type="number"
@@ -508,11 +542,11 @@ function Field({ label, error, hint, children }: { label: string; error?: string
   );
 }
 
-function HeroChip({ label, value }: { label: string; value: string }) {
+function HeroChip({ label, value, className = "" }: { label: string; value: string; className?: string }) {
   return (
-    <div className="rounded-2xl border border-white/80 bg-white/75 px-4 py-3 shadow-sm">
+    <div className={`rounded-2xl border border-white/80 bg-white/75 px-3 py-3 shadow-sm sm:px-4 ${className}`}>
       <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">{label}</div>
-      <div className="mt-1 text-lg font-black text-slate-950">{value}</div>
+      <div className="mt-1 text-base font-black text-slate-950 sm:text-lg">{value}</div>
     </div>
   );
 }

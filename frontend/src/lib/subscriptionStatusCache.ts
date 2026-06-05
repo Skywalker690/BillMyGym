@@ -1,4 +1,5 @@
 import api from "@/lib/api";
+import { persistMemberPricing, toMemberPricing } from "@/lib/memberPricingCache";
 
 export type CachedSubscriptionStatus = {
   organizationId?: number;
@@ -54,6 +55,10 @@ export function clearCachedSubscriptionStatus() {
 export async function fetchAndCacheSubscriptionStatus() {
   const response = await api.get("/subscription/status");
   persistSubscriptionStatus(response.data);
+  const memberPricing = toMemberPricing(response.data, response.data?.organizationId);
+  if (memberPricing) {
+    persistMemberPricing(memberPricing.organizationId, memberPricing);
+  }
   return response.data as CachedSubscriptionStatus;
 }
 

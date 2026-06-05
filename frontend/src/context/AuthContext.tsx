@@ -8,6 +8,7 @@ import api, {
   readAuthToken,
   readStoredUser,
 } from "@/lib/api";
+import { clearMemberPricingCache } from "@/lib/memberPricingCache";
 import { clearCachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
 
 type Role = "SUPER_ADMIN" | "ORG_ADMIN" | null;
@@ -67,18 +68,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const bootstrapAuth = async () => {
       const storedToken = readAuthToken();
       const storedUser = readStoredUser();
+      const parsedStoredUser = safeParseStoredUser(storedUser);
 
       if (storedToken) {
         setToken(storedToken);
         persistAuthToken(storedToken);
       }
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-          persistStoredUser(storedUser);
-        } catch {
-          clearStoredUser();
-        }
+      if (parsedStoredUser) {
+        setUser(parsedStoredUser);
+        persistStoredUser(JSON.stringify(parsedStoredUser));
+      } else if (storedUser) {
+        clearStoredUser();
       }
 
       if (!readStoredLegalPolicy()) {
@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const meResponse = await api.get("/auth/me");
         if (active) {
-          persistUser(meResponse.data, setUser);
+          persistUser(mergeUserContext(meResponse.data, parsedStoredUser), setUser);
         }
       } catch {
         if (active) {
@@ -138,8 +138,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
     const response = await api.get("/auth/me");
-    persistUser(response.data, setUser);
-    return response.data;
+    const nextUser = mergeUserContext(response.data, user);
+    persistUser(nextUser, setUser);
+    return nextUser;
   };
 
   const logout = () => {
@@ -207,6 +208,29 @@ function persistUser(nextUser: User, setUser: (user: User | null) => void) {
   persistStoredUser(JSON.stringify(nextUser));
 }
 
+function safeParseStoredUser(serializedUser: string | null): User | null {
+  if (!serializedUser) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(serializedUser) as User;
+  } catch {
+    return null;
+  }
+}
+
+function mergeUserContext(nextUser: User, fallbackUser: User | null): User {
+  if (nextUser.organizationId != null || fallbackUser?.organizationId == null) {
+    return nextUser;
+  }
+
+  return {
+    ...nextUser,
+    organizationId: fallbackUser.organizationId,
+  };
+}
+
 function readStoredLegalPolicy() {
   if (!isBrowser()) {
     return null;
@@ -261,4 +285,5 @@ function clearAuth(
   setUser(null);
   clearStoredAuth();
   clearCachedSubscriptionStatus();
+  clearMemberPricingCache();
 }

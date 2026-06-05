@@ -479,6 +479,7 @@ public class AuthService {
             .id(user.getId())
             .email(user.getEmail())
             .role(user.getRole() == null ? null : user.getRole().name())
+            .organizationId(user.getOrganization() == null ? null : user.getOrganization().getId())
             .googleId(user.getGoogleId())
             .avatarUrl(user.getAvatarUrl())
             .createdAt(user.getCreatedAt() == null ? null : user.getCreatedAt().toInstant())

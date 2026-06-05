@@ -18,6 +18,7 @@ public class UserDto {
     private String name;
     private String email;
     private String role;
+    private Long organizationId;
     private String googleId;
     private String avatarUrl;
     private Long clientCrmId;
