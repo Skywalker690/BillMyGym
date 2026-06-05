@@ -17,7 +17,6 @@ public class OrganizationMapper {
             organization.getPlace(),
             organization.getLogoUrl(),
             organization.getMapLocationLink(),
-            organization.getAddress(),
             organization.getAdminFullName(),
             organization.getAdminPhoneNumber(),
             organization.getAdminEmail(),
@@ -49,7 +48,6 @@ public class OrganizationMapper {
         }
         organization.setLogoUrl(request.logoUrl());
         organization.setMapLocationLink(request.mapLocationLink());
-        organization.setAddress(request.address());
         organization.setAdminFullName(request.adminFullName());
         organization.setAdminPhoneNumber(request.adminPhoneNumber());
         organization.setAdminEmail(request.adminEmail());
@@ -78,7 +76,6 @@ public class OrganizationMapper {
         organization.setDistrict(request.district());
         organization.setLogoUrl(request.logoUrl());
         organization.setMapLocationLink(request.mapLocationLink());
-        organization.setAddress(request.address());
         organization.setAdminFullName(request.adminFullName());
         organization.setAdminPhoneNumber(request.adminPhoneNumber());
         organization.setAdminEmail(request.adminEmail());

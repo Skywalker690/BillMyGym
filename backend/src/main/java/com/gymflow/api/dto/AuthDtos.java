@@ -40,7 +40,6 @@ public class AuthDtos {
         @NotBlank String district,
         String logoUrl,
         String mapLocationLink,
-        String address,
         @NotBlank String adminFullName,
         @NotBlank String adminPhoneNumber,
         @Email @NotBlank String adminEmail,

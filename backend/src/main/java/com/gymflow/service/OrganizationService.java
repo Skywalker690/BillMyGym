@@ -362,7 +362,6 @@ public class OrganizationService {
                 || !Objects.equals(request.place(), organization.getPlace())
                 || !Objects.equals(request.logoUrl(), organization.getLogoUrl())
                 || !Objects.equals(request.mapLocationLink(), organization.getMapLocationLink())
-                || !Objects.equals(request.address(), organization.getAddress())
                 || !Objects.equals(request.adminEmail(), organization.getAdminEmail())
                 || !Objects.equals(request.description(), organization.getDescription())
                 || compareMoney(request.monthlyMembershipFee(), organization.getMonthlyMembershipFee()) != 0
@@ -419,7 +418,6 @@ public class OrganizationService {
             base.place(),
             base.logoUrl(),
             base.mapLocationLink(),
-            base.address(),
             base.adminFullName(),
             base.adminPhoneNumber(),
             base.adminEmail(),

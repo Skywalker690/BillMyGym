@@ -43,7 +43,6 @@ const schema = z.object({
   password: z.string().min(8, "Temporary password must be at least 8 characters"),
   logoUrl: z.string().optional(),
   mapLocationLink: z.string().optional(),
-  address: z.string().optional(),
   description: z.string().optional(),
 });
 
@@ -54,7 +53,7 @@ type Step = 0 | 1 | 2;
 const stepMeta = [
   { id: 0 as Step, title: "Organization Details", caption: "Name, type, place, and district." },
   { id: 1 as Step, title: "Admin Details", caption: "Primary admin access and temporary password." },
-  { id: 2 as Step, title: "Geographical Details", caption: "Logo, map, address, and description." },
+  { id: 2 as Step, title: "Geographical Details", caption: "Logo, map, and description." },
 ];
 
 function generateTemporaryPassword() {
@@ -100,7 +99,6 @@ export default function OrganizationForm() {
       place: "",
       logoUrl: "",
       mapLocationLink: "",
-      address: "",
       description: "",
     },
   });
@@ -115,7 +113,6 @@ export default function OrganizationForm() {
   const watchedAdminEmail = watch("adminEmail");
   const watchedAdminPhone = watch("adminPhone");
   const watchedPassword = watch("password");
-  const watchedAddress = watch("address");
   const watchedMapUrl = watch("mapLocationLink");
   const watchedLogoUrl = watch("logoUrl");
   const watchedDescription = watch("description");
@@ -129,7 +126,6 @@ export default function OrganizationForm() {
         district: data.district,
         logoUrl: data.logoUrl || null,
         mapLocationLink: data.mapLocationLink || null,
-        address: data.address || null,
         adminFullName: data.adminName,
         adminPhoneNumber: data.adminPhone,
         adminEmail: data.adminEmail,
@@ -326,12 +322,6 @@ export default function OrganizationForm() {
                 </Field>
 
                 <div className="md:col-span-2">
-                  <Field label="Address">
-                    <Input {...register("address")} className="h-12 rounded-2xl bg-white/75" placeholder="Full street address" />
-                  </Field>
-                </div>
-
-                <div className="md:col-span-2">
                   <Field label="Description">
                     <textarea
                       {...register("description")}
@@ -403,7 +393,6 @@ export default function OrganizationForm() {
                 rows={[
                   { label: "Logo URL", value: watchedLogoUrl || "Not added" },
                   { label: "Map URL", value: watchedMapUrl || "Not added" },
-                  { label: "Address", value: watchedAddress || "Not added" },
                   { label: "Description", value: watchedDescription || "Not added" },
                 ]}
               />

@@ -37,7 +37,6 @@ type Organization = {
   place?: string | null;
   logoUrl?: string | null;
   mapLocationLink?: string | null;
-  address?: string | null;
   adminFullName?: string | null;
   adminPhoneNumber?: string | null;
   adminEmail?: string | null;
@@ -120,8 +119,7 @@ type FormValues = {
   name: string;
   place: string;
   district: string;
-  address: string;
-  description: string;
+  mapLocationLink: string;
   adminName: string;
   adminPhone: string;
   adminEmail: string;
@@ -203,8 +201,7 @@ export default function OrganizationDetail() {
       name: organization.name,
       place: organization.place ?? "",
       district: organization.district ?? "",
-      address: organization.address ?? "",
-      description: organization.description ?? "",
+      mapLocationLink: organization.mapLocationLink ?? "",
       adminName: organization.adminFullName ?? "",
       adminPhone: organization.adminPhoneNumber ?? "",
       adminEmail: organization.adminEmail ?? "",
@@ -219,9 +216,8 @@ export default function OrganizationDetail() {
       place: data.place || null,
       district: data.district,
       logoUrl: organization?.logoUrl,
-      mapLocationLink: organization?.mapLocationLink,
-      address: data.address || null,
-      description: data.description || null,
+      mapLocationLink: data.mapLocationLink || null,
+      description: organization?.description ?? null,
       adminFullName: data.adminName,
       adminPhoneNumber: data.adminPhone,
       adminEmail: data.adminEmail,
@@ -455,17 +451,13 @@ export default function OrganizationDetail() {
               <Field label="District">
                 <Input {...register("district")} className="h-11 rounded-xl bg-white/70" />
               </Field>
-              <Field label="Full Address">
-                <Input {...register("address")} className="h-11 rounded-xl bg-white/70" />
-              </Field>
               <Field label="Map Location">
-                <Input value={organization.mapLocationLink ?? ""} readOnly className="h-11 rounded-xl bg-slate-50 text-slate-500" />
+                <Input
+                  {...register("mapLocationLink")}
+                  className="h-11 rounded-xl bg-white/70"
+                  placeholder="https://maps.google.com/..."
+                />
               </Field>
-              <div className="md:col-span-2">
-                <Field label="Internal Notes">
-                  <textarea {...register("description")} className="min-h-[120px] w-full rounded-2xl border border-black/5 bg-white/70 p-4 text-sm text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500/40" />
-                </Field>
-              </div>
             </div>
           </section>
 

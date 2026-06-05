@@ -122,7 +122,7 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .addFilterBefore(apiFailureLoggingFilter, JwtAuthenticationFilter.class)
+            .addFilterBefore(apiFailureLoggingFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(legalConsentGuardFilter, JwtAuthenticationFilter.class)
             .addFilterAfter(subscriptionGuardFilter, LegalConsentGuardFilter.class)
