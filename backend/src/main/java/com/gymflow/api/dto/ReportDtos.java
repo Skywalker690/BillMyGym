@@ -31,9 +31,7 @@ public class ReportDtos {
         PlanAccessResponse planAccess,
         SubscriptionPricingResponse subscriptionPricing,
         SubscriptionValiditySummary subscriptionValidity,
-        List<MemberDirectoryItem> expiringSoon,
-        List<MemberDirectoryItem> overdue,
-        List<NotificationResponse> recentReminderLogs
+        List<MemberDirectoryItem> overdue
     ) {
     }
 

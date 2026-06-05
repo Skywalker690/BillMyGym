@@ -65,17 +65,11 @@ public class ReportService {
         Long organizationId = requireOrganizationId();
         LocalDate today = LocalDate.now(APP_ZONE);
         memberMembershipService.refreshMembershipStatuses(organizationId);
-        List<MemberMembership> expiringSoon = memberMembershipRepository.findExpiringSoonMemberships(
-            organizationId,
-            today,
-            PageRequest.of(0, 5)
-        );
         List<MemberMembership> overdue = memberMembershipRepository.findOverdueOrExpiredMemberships(
             organizationId,
             today,
             PageRequest.of(0, 5)
         );
-        List<MemberDirectoryItem> expiringItems = toDirectoryItems(expiringSoon, DUE_TODAY_WINDOW_DAYS);
         List<MemberDirectoryItem> overdueItems = toDirectoryItems(overdue, DUE_TODAY_WINDOW_DAYS);
         var organization = organizationRepository.findByIdAndDeletedFalse(organizationId)
             .orElseThrow(() -> new BadRequestException("Organization not found"));
@@ -93,9 +87,7 @@ public class ReportService {
             toPlanAccessResponse(planAccessService.summary(organization)),
             toPricingResponse(subscriptionPricingService.currentPrice(organization)),
             buildSubscriptionValidity(organization),
-            expiringItems,
-            overdueItems,
-            notificationQueryService.listRecentReminderLogs(organizationId, 5)
+            overdueItems
         );
     }
 

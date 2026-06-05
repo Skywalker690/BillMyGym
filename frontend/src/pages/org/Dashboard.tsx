@@ -98,7 +98,6 @@ type DashboardReport = {
   };
   expiringSoon?: MembershipSnapshot[];
   overdue?: MembershipSnapshot[];
-  recentReminderLogs?: ReminderLog[];
 };
 
 type SubscriptionStatusSnapshot = {
@@ -163,7 +162,6 @@ export default function Dashboard() {
   const summary = report?.memberSummary ?? {};
   const expiringSoon = report?.expiringSoon ?? [];
   const overdue = report?.overdue ?? [];
-  const recentReminderLogs = report?.recentReminderLogs ?? [];
   const monthlyMemberJoins = report?.monthlyMemberJoins ?? [];
   const joinedThisMonth = monthlyMemberJoins.at(-1)?.joinedMembers ?? 0;
   const isDemoGym = subscriptionStatus?.organizationType === "DEMO";
@@ -230,8 +228,8 @@ export default function Dashboard() {
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-3 pb-8 pt-3 sm:space-y-6 sm:p-6 lg:space-y-8 lg:p-8">
       {isDemoGym && <DemoWorkspaceBanner organizationName={subscriptionStatus?.organizationName} previewPlan={effectivePlan} />}
-      <section className="billmygym-shell relative overflow-hidden rounded-[1.8rem] p-5 sm:rounded-[2rem] sm:p-7 lg:p-10">
-        <div className="absolute inset-y-0 right-0 w-[38%] bg-[radial-gradient(circle_at_top,rgba(22,163,74,0.16),transparent_45%),radial-gradient(circle_at_bottom,rgba(245,158,11,0.12),transparent_35%)]" />
+      <section className="relative overflow-hidden rounded-[1.8rem] bg-white border border-slate-200 shadow-sm p-5 sm:rounded-[2rem] sm:p-7 lg:p-10">
+        <div className="absolute inset-y-0 right-0 w-[50%] bg-[radial-gradient(ellipse_at_top_right,rgba(22,163,74,0.08),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(245,158,11,0.06),transparent_50%)]" />
         <div className="relative z-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
           <div>
             <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -295,22 +293,22 @@ export default function Dashboard() {
         <PlanBillingPanel planName={(isDemoWorkspace ? effectivePlan : report?.planName) ?? "BILLMYGYM"} pricing={subscriptionPricing} />
       )}
 
-      <section className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
-            <div key={card.title} className="glass-panel relative overflow-hidden rounded-[1.8rem] p-6">
+            <div key={card.title} className="glass-panel relative overflow-hidden rounded-[1.4rem] p-4 sm:rounded-[1.8rem] sm:p-6">
               <div className={cn("absolute inset-0 bg-gradient-to-br", card.panel)} />
               <div className="relative z-10">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="rounded-2xl border border-white/80 bg-white/75 p-3 shadow-sm">
-                    <Icon className="h-5 w-5 text-slate-900" />
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-3">
+                  <div className="w-fit rounded-xl border border-white/80 bg-white/75 p-2 shadow-sm sm:rounded-2xl sm:p-3">
+                    <Icon className="h-4 w-4 text-slate-900 sm:h-5 sm:w-5" />
                   </div>
-                  <Badge className={card.badge}>{card.eyebrow}</Badge>
+                  <Badge className={cn("text-[8px] leading-tight px-1.5 py-0 sm:text-xs sm:px-2.5 sm:py-0.5 w-fit whitespace-normal text-center sm:text-left sm:whitespace-nowrap", card.badge)}>{card.eyebrow}</Badge>
                 </div>
-                <div className="mt-8">
-                  <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{card.title}</div>
-                  <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{card.value}</div>
+                <div className="mt-4 sm:mt-8">
+                  <div className="text-[9px] font-black uppercase leading-tight tracking-[0.1em] text-slate-500 sm:text-[10px] sm:tracking-[0.22em]">{card.title}</div>
+                  <div className="mt-1 truncate text-lg font-black tracking-tight text-slate-950 sm:mt-2 sm:text-3xl">{card.value}</div>
                 </div>
               </div>
             </div>
@@ -332,7 +330,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid gap-3 p-5 sm:gap-4 sm:p-7 md:grid-cols-3">
+          <div className="grid grid-cols-3 gap-2 p-3 sm:gap-4 sm:p-7">
             <RevenueBand
               label="Current Revenue"
               value={money(revenueSegmentation.totalRevenue)}
@@ -440,6 +438,8 @@ export default function Dashboard() {
             emptyMessage="No memberships expire today."
             tone="amber"
           />
+        </div>
+        <div className="space-y-6">
           <MembershipListCard
             title="Overdue Memberships"
             subtitle="Overdue members that need immediate follow-up."
@@ -447,42 +447,6 @@ export default function Dashboard() {
             emptyMessage="No overdue memberships in the current snapshot."
             tone="rose"
           />
-        </div>
-
-        <div className="glass-panel overflow-hidden rounded-[1.9rem]">
-          <div className="flex items-center justify-between gap-4 border-b border-white/70 p-5 sm:p-7">
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Reminder Activity</div>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Admin Delivery Feed</h2>
-            </div>
-            <div className="rounded-2xl border border-white/80 bg-white/80 p-3 shadow-sm">
-              <MessageCircleMore className="h-5 w-5 text-emerald-700" />
-            </div>
-          </div>
-
-          {recentReminderLogs.length === 0 ? (
-            <div className="p-10 text-center text-sm font-semibold text-slate-500">
-              No reminder delivery events have been recorded yet.
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {recentReminderLogs.map((log) => (
-                <div key={log.id} className="grid gap-4 p-5 sm:grid-cols-[1.1fr_0.7fr_0.55fr_0.65fr] sm:items-center">
-                  <div>
-                    <div className="text-sm font-black text-slate-950">{shortDateTime(log.sentAt ?? log.createdAt)}</div>
-                    <div className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                      Reminder event #{log.id}
-                    </div>
-                  </div>
-                  <div className="text-sm font-semibold text-slate-600">{log.channel}</div>
-                  <div className="text-sm font-semibold text-slate-600">{log.memberCount ?? 0} members</div>
-                  <div>
-                    <StatusPill status={log.status ?? "PENDING"} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </section>
     </div>
@@ -596,51 +560,51 @@ function PlanBillingPanel({
     : 0;
 
   return (
-    <section className="relative overflow-hidden rounded-[1.9rem] border border-slate-900 bg-[linear-gradient(135deg,#020617,#0f172a_48%,#075985)] p-6 text-white shadow-[0_28px_80px_rgba(2,6,23,0.22)]">
+    <section className="relative overflow-hidden rounded-[1.4rem] sm:rounded-[1.9rem] border border-slate-900 bg-[linear-gradient(135deg,#020617,#0f172a_48%,#075985)] p-4 sm:p-6 text-white shadow-[0_28px_80px_rgba(2,6,23,0.22)]">
       <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#38bdf8,#22c55e,#f59e0b)]" />
-      <div className="relative z-10 grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+      <div className="relative z-10 grid gap-4 sm:gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
         <div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="hidden sm:flex flex-wrap items-center gap-2">
             <Badge className="border-sky-300/30 bg-sky-300/10 text-sky-100">{planName} Billing</Badge>
             <Badge className="border-white/10 bg-white/10 text-slate-100">Live member responsive</Badge>
           </div>
-          <div className="mt-5 flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-sky-100 ring-1 ring-white/10">
-              <Crown className="h-7 w-7" />
+          <div className="mt-2 sm:mt-5 flex items-center gap-3 sm:gap-4">
+            <div className="flex h-10 w-10 sm:h-14 sm:w-14 items-center justify-center rounded-xl sm:rounded-2xl bg-white/10 text-sky-100 ring-1 ring-white/10">
+              <Crown className="h-5 w-5 sm:h-7 sm:w-7" />
             </div>
             <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-sky-200">Monthly subscription total</div>
-              <div className="mt-1 text-4xl font-black tracking-tight">{money(totalAmount)}</div>
+              <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.24em] text-sky-200">Monthly subscription total</div>
+              <div className="mt-0.5 sm:mt-1 text-2xl sm:text-4xl font-black tracking-tight">{money(totalAmount)}</div>
             </div>
           </div>
-          <p className="mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-300">
+          <p className="hidden sm:block mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-300">
             BillMyGym includes {includedMembers} active members and keeps total members unlimited. Every active member above that adds {money(overageRate)} to the next monthly subscription payment.
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.06] p-4">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Active</div>
-            <div className="mt-2 text-3xl font-black">{activeMembers}</div>
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="rounded-xl sm:rounded-[1.3rem] border border-white/10 bg-white/[0.06] p-2 sm:p-4">
+            <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-slate-300">Active</div>
+            <div className="mt-1 sm:mt-2 text-lg sm:text-3xl font-black">{activeMembers}</div>
           </div>
-          <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.06] p-4">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Included</div>
-            <div className="mt-2 text-3xl font-black">{includedMembers}</div>
+          <div className="rounded-xl sm:rounded-[1.3rem] border border-white/10 bg-white/[0.06] p-2 sm:p-4">
+            <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-slate-300">Included</div>
+            <div className="mt-1 sm:mt-2 text-lg sm:text-3xl font-black">{includedMembers}</div>
           </div>
-          <div className="rounded-[1.3rem] border border-sky-300/20 bg-sky-300/10 p-4">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-100">Overage</div>
-            <div className="mt-2 text-3xl font-black">{money(overageAmount)}</div>
+          <div className="rounded-xl sm:rounded-[1.3rem] border border-sky-300/20 bg-sky-300/10 p-2 sm:p-4">
+            <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-sky-100">Overage</div>
+            <div className="mt-1 sm:mt-2 text-lg sm:text-3xl font-black">{money(overageAmount)}</div>
           </div>
-          <div className="sm:col-span-3">
-            <div className="h-3 overflow-hidden rounded-full bg-white/10 ring-1 ring-inset ring-white/10">
+          <div className="col-span-3">
+            <div className="h-2 sm:h-3 overflow-hidden rounded-full bg-white/10 ring-1 ring-inset ring-white/10">
               <div
                 className="h-full rounded-full bg-[linear-gradient(90deg,#38bdf8,#22c55e)] shadow-[0_10px_30px_-12px_rgba(56,189,248,0.9)]"
                 style={{ width: `${Math.max(includedPercent, activeMembers > 0 ? 6 : 0)}%` }}
               />
             </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-300">
-              <span>{Math.min(activeMembers, includedMembers)} included members used</span>
-              <span>{overageMembers} extra members billed</span>
+            <div className="mt-2 sm:mt-3 flex flex-wrap items-center justify-between gap-2 sm:gap-3 text-[9px] sm:text-xs font-bold uppercase tracking-[0.1em] sm:tracking-[0.16em] text-slate-300">
+              <span>{Math.min(activeMembers, includedMembers)} used</span>
+              <span>{overageMembers} extra billed</span>
             </div>
           </div>
         </div>
@@ -734,22 +698,22 @@ function MemberJoinTrendChart({ items }: { items: MonthlyMemberJoin[] }) {
   }
 
   return (
-    <div className="grid gap-3 sm:grid-cols-6 sm:gap-4">
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 sm:gap-4">
       {items.map((item) => {
         const height = `${Math.max((item.joinedMembers / maxValue) * 100, item.joinedMembers > 0 ? 16 : 6)}%`;
         return (
-          <div key={item.month} className="rounded-[1.4rem] border border-white/80 bg-white/72 p-3 shadow-sm sm:rounded-[1.5rem] sm:p-4">
-            <div className="flex h-24 items-end justify-center rounded-[1.1rem] bg-[linear-gradient(180deg,rgba(14,165,233,0.08),rgba(255,255,255,0.72))] p-3 sm:h-32 sm:rounded-[1.2rem]">
+          <div key={item.month} className="rounded-xl border border-white/80 bg-white/72 p-2 shadow-sm sm:rounded-[1.5rem] sm:p-4">
+            <div className="hidden sm:flex h-24 items-end justify-center rounded-[1.1rem] bg-[linear-gradient(180deg,rgba(14,165,233,0.08),rgba(255,255,255,0.72))] p-3 sm:h-32 sm:rounded-[1.2rem]">
               <div
                 className="w-full rounded-full bg-gradient-to-t from-sky-600 via-sky-500 to-cyan-300 shadow-[0_16px_28px_-18px_rgba(2,132,199,0.9)]"
                 style={{ height }}
                 title={`${item.label}: ${item.joinedMembers} joined`}
               />
             </div>
-            <div className="mt-4 text-center text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
+            <div className="mt-1 text-center text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 sm:mt-4 sm:text-[10px] sm:tracking-[0.22em]">
               {item.label}
             </div>
-            <div className="mt-1 text-center text-2xl font-black tracking-tight text-slate-950">{item.joinedMembers}</div>
+            <div className="mt-0.5 text-center text-lg font-black tracking-tight text-slate-950 sm:mt-1 sm:text-2xl">{item.joinedMembers}</div>
           </div>
         );
       })}
@@ -771,39 +735,39 @@ function MembershipListCard({
   tone: "amber" | "rose";
 }) {
   return (
-    <div className="glass-panel overflow-hidden rounded-[1.9rem]">
-      <div className="border-b border-white/70 p-5 sm:p-7">
-        <h2 className="text-2xl font-black tracking-tight text-slate-950">{title}</h2>
-        <p className="mt-2 hidden text-sm font-medium text-slate-500 sm:block">{subtitle}</p>
+    <div className="glass-panel overflow-hidden rounded-[1.4rem] sm:rounded-[1.9rem]">
+      <div className="border-b border-white/70 p-4 sm:p-7">
+        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-950">{title}</h2>
+        <p className="mt-1 sm:mt-2 hidden text-xs sm:text-sm font-medium text-slate-500 sm:block">{subtitle}</p>
       </div>
 
-      <div className="p-4 sm:p-5">
+      <div className="p-3 sm:p-5">
         {items.length === 0 ? (
-          <div className="rounded-[1.4rem] border border-dashed border-slate-200 bg-white/55 p-6 text-sm font-semibold text-slate-500">
+          <div className="rounded-xl sm:rounded-[1.4rem] border border-dashed border-slate-200 bg-white/55 p-4 sm:p-6 text-xs sm:text-sm font-semibold text-slate-500">
             {emptyMessage}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {items.map((member) => {
               return (
-                <div key={member.id} className="rounded-[1.4rem] border border-white/80 bg-white/72 p-3.5 shadow-sm sm:p-4">
-                  <div className="flex items-start justify-between gap-4">
+                <div key={member.id} className="rounded-xl sm:rounded-[1.4rem] border border-white/80 bg-white/72 p-3 sm:p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3 sm:gap-4">
                     <div className="min-w-0">
-                      <div className="truncate text-base font-black text-slate-950">{member.fullName}</div>
-                      <div className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      <div className="truncate text-sm sm:text-base font-black text-slate-950">{member.fullName}</div>
+                      <div className="mt-0.5 sm:mt-1 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.15em] sm:tracking-[0.18em] text-slate-400">
                         {member.currentMembership?.durationMonths ?? 0} month plan
                       </div>
                     </div>
                     <StatusPill status={member.currentMembership?.status ?? "OVERDUE"} />
                   </div>
-                  <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-500">
+                  <div className="mt-2 sm:mt-4 flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm font-semibold text-slate-500">
                     <span>Ends {shortDate(member.currentMembership?.endDate)}</span>
                   </div>
-                  <div className="mt-4">
+                  <div className="mt-2 sm:mt-4">
                     <Link to={`/app/members/${member.id}/renew`}>
-                      <Button variant="ghost" className="h-9 rounded-full px-0 font-bold text-slate-800 hover:bg-transparent hover:text-slate-950">
+                      <Button variant="ghost" className="h-8 sm:h-9 rounded-full px-0 text-xs sm:text-sm font-bold text-slate-800 hover:bg-transparent hover:text-slate-950">
                         Renew membership
-                        <ArrowRight className="ml-2 h-4 w-4" />
+                        <ArrowRight className="ml-1.5 sm:ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </Button>
                     </Link>
                   </div>
@@ -834,8 +798,8 @@ function StatusPill({ status }: { status: string }) {
         : AlertCircle;
 
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em]", style)}>
-      <Icon className="h-3.5 w-3.5" />
+    <span className={cn("inline-flex items-center gap-1 sm:gap-1.5 rounded-full border px-2 py-0.5 sm:px-3 sm:py-1 text-[9px] sm:text-[11px] font-black uppercase tracking-[0.12em] sm:tracking-[0.16em]", style)}>
+      <Icon className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
       {status.replaceAll("_", " ")}
     </span>
   );

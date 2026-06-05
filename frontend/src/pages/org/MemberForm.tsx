@@ -456,23 +456,18 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
           )}
         </div>
 
-        <div className="sticky bottom-3 z-20 flex flex-col gap-4 rounded-[1.5rem] border border-white/85 bg-white/92 p-4 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.28)] sm:bottom-4 sm:flex-row sm:items-center sm:justify-between sm:rounded-[1.8rem] sm:p-5">
-          <div>
-            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Ready To Save</div>
-            <p className="mt-1 text-sm font-medium leading-6 text-slate-600">
-              {isCreate
-                ? "This will create the member record and, if pricing is filled, the initial membership and payment entry too."
-                : isEdit
-                  ? "This will update only the member profile details."
-                  : "This will create the renewal membership and its payment entry without changing the member profile."}
-            </p>
-          </div>
-          <div className="flex flex-col justify-end gap-3 sm:flex-row">
-            <Button type="button" variant="outline" onClick={() => navigate(-1)} className="w-full rounded-full border-white/80 bg-white/70 px-6 sm:w-auto">Cancel</Button>
-            <Button type="submit" disabled={isSubmitting || mutation.isPending} className="w-full rounded-full bg-emerald-600 px-8 font-bold text-white hover:bg-emerald-700 sm:w-auto">
+        <div className="mt-8 flex justify-center pb-8">
+          <Button 
+            type="submit" 
+            disabled={isSubmitting || mutation.isPending} 
+            className={`w-full sm:w-auto h-14 px-12 rounded-full text-lg font-black shadow-xl transition-all ${
+              isCreate && !existingMember 
+                ? "bg-amber-500 text-amber-950 hover:bg-amber-400 border border-amber-300" 
+                : "bg-emerald-600 text-white hover:bg-emerald-500 border border-emerald-500"
+            }`}
+          >
             {isSubmitting || mutation.isPending ? "Saving..." : isCreate ? "Create Member" : isEdit ? "Save Member" : "Renew Membership"}
-            </Button>
-          </div>
+          </Button>
         </div>
       </form>
     </div>

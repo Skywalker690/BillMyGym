@@ -219,7 +219,7 @@ export default function MembersList() {
         </div>
       </section>
 
-      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
         <SummaryTile label="Total Members" value={summary.totalMembers} tone="slate" />
         <SummaryTile label="Active Members" value={summary.activeMembers} tone="emerald" />
         <SummaryTile label="Deactivated Members" value={summary.deactivatedMembers} tone="indigo" />
@@ -446,7 +446,7 @@ export default function MembersList() {
         </div>
       </div>
 
-      <section className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
+      <section className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
         <CustomReminderLimitCard
           canUseMemberMessaging={canUseMemberMessaging}
           used={Number(subscriptionStatus?.customReminderUsage ?? 0)}
@@ -947,45 +947,45 @@ function MemberLimitCard({
   const planLabel = memberLimit?.plan === "BILLMYGYM" || !memberLimit?.plan ? "BillMyGym" : memberLimit.plan;
 
   return (
-    <div className="glass-panel w-full max-w-sm rounded-[1.7rem] p-5">
-      <div className="flex items-center justify-between gap-4">
+    <div className="glass-panel w-full rounded-xl sm:rounded-[1.7rem] p-3 sm:p-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
         <div>
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">
+          <div className="flex items-center gap-1 sm:gap-2 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.1em] sm:tracking-[0.22em] text-emerald-700">
             <span>Members Used</span>
             <div className="group relative">
               <button
                 type="button"
-                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-emerald-200 bg-white/85 text-emerald-700 shadow-sm"
+                className="inline-flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full border border-emerald-200 bg-white/85 text-emerald-700 shadow-sm"
                 aria-label="Member usage info"
               >
-                <Info className="h-3.5 w-3.5" />
+                <Info className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
               </button>
-              <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-3 w-56 -translate-x-1/2 rounded-2xl border border-emerald-100 bg-slate-950 px-4 py-3 text-left text-[11px] font-bold normal-case tracking-normal text-white opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100">
+              <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 sm:mb-3 w-48 sm:w-56 -translate-x-1/2 rounded-2xl border border-emerald-100 bg-slate-950 px-3 py-2 sm:px-4 sm:py-3 text-center sm:text-left text-[10px] sm:text-[11px] font-bold normal-case tracking-normal text-white opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100">
                 {deactivatedMembers} deactivated members stay in your directory, but only active members affect BillMyGym pricing.
               </div>
             </div>
           </div>
-          <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{unlimited ? `${usedMembers} Active` : `${usedMembers} / ${limit ?? 0}`}</div>
+          <div className="mt-1 sm:mt-2 text-lg sm:text-3xl font-black tracking-tight text-slate-950">{unlimited ? `${usedMembers} Active` : `${usedMembers} / ${limit ?? 0}`}</div>
         </div>
-        <Badge className="border-slate-200 bg-white/80 text-slate-700">{planLabel}</Badge>
+        <Badge className="w-fit text-[8px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5 border-slate-200 bg-white/80 text-slate-700">{planLabel}</Badge>
       </div>
       {activePricing ? (
         <>
-          <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-200">
+          <div className="mt-3 sm:mt-5 h-2 sm:h-3 overflow-hidden rounded-full bg-slate-200">
             <div
               className="h-full rounded-full bg-emerald-600 transition-all duration-300"
               style={{ width: `${Math.min(Math.max(usagePercent, 0), 100)}%` }}
             />
           </div>
-          <div className="mt-3 flex items-center justify-between gap-3 text-sm font-bold text-slate-600">
+          <div className="mt-2 sm:mt-3 flex items-center justify-between gap-2 sm:gap-3 text-[9px] sm:text-sm font-bold text-slate-600">
             <span>{usagePercent}%</span>
-            <span>{remainingSlots} active members included before overage</span>
+            <span className="truncate">{remainingSlots} left</span>
           </div>
-          <div className="mt-3 text-sm font-semibold text-slate-500">Total members can remain unlimited. Billing reacts only to active members.</div>
+          <div className="mt-1 sm:mt-3 hidden sm:block text-sm font-semibold text-slate-500">Total members can remain unlimited. Billing reacts only to active members.</div>
         </>
       ) : (
-        <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
-          Unlimited active-member scale on the current plan
+        <div className="mt-2 sm:mt-4 rounded-lg sm:rounded-2xl border border-emerald-100 bg-emerald-50 px-2 sm:px-4 py-1.5 sm:py-3 text-[9px] sm:text-sm font-bold text-emerald-800">
+          Unlimited active-member scale
         </div>
       )}
     </div>
@@ -1001,39 +1001,39 @@ function CustomReminderLimitCard({
   used: number;
   limit: number | null;
 }) {
-  if (!canUseMemberMessaging) {
+    if (!canUseMemberMessaging) {
+      return (
+        <div className="glass-panel w-full rounded-xl sm:rounded-[1.7rem] p-3 sm:p-5">
+          <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.1em] sm:tracking-[0.22em] text-slate-500">Custom WhatsApp Reminders</div>
+          <div className="mt-1 sm:mt-2 text-lg sm:text-2xl font-black tracking-tight text-slate-950">Included with BillMyGym</div>
+          <div className="mt-1 sm:mt-3 hidden sm:block text-sm font-semibold text-slate-500">Manual overdue reminders are included for every organization.</div>
+        </div>
+      );
+    }
+  
+    const safeLimit = Number(limit ?? 50);
+    const percentage = Math.min(Math.round((used / safeLimit) * 100), 100);
+  
     return (
-      <div className="glass-panel rounded-[1.7rem] p-5">
-        <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Custom WhatsApp Reminders</div>
-        <div className="mt-2 text-2xl font-black tracking-tight text-slate-950">Included with BillMyGym</div>
-        <div className="mt-3 text-sm font-semibold text-slate-500">Manual overdue reminders are included for every organization.</div>
+      <div className="glass-panel w-full rounded-xl sm:rounded-[1.7rem] p-3 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+          <div>
+            <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.1em] sm:tracking-[0.22em] text-emerald-700">Custom WhatsApp Reminders</div>
+            <div className="mt-1 sm:mt-2 text-lg sm:text-3xl font-black tracking-tight text-slate-950">{used} / {safeLimit}</div>
+          </div>
+          <Badge className="w-fit text-[8px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5 border-emerald-100 bg-emerald-50 text-emerald-700">{Math.max(safeLimit - used, 0)} left</Badge>
+        </div>
+        <div className="mt-3 sm:mt-5 h-2 sm:h-3 overflow-hidden rounded-full bg-slate-200">
+          <div
+            className="h-full rounded-full bg-[linear-gradient(90deg,#059669,#22c55e,#f59e0b)] transition-all duration-300"
+            style={{ width: `${Math.max(percentage, used > 0 ? 8 : 0)}%` }}
+          />
+        </div>
+        <div className="mt-1 sm:mt-3 hidden sm:block text-sm font-semibold text-slate-500">
+          Only manual member-wise overdue reminders count toward this 50-per-month limit.
+        </div>
       </div>
     );
-  }
-
-  const safeLimit = Number(limit ?? 50);
-  const percentage = Math.min(Math.round((used / safeLimit) * 100), 100);
-
-  return (
-    <div className="glass-panel rounded-[1.7rem] p-5">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">Custom WhatsApp Reminders</div>
-          <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{used} / {safeLimit}</div>
-        </div>
-        <Badge className="border-emerald-100 bg-emerald-50 text-emerald-700">{Math.max(safeLimit - used, 0)} left</Badge>
-      </div>
-      <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-200">
-        <div
-          className="h-full rounded-full bg-[linear-gradient(90deg,#059669,#22c55e,#f59e0b)] transition-all duration-300"
-          style={{ width: `${Math.max(percentage, used > 0 ? 8 : 0)}%` }}
-        />
-      </div>
-      <div className="mt-3 text-sm font-semibold text-slate-500">
-        Only manual member-wise overdue reminders count toward this 50-per-month limit.
-      </div>
-    </div>
-  );
 }
 
 function SummaryTile({ label, value, tone }: { label: string; value?: number; tone: "slate" | "emerald" | "amber" | "indigo" }) {
@@ -1045,11 +1045,11 @@ function SummaryTile({ label, value, tone }: { label: string; value?: number; to
   }[tone];
 
   return (
-    <div className="glass-panel relative overflow-hidden rounded-[1.7rem] p-5">
+    <div className="glass-panel relative overflow-hidden rounded-[1.4rem] p-3 sm:rounded-[1.7rem] sm:p-5">
       <div className={cn("absolute inset-0 bg-gradient-to-br", toneClasses)} />
       <div className="relative z-10">
-        <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{label}</div>
-        <h3 className="mt-2 text-3xl font-black tracking-tight text-slate-950">{value ?? 0}</h3>
+        <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.1em] sm:tracking-[0.22em] text-slate-500">{label}</div>
+        <h3 className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-black tracking-tight text-slate-950">{value ?? 0}</h3>
       </div>
     </div>
   );

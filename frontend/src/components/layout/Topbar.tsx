@@ -192,7 +192,7 @@ export function Topbar({
             </button>
 
             {profileOpen && (
-              <div className="absolute right-0 top-full z-[60] mt-4 w-[min(21rem,calc(100vw-1rem))] overflow-hidden rounded-[2rem] border border-white/70 bg-white/95 p-2 shadow-[0_22px_60px_-24px_rgba(15,23,42,0.32)] backdrop-blur-xl">
+              <div className="absolute -right-4 sm:right-0 top-full z-[60] mt-4 w-[calc(100vw-2rem)] sm:w-[21rem] overflow-hidden rounded-[2rem] border border-white/70 bg-white/95 p-2 shadow-[0_22px_60px_-24px_rgba(15,23,42,0.32)] backdrop-blur-xl">
                 <div className="mb-2 flex items-center gap-4 rounded-[1.6rem] border border-white/80 bg-white/70 p-5 shadow-sm">
                   {user?.avatarUrl ? (
                     <img src={user.avatarUrl} alt={primaryName} referrerPolicy="no-referrer" className="h-14 w-14 rounded-[1.1rem] object-cover" />
