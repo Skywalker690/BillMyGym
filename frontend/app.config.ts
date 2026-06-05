@@ -28,7 +28,7 @@ export const APP_CONFIG = {
         origin: "http://localhost:8080",
       },
       prod: {
-        origin: "https://api.billmygym.tech",
+        origin: "https://billmygym.tech",
       },
     } satisfies Record<ApiTarget, ApiTargetConfig>,
   },

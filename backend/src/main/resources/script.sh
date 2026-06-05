@@ -74,9 +74,9 @@ docker logs -f billmygym
 
 
 
-
 docker stop billmygym
 docker rm -f billmygym
+
 
 docker run -d \
   --name billmygym \
