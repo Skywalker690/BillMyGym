@@ -73,6 +73,7 @@ export function Topbar({
   const primaryName = (user?.name || user?.email || "BillMyGym").split(" ")[0];
   const initials = (user?.name || user?.email || "G").trim().charAt(0).toUpperCase();
   const isSuperAdmin = role === "SUPER_ADMIN";
+  const hideOrgAdminMobileText = role === "ORG_ADMIN";
   const quickLinks = isSuperAdmin
     ? [
         {
@@ -140,13 +141,13 @@ export function Topbar({
           </button>
 
           <div className="min-w-0 flex-1">
-            <div className="mb-1 flex items-center gap-2">
+            <div className={cn("mb-1 flex items-center gap-2", hideOrgAdminMobileText && "hidden sm:flex")}>
               <div className="h-1.5 w-1.5 rounded-full bg-emerald-600 shadow-[0_0_6px_rgba(22,163,74,0.5)]" />
               <span className="truncate text-[10px] font-black uppercase tracking-[0.28em] text-emerald-700">
                 {pageContext.eyebrow}
               </span>
             </div>
-            <div className="min-w-0">
+            <div className={cn("min-w-0", hideOrgAdminMobileText && "hidden sm:block")}>
               <h1 className="truncate text-2xl font-black tracking-tight text-slate-900 lg:text-3xl">{pageContext.title}</h1>
               <p className="mt-1 hidden truncate text-sm font-medium text-slate-500 lg:block">{pageContext.description}</p>
             </div>
@@ -159,10 +160,10 @@ export function Topbar({
             <Link
               key={item.to}
               to={item.to}
-              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 sm:px-4"
             >
               <item.icon className={cn("h-4 w-4", item.iconClassName)} />
-              <span className="hidden sm:inline">{item.label}</span>
+              <span className={hideOrgAdminMobileText ? "hidden lg:inline" : "hidden sm:inline"}>{item.label}</span>
             </Link>
           ))}
 

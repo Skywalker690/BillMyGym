@@ -52,9 +52,6 @@ public class Organization extends BaseEntity {
     @Column(nullable = false)
     private String adminEmail;
 
-    @Column(length = 1000)
-    private String description;
-
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal monthlyMembershipFee = BigDecimal.ZERO;
 

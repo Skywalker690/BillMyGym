@@ -101,6 +101,8 @@ export function Sidebar({
 
   const displayName = (user?.name || user?.email || "BillMyGym").split(" ")[0];
   const initials = (user?.name || user?.email || "G").trim().charAt(0).toUpperCase();
+  const hideOrgAdminMobileLabels = user?.role === "ORG_ADMIN";
+  const compactMobileNav = hideOrgAdminMobileLabels && mobileOpen;
 
   return (
     <>
@@ -109,16 +111,21 @@ export function Sidebar({
         className={cn(
           "fixed inset-y-0 left-0 z-[99] p-3 transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
-          collapsed ? "w-24 lg:w-28" : "w-[90vw] max-w-[21.5rem] sm:w-[19.5rem]",
+          collapsed ? "w-24 lg:w-28" : compactMobileNav ? "w-[5.75rem] lg:w-[19.5rem]" : "w-[90vw] max-w-[21.5rem] sm:w-[19.5rem]",
         )}
       >
         <div className="billmygym-dark-shell relative flex h-full flex-col overflow-hidden rounded-[2.35rem] border border-white/10">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.16),transparent_45%),radial-gradient(circle_at_bottom_left,rgba(251,191,36,0.11),transparent_36%)]" />
 
-          <div className={cn("relative z-10 flex items-center pb-6 pt-8", collapsed ? "justify-center px-0" : "justify-between px-6")}>
-            <BillMyGymMark collapsed={collapsed} />
-            {!collapsed && (
+          <div className={cn("relative z-10 flex items-center pb-6 pt-8", collapsed || compactMobileNav ? "justify-center px-0 lg:justify-between lg:px-6" : "justify-between px-6")}>
+            <BillMyGymMark collapsed={collapsed || compactMobileNav} />
+            {!collapsed && !compactMobileNav && (
               <button onClick={onCloseMobile} className="rounded-[1rem] p-2 text-slate-400 hover:bg-white/5 hover:text-white lg:hidden">
+                <X className="h-5 w-5" />
+              </button>
+            )}
+            {compactMobileNav && (
+              <button onClick={onCloseMobile} className="absolute right-4 top-8 rounded-[1rem] p-2 text-slate-400 hover:bg-white/5 hover:text-white lg:hidden">
                 <X className="h-5 w-5" />
               </button>
             )}
@@ -127,7 +134,7 @@ export function Sidebar({
           <div className="relative z-10 flex-1 overflow-y-auto px-3.5 pb-4">
             {Object.entries(groupedItems).map(([section, items]: [string, NavItemConfig[]]) => (
               <div key={section} className="mb-7 last:mb-0">
-                {!collapsed && (
+                {!collapsed && !compactMobileNav && (
                   <p className="mb-3.5 px-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
                     {section}
                   </p>
@@ -139,7 +146,7 @@ export function Sidebar({
                       label={item.label}
                       to={item.href}
                       active={location.pathname.startsWith(item.href)}
-                      collapsed={collapsed}
+                      collapsed={collapsed || compactMobileNav}
                       onNavigate={onCloseMobile}
                     />
                   </div>
@@ -149,7 +156,7 @@ export function Sidebar({
           </div>
 
           <div className="relative z-10 mt-auto border-t border-white/5 p-3.5">
-            <div className={cn("flex items-center rounded-[1.55rem] border border-white/7 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]", collapsed ? "justify-center p-2.5" : "gap-3 p-3")}>
+            <div className={cn("flex items-center rounded-[1.55rem] border border-white/7 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]", collapsed || compactMobileNav ? "justify-center p-2.5 lg:gap-3 lg:p-3" : "gap-3 p-3")}>
               {user?.avatarUrl ? (
                 <img src={user.avatarUrl} alt={displayName} referrerPolicy="no-referrer" className="h-11 w-11 rounded-[1.15rem] object-cover" />
               ) : (
@@ -157,7 +164,7 @@ export function Sidebar({
                   {initials}
                 </div>
               )}
-              {!collapsed && (
+              {!collapsed && !compactMobileNav && (
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-bold text-white">{displayName}</div>
                   <div className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300/80">
@@ -171,11 +178,11 @@ export function Sidebar({
               onClick={onLogout}
               className={cn(
                 "mt-3 flex w-full items-center rounded-[1.35rem] text-rose-300 transition-colors hover:bg-rose-50/10 hover:text-rose-200",
-                collapsed ? "justify-center p-4" : "gap-3 px-4 py-3.5",
+                collapsed || compactMobileNav ? "justify-center p-4 lg:gap-3 lg:px-4 lg:py-3.5" : "gap-3 px-4 py-3.5",
               )}
             >
               <LogOut className="h-5 w-5 shrink-0" />
-              {!collapsed && <span className="text-sm font-bold">Terminate Session</span>}
+              {!collapsed && !compactMobileNav && <span className="text-sm font-bold">Terminate Session</span>}
             </button>
           </div>
         </div>

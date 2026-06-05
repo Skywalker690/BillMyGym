@@ -43,7 +43,6 @@ const schema = z.object({
   password: z.string().min(8, "Temporary password must be at least 8 characters"),
   logoUrl: z.string().optional(),
   mapLocationLink: z.string().optional(),
-  description: z.string().optional(),
 });
 
 type FormInput = z.input<typeof schema>;
@@ -53,7 +52,7 @@ type Step = 0 | 1 | 2;
 const stepMeta = [
   { id: 0 as Step, title: "Organization Details", caption: "Name, type, place, and district." },
   { id: 1 as Step, title: "Admin Details", caption: "Primary admin access and temporary password." },
-  { id: 2 as Step, title: "Geographical Details", caption: "Logo, map, and description." },
+  { id: 2 as Step, title: "Geographical Details", caption: "Logo and map references for the workspace." },
 ];
 
 function generateTemporaryPassword() {
@@ -99,7 +98,6 @@ export default function OrganizationForm() {
       place: "",
       logoUrl: "",
       mapLocationLink: "",
-      description: "",
     },
   });
 
@@ -115,7 +113,6 @@ export default function OrganizationForm() {
   const watchedPassword = watch("password");
   const watchedMapUrl = watch("mapLocationLink");
   const watchedLogoUrl = watch("logoUrl");
-  const watchedDescription = watch("description");
   const specialAccess = organizationType === "DEMO";
 
   const mutation = useMutation({
@@ -129,7 +126,6 @@ export default function OrganizationForm() {
         adminFullName: data.adminName,
         adminPhoneNumber: data.adminPhone,
         adminEmail: data.adminEmail,
-        organizationDescription: data.description || null,
         monthlyMembershipFee: data.monthlyMembershipFee,
         admissionFee: data.admissionFee,
         organizationType: data.organizationType,
@@ -320,16 +316,6 @@ export default function OrganizationForm() {
                 <Field label="Map URL">
                   <Input {...register("mapLocationLink")} className="h-12 rounded-2xl bg-white/75" placeholder="https://maps.google.com/..." />
                 </Field>
-
-                <div className="md:col-span-2">
-                  <Field label="Description">
-                    <textarea
-                      {...register("description")}
-                      className="min-h-[140px] w-full rounded-[1.5rem] border border-black/5 bg-white/75 p-4 text-sm text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500/40"
-                      placeholder="Add a quick internal profile for this gym, branch, or launch context."
-                    />
-                  </Field>
-                </div>
               </div>
             )}
           </div>
@@ -393,7 +379,6 @@ export default function OrganizationForm() {
                 rows={[
                   { label: "Logo URL", value: watchedLogoUrl || "Not added" },
                   { label: "Map URL", value: watchedMapUrl || "Not added" },
-                  { label: "Description", value: watchedDescription || "Not added" },
                 ]}
               />
             </div>

@@ -40,7 +40,6 @@ type Organization = {
   adminFullName?: string | null;
   adminPhoneNumber?: string | null;
   adminEmail?: string | null;
-  description?: string | null;
   monthlyMembershipFee?: number | null;
   admissionFee?: number | null;
   organizationType?: "REGULAR" | "DEMO";
@@ -217,7 +216,6 @@ export default function OrganizationDetail() {
       district: data.district,
       logoUrl: organization?.logoUrl,
       mapLocationLink: data.mapLocationLink || null,
-      description: organization?.description ?? null,
       adminFullName: data.adminName,
       adminPhoneNumber: data.adminPhone,
       adminEmail: data.adminEmail,

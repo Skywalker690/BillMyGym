@@ -43,7 +43,6 @@ public class AuthDtos {
         @NotBlank String adminFullName,
         @NotBlank String adminPhoneNumber,
         @Email @NotBlank String adminEmail,
-        String organizationDescription,
         @PositiveOrZero BigDecimal monthlyMembershipFee,
         @PositiveOrZero BigDecimal admissionFee,
         OrganizationType organizationType,

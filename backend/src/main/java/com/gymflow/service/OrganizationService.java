@@ -363,7 +363,6 @@ public class OrganizationService {
                 || !Objects.equals(request.logoUrl(), organization.getLogoUrl())
                 || !Objects.equals(request.mapLocationLink(), organization.getMapLocationLink())
                 || !Objects.equals(request.adminEmail(), organization.getAdminEmail())
-                || !Objects.equals(request.description(), organization.getDescription())
                 || compareMoney(request.monthlyMembershipFee(), organization.getMonthlyMembershipFee()) != 0
                 || compareMoney(request.admissionFee(), organization.getAdmissionFee()) != 0
                 || request.organizationType() != null && request.organizationType() != organization.getOrganizationType()
@@ -421,7 +420,6 @@ public class OrganizationService {
             base.adminFullName(),
             base.adminPhoneNumber(),
             base.adminEmail(),
-            base.description(),
             base.monthlyMembershipFee(),
             base.admissionFee(),
             base.organizationType(),

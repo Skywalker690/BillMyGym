@@ -94,7 +94,6 @@ export default function OrganizationProfile() {
       logoUrl: organization.logoUrl,
       mapLocationLink: organization.mapLocationLink,
       address: organization.address,
-      description: organization.description || null,
       adminFullName: isDemoWorkspace ? data.adminName : organization.adminFullName,
       adminPhoneNumber: isDemoWorkspace ? normalizeIndianPhone(data.adminPhone) : organization.adminPhoneNumber,
       adminEmail: organization.adminEmail,

@@ -252,8 +252,8 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
   const currentMembership = memberships?.[0];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-8 pb-16">
-      <section className="billmygym-shell relative overflow-hidden rounded-[2rem] p-8">
+    <div className="mx-auto max-w-6xl space-y-5 px-3 pb-16 pt-3 sm:space-y-6 sm:p-6 lg:space-y-8 lg:p-8">
+      <section className="billmygym-shell relative overflow-hidden rounded-[1.8rem] p-4 sm:rounded-[2rem] sm:p-6 lg:p-8">
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-4">
             <Button
@@ -268,17 +268,17 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
               {isEdit ? <UserCog className="h-8 w-8" /> : <UserPlus className="h-8 w-8" />}
             </div>
             <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.28em] text-emerald-700">
+              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700 sm:tracking-[0.28em]">
                 {isCreate ? "New Member Onboarding" : isEdit ? "Member Update" : "Membership Renewal"}
               </div>
-              <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
+              <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
                 {isCreate ? "Create Member" : isEdit ? "Edit Member" : "Renew Membership"}
               </h1>
             </div>
           </div>
 
           {(isCreate || isRenew) && (
-            <div className={`grid gap-3 ${isCreate && existingMember ? "sm:grid-cols-2 xl:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
+            <div className={`grid w-full gap-3 lg:w-auto ${isCreate && existingMember ? "sm:grid-cols-2 xl:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
               <HeroChip label="Monthly Fee" value={`INR ${organizationMonthlyFee.toLocaleString("en-IN")}`} />
               {(!isCreate || !existingMember) && (
                 <HeroChip
@@ -367,7 +367,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                           <button
                             type="button"
                             onClick={() => setExistingMember((current) => !current)}
-                            className={`inline-flex min-w-[220px] items-center justify-between rounded-full border px-4 py-3 text-sm font-black shadow-sm transition-colors ${
+                            className={`inline-flex w-full items-center justify-between rounded-full border px-4 py-3 text-sm font-black shadow-sm transition-colors sm:min-w-[220px] sm:w-auto ${
                               existingMember
                                 ? "border-emerald-200 bg-emerald-100 text-emerald-800"
                                 : "border-amber-200 bg-amber-50 text-amber-800"
@@ -402,7 +402,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                     </div>
                   </div>
 
-                  <div className="grid min-w-[280px] gap-3 sm:grid-cols-2 lg:w-[360px] lg:grid-cols-1">
+                  <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-[360px] lg:grid-cols-1">
                     <PricingChip label="Membership Total" value={`INR ${watchedPlanAmount.toLocaleString("en-IN")}`} tone="slate" />
                     <PricingChip
                       label="Payment Collected"
@@ -456,10 +456,10 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
           )}
         </div>
 
-        <div className="sticky bottom-4 z-20 flex flex-col gap-4 rounded-[1.8rem] border border-white/85 bg-white/92 p-5 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.28)] sm:flex-row sm:items-center sm:justify-between">
+        <div className="sticky bottom-3 z-20 flex flex-col gap-4 rounded-[1.5rem] border border-white/85 bg-white/92 p-4 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.28)] sm:bottom-4 sm:flex-row sm:items-center sm:justify-between sm:rounded-[1.8rem] sm:p-5">
           <div>
             <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Ready To Save</div>
-            <p className="mt-1 text-sm font-medium text-slate-600">
+            <p className="mt-1 text-sm font-medium leading-6 text-slate-600">
               {isCreate
                 ? "This will create the member record and, if pricing is filled, the initial membership and payment entry too."
                 : isEdit
@@ -467,9 +467,9 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                   : "This will create the renewal membership and its payment entry without changing the member profile."}
             </p>
           </div>
-          <div className="flex justify-end gap-3">
-            <Button type="button" variant="outline" onClick={() => navigate(-1)} className="rounded-full border-white/80 bg-white/70 px-6">Cancel</Button>
-            <Button type="submit" disabled={isSubmitting || mutation.isPending} className="rounded-full bg-emerald-600 px-8 font-bold text-white hover:bg-emerald-700">
+          <div className="flex flex-col justify-end gap-3 sm:flex-row">
+            <Button type="button" variant="outline" onClick={() => navigate(-1)} className="w-full rounded-full border-white/80 bg-white/70 px-6 sm:w-auto">Cancel</Button>
+            <Button type="submit" disabled={isSubmitting || mutation.isPending} className="w-full rounded-full bg-emerald-600 px-8 font-bold text-white hover:bg-emerald-700 sm:w-auto">
             {isSubmitting || mutation.isPending ? "Saving..." : isCreate ? "Create Member" : isEdit ? "Save Member" : "Renew Membership"}
             </Button>
           </div>
@@ -482,7 +482,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
 function Field({ label, error, hint, children }: { label: string; error?: string; hint?: string; children: ReactNode }) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <Label className="font-semibold text-slate-700 dark:text-slate-300">{label}</Label>
         {hint && <span className="text-[11px] font-semibold text-slate-400">{hint}</span>}
       </div>

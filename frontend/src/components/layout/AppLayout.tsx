@@ -4,6 +4,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Sidebar } from "./Sidebar";
 import { getPageContext, getProfileNavItems, getSidebarNavItems, type AppRole } from "./navigation";
+import { ScrollToTopButton } from "./ScrollToTopButton";
 import { Topbar } from "./Topbar";
 import api from "../../lib/api";
 import { DemoPlanPreviewProvider } from "@/context/DemoPlanPreviewContext";
@@ -109,6 +110,7 @@ function AppLayoutShell({
   );
   const profileItems = useMemo(() => getProfileNavItems(role, referralsEnabled), [role, referralsEnabled]);
   const pageContext = useMemo(() => getPageContext(locationPath, role), [locationPath, role]);
+  const showScrollToTopButton = role === "ORG_ADMIN";
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-[radial-gradient(circle_at_top_left,rgba(187,247,208,0.42),transparent_26%),radial-gradient(circle_at_top_right,rgba(255,247,237,0.72),transparent_28%),linear-gradient(180deg,#f6fbf8_0%,#eef4f0_46%,#f8fbf9_100%)]">
@@ -138,6 +140,7 @@ function AppLayoutShell({
             <Outlet />
           </div>
         </main>
+        <ScrollToTopButton visible={showScrollToTopButton} />
       </div>
     </div>
   );

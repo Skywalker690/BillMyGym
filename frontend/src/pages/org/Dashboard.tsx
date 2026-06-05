@@ -228,25 +228,25 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 p-8">
+    <div className="mx-auto max-w-7xl space-y-5 px-3 pb-8 pt-3 sm:space-y-6 sm:p-6 lg:space-y-8 lg:p-8">
       {isDemoGym && <DemoWorkspaceBanner organizationName={subscriptionStatus?.organizationName} previewPlan={effectivePlan} />}
-      <section className="billmygym-shell relative overflow-hidden rounded-[2rem] p-8 lg:p-10">
+      <section className="billmygym-shell relative overflow-hidden rounded-[1.8rem] p-5 sm:rounded-[2rem] sm:p-7 lg:p-10">
         <div className="absolute inset-y-0 right-0 w-[38%] bg-[radial-gradient(circle_at_top,rgba(22,163,74,0.16),transparent_45%),radial-gradient(circle_at_bottom,rgba(245,158,11,0.12),transparent_35%)]" />
         <div className="relative z-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
           <div>
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">Revenue OS</Badge>
-              <Badge className="border-slate-200 bg-white/80 text-slate-700">Live backend snapshot</Badge>
+              <Badge className="hidden border-slate-200 bg-white/80 text-slate-700 sm:inline-flex">Live backend snapshot</Badge>
               <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">BillMyGym: All features included</Badge>
             </div>
-            <h1 className="max-w-3xl text-4xl font-black tracking-tight text-slate-950 lg:text-5xl">
+            <h1 className="max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
               Run your gym like a premium membership SaaS, not a spreadsheet.
             </h1>
-            <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">
+            <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-600 sm:mt-4 sm:text-base sm:leading-7">
               Collections, upcoming dues, and reminder health are surfaced in one operator view so you can protect revenue before memberships slip into overdue territory.
             </p>
 
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-wrap gap-3 sm:mt-7">
               <Link to="/app/members/new">
                 <Button className="h-12 rounded-full bg-slate-950 px-6 font-bold text-white hover:bg-slate-800">
                   <Plus className="mr-2 h-4 w-4" />
@@ -262,7 +262,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
             <HeroMetric
               label="Collection Pace"
               value={`${collectionRate}%`}
@@ -295,7 +295,7 @@ export default function Dashboard() {
         <PlanBillingPanel planName={(isDemoWorkspace ? effectivePlan : report?.planName) ?? "BILLMYGYM"} pricing={subscriptionPricing} />
       )}
 
-      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
@@ -318,9 +318,9 @@ export default function Dashboard() {
         })}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1fr_0.95fr]">
+      <section className="grid gap-4 sm:gap-6 xl:grid-cols-[1fr_0.95fr]">
         <div className="glass-panel overflow-hidden rounded-[1.9rem]">
-          <div className="border-b border-white/70 p-7">
+          <div className="border-b border-white/70 p-5 sm:p-7">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Revenue Focus</div>
@@ -332,7 +332,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid gap-4 p-7 md:grid-cols-3">
+          <div className="grid gap-3 p-5 sm:gap-4 sm:p-7 md:grid-cols-3">
             <RevenueBand
               label="Current Revenue"
               value={money(revenueSegmentation.totalRevenue)}
@@ -360,12 +360,12 @@ export default function Dashboard() {
 
         <div className="space-y-6">
           <div className="glass-panel overflow-hidden rounded-[1.9rem]">
-            <div className="border-b border-white/70 p-7">
+            <div className="border-b border-white/70 p-5 sm:p-7">
               <div className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Member Health</div>
               <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Directory Performance</h2>
             </div>
-            <div className="space-y-5 p-7">
-              <div className="relative overflow-hidden rounded-[1.8rem] border border-emerald-100 bg-[linear-gradient(135deg,rgba(16,185,129,0.12),rgba(255,255,255,0.9)_42%,rgba(14,165,233,0.12))] p-6 shadow-sm">
+            <div className="space-y-4 p-5 sm:space-y-5 sm:p-7">
+              <div className="relative overflow-hidden rounded-[1.8rem] border border-emerald-100 bg-[linear-gradient(135deg,rgba(16,185,129,0.12),rgba(255,255,255,0.9)_42%,rgba(14,165,233,0.12))] p-5 shadow-sm sm:p-6">
                 <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-200/30 blur-2xl" />
                 <div className="absolute -bottom-12 left-10 h-28 w-28 rounded-full bg-sky-200/30 blur-2xl" />
                 <div className="relative z-10 flex flex-col gap-5">
@@ -375,7 +375,7 @@ export default function Dashboard() {
                       <h3 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
                         {activeMembersCollected} / {activeMembersTotal}
                       </h3>
-                      <p className="mt-2 max-w-md text-sm font-medium leading-6 text-slate-600">
+                      <p className="mt-2 hidden max-w-md text-sm font-medium leading-6 text-slate-600 sm:block">
                         Members with fully covered active memberships, compared against your current active member base.
                       </p>
                     </div>
@@ -392,9 +392,9 @@ export default function Dashboard() {
                         style={{ width: `${Math.max(activeCollectionRate, activeMembersTotal > 0 ? 8 : 0)}%` }}
                       />
                     </div>
-                    <div className="flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-slate-600">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-slate-600">
                       <span>{activeMembersCollected} members covered</span>
-                      <span>{activeMembersPendingCollection} still need collection or overdue follow-up</span>
+                      <span className="hidden sm:inline">{activeMembersPendingCollection} still need collection or overdue follow-up</span>
                     </div>
                   </div>
 
@@ -402,12 +402,12 @@ export default function Dashboard() {
                     <div className="rounded-[1.4rem] border border-white/85 bg-white/78 p-4 shadow-sm">
                       <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Need Attention</div>
                       <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{activeMembersPendingCollection}</div>
-                      <div className="mt-1 text-sm font-medium text-slate-500">Active members still waiting for collection or overdue follow-up</div>
+                      <div className="mt-1 hidden text-sm font-medium text-slate-500 sm:block">Active members still waiting for collection or overdue follow-up</div>
                     </div>
                     <div className="rounded-[1.4rem] border border-white/85 bg-white/78 p-4 shadow-sm">
                       <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Active members</div>
                       <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{activeMembersTotal}</div>
-                      <div className="mt-1 text-sm font-medium text-slate-500">Total active members currently in your directory</div>
+                      <div className="mt-1 hidden text-sm font-medium text-slate-500 sm:block">Total active members currently in your directory</div>
                     </div>
                   </div>
                 </div>
@@ -417,21 +417,21 @@ export default function Dashboard() {
           </div>
 
           <div className="glass-panel overflow-hidden rounded-[1.9rem]">
-            <div className="border-b border-white/70 p-7">
+            <div className="border-b border-white/70 p-5 sm:p-7">
               <div className="text-[10px] font-black uppercase tracking-[0.24em] text-sky-700">Member Growth</div>
               <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Members Joined By Month</h2>
-              <p className="mt-2 text-sm font-medium text-slate-500">
+              <p className="mt-2 hidden text-sm font-medium text-slate-500 sm:block">
                 A quick read on how many new members joined in each of the last 6 months.
               </p>
             </div>
-            <div className="p-7">
+            <div className="p-5 sm:p-7">
               <MemberJoinTrendChart items={monthlyMemberJoins} />
             </div>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+      <section className="grid gap-4 sm:gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <div className="space-y-6">
           <MembershipListCard
             title="Due Today"
@@ -450,7 +450,7 @@ export default function Dashboard() {
         </div>
 
         <div className="glass-panel overflow-hidden rounded-[1.9rem]">
-          <div className="flex items-center justify-between gap-4 border-b border-white/70 p-7">
+          <div className="flex items-center justify-between gap-4 border-b border-white/70 p-5 sm:p-7">
             <div>
               <div className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Reminder Activity</div>
               <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Admin Delivery Feed</h2>
@@ -545,7 +545,7 @@ function HeroMetric({
   }[tone];
 
   return (
-    <div className={cn("rounded-[1.6rem] border p-5 shadow-sm", toneClass)}>
+    <div className={cn("rounded-[1.5rem] border p-4 shadow-sm sm:rounded-[1.6rem] sm:p-5", toneClass)}>
       <div className="flex items-center justify-between gap-3">
         <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">{label}</div>
         {infoTooltip && (
@@ -564,8 +564,8 @@ function HeroMetric({
           </div>
         )}
       </div>
-      <div className="mt-2 text-3xl font-black tracking-tight">{value}</div>
-      {detail ? <div className="mt-1 text-sm font-semibold opacity-70">{detail}</div> : null}
+      <div className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{value}</div>
+      {detail ? <div className="mt-1 hidden text-sm font-semibold opacity-70 sm:block">{detail}</div> : null}
     </div>
   );
 }
@@ -693,7 +693,7 @@ function RevenueBand({
   }[accent];
 
   return (
-    <div className="rounded-[1.5rem] border border-white/80 bg-white/75 p-5 shadow-sm">
+    <div className="rounded-[1.4rem] border border-white/80 bg-white/75 p-4 shadow-sm sm:rounded-[1.5rem] sm:p-5">
       <div className={cn("h-1.5 w-16 rounded-full bg-gradient-to-r", accentClass)} />
       <div className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
         <span>{label}</span>
@@ -716,8 +716,8 @@ function RevenueBand({
           </div>
         )}
       </div>
-      <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{value}</div>
-      <div className="mt-2 text-sm font-medium leading-6 text-slate-500">{helper}</div>
+      <div className="mt-2 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">{value}</div>
+      <div className="mt-2 hidden text-sm font-medium leading-6 text-slate-500 sm:block">{helper}</div>
     </div>
   );
 }
@@ -734,12 +734,12 @@ function MemberJoinTrendChart({ items }: { items: MonthlyMemberJoin[] }) {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-6">
+    <div className="grid gap-3 sm:grid-cols-6 sm:gap-4">
       {items.map((item) => {
         const height = `${Math.max((item.joinedMembers / maxValue) * 100, item.joinedMembers > 0 ? 16 : 6)}%`;
         return (
-          <div key={item.month} className="rounded-[1.5rem] border border-white/80 bg-white/72 p-4 shadow-sm">
-            <div className="flex h-32 items-end justify-center rounded-[1.2rem] bg-[linear-gradient(180deg,rgba(14,165,233,0.08),rgba(255,255,255,0.72))] p-3">
+          <div key={item.month} className="rounded-[1.4rem] border border-white/80 bg-white/72 p-3 shadow-sm sm:rounded-[1.5rem] sm:p-4">
+            <div className="flex h-24 items-end justify-center rounded-[1.1rem] bg-[linear-gradient(180deg,rgba(14,165,233,0.08),rgba(255,255,255,0.72))] p-3 sm:h-32 sm:rounded-[1.2rem]">
               <div
                 className="w-full rounded-full bg-gradient-to-t from-sky-600 via-sky-500 to-cyan-300 shadow-[0_16px_28px_-18px_rgba(2,132,199,0.9)]"
                 style={{ height }}
@@ -772,12 +772,12 @@ function MembershipListCard({
 }) {
   return (
     <div className="glass-panel overflow-hidden rounded-[1.9rem]">
-      <div className="border-b border-white/70 p-7">
+      <div className="border-b border-white/70 p-5 sm:p-7">
         <h2 className="text-2xl font-black tracking-tight text-slate-950">{title}</h2>
-        <p className="mt-2 text-sm font-medium text-slate-500">{subtitle}</p>
+        <p className="mt-2 hidden text-sm font-medium text-slate-500 sm:block">{subtitle}</p>
       </div>
 
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
         {items.length === 0 ? (
           <div className="rounded-[1.4rem] border border-dashed border-slate-200 bg-white/55 p-6 text-sm font-semibold text-slate-500">
             {emptyMessage}
@@ -786,7 +786,7 @@ function MembershipListCard({
           <div className="space-y-3">
             {items.map((member) => {
               return (
-                <div key={member.id} className="rounded-[1.4rem] border border-white/80 bg-white/72 p-4 shadow-sm">
+                <div key={member.id} className="rounded-[1.4rem] border border-white/80 bg-white/72 p-3.5 shadow-sm sm:p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="truncate text-base font-black text-slate-950">{member.fullName}</div>
