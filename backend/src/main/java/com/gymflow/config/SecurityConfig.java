@@ -33,7 +33,9 @@ public class SecurityConfig {
     private static final String ORG_ADMIN = "ORG_ADMIN";
     private static final List<String> ALLOWED_ORIGINS = List.of(
         "http://localhost:5173",
-        "https://www.billmygym.tech"
+        "https://www.billmygym.tech",
+            "https://billmygym.tech",
+            "https://api.billmygym.tech"
     );
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
