@@ -6,6 +6,7 @@ import { Building, KeyRound, Mail, Phone, ShieldCheck, User } from "lucide-react
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
@@ -181,22 +182,22 @@ export default function OrganizationProfile() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-8">
-      <section className="billmygym-shell rounded-[2rem] p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex h-16 w-16 items-center justify-center rounded-[1.6rem] bg-[linear-gradient(135deg,#e7f6ee_0%,#fff7ed_100%)] text-emerald-700 shadow-sm">
-            <Building className="h-8 w-8" />
+    <div className="mx-auto max-w-6xl space-y-6 sm:space-y-8 p-3 sm:p-5 lg:p-8">
+      <section className="billmygym-shell rounded-xl sm:rounded-2xl lg:rounded-[2rem] p-3 sm:p-5 lg:p-8">
+        <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex h-12 sm:h-14 lg:h-16 w-12 sm:w-14 lg:w-16 items-center justify-center rounded-[1.2rem] sm:rounded-[1.4rem] lg:rounded-[1.6rem] bg-[linear-gradient(135deg,#e7f6ee_0%,#fff7ed_100%)] text-emerald-700 shadow-sm">
+            <Building className="h-6 sm:h-7 lg:h-8 w-6 sm:w-7 lg:w-8" />
           </div>
           <div className="flex-1">
-            <div className="text-[10px] font-black uppercase tracking-[0.26em] text-emerald-700">Workspace Identity</div>
-            <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">{organization.name}</h1>
-            <p className="mt-2 text-sm font-medium text-slate-600">
+            <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.26em] text-emerald-700">Workspace Identity</div>
+            <h1 className="mt-1 sm:mt-2 text-xl sm:text-2xl lg:text-4xl font-black tracking-tight text-slate-950">{organization.name}</h1>
+            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-medium text-slate-600">
               {isDemoWorkspace
-                ? "Update the demo workspace contact number used during live walkthroughs and manual reminder showcases."
+                ? "Update the demo workspace contact number used during live walkthroughs."
                 : "Maintain your public gym identity, primary admin contact, and billing-facing organization details."}
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[420px]">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-3 lg:min-w-[420px]">
             <IdentityCard label="Organization ID" value={`ORG-${organization.id}`} tone="slate" />
             <IdentityCard label="Workspace Type" value={organization.organizationType ?? "-"} tone="emerald" />
             <IdentityCard label="Workspace Status" value={organization.status ?? "-"} tone="amber" />
@@ -205,68 +206,68 @@ export default function OrganizationProfile() {
       </section>
 
       <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-6">
-        <div className="glass-panel overflow-hidden rounded-[1.9rem]">
-          <div className="border-b border-white/70 p-6">
-            <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-slate-950">
-              <User className="h-5 w-5 text-emerald-700" />
+        <div className="glass-panel overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-[1.9rem]">
+          <div className="border-b border-white/70 p-3 sm:p-5 lg:p-6">
+            <h2 className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl lg:text-2xl font-black tracking-tight text-slate-950">
+              <User className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-700" />
               Primary Contact
             </h2>
             {isDemoWorkspace && (
-              <p className="mt-2 text-sm font-semibold text-sky-700">
+              <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-semibold text-sky-700">
                 Demo gyms can update the primary contact used for manual reminder showcases.
               </p>
             )}
           </div>
-          <div className="grid gap-6 p-6 md:grid-cols-2">
+          <div className="grid gap-4 sm:gap-5 lg:gap-6 p-3 sm:p-5 lg:p-6 grid-cols-1 md:grid-cols-2">
             <Field label="Admin Full Name" icon={<User className="h-4 w-4" />}>
               <Input
                 readOnly={!isDemoWorkspace}
                 {...register("adminName")}
-                className={`h-11 rounded-xl pl-10 ${isDemoWorkspace ? "bg-white/80 text-slate-900" : "bg-slate-50/80 text-slate-600"}`}
+                className={`h-10 sm:h-11 rounded-lg sm:rounded-xl pl-9 sm:pl-10 text-sm ${isDemoWorkspace ? "bg-white/80 text-slate-900" : "bg-slate-50/80 text-slate-600"}`}
               />
             </Field>
             <Field label="Admin Email" icon={<Mail className="h-4 w-4" />}>
-              <Input readOnly type="email" {...register("adminEmail")} className="h-11 rounded-xl bg-slate-50/80 pl-10 text-slate-600" />
+              <Input readOnly type="email" {...register("adminEmail")} className="h-10 sm:h-11 rounded-lg sm:rounded-xl bg-slate-50/80 pl-9 sm:pl-10 text-sm text-slate-600" />
             </Field>
             <Field label="Admin Phone Number" icon={<Phone className="h-4 w-4" />}>
               <Input
                 readOnly={!isDemoWorkspace}
                 {...register("adminPhone")}
-                className={`h-11 rounded-xl pl-10 ${isDemoWorkspace ? "bg-white/80 text-slate-900" : "bg-slate-50/80 text-slate-600"}`}
+                className={`h-10 sm:h-11 rounded-lg sm:rounded-xl pl-9 sm:pl-10 text-sm ${isDemoWorkspace ? "bg-white/80 text-slate-900" : "bg-slate-50/80 text-slate-600"}`}
               />
             </Field>
             <Field label="Monthly Membership Fee (INR)">
-              <Input readOnly type="number" {...register("monthlyMembershipFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-slate-50/80 text-slate-600" />
+              <Input readOnly type="number" {...register("monthlyMembershipFee", { valueAsNumber: true })} className="h-10 sm:h-11 rounded-lg sm:rounded-xl bg-slate-50/80 text-sm text-slate-600" />
             </Field>
             <Field label="Admission Fee (INR)">
-              <Input readOnly type="number" {...register("admissionFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-slate-50/80 text-slate-600" />
+              <Input readOnly type="number" {...register("admissionFee", { valueAsNumber: true })} className="h-10 sm:h-11 rounded-lg sm:rounded-xl bg-slate-50/80 text-sm text-slate-600" />
             </Field>
           </div>
         </div>
 
-        <div className="glass-panel overflow-hidden rounded-[1.9rem]">
-          <div className="border-b border-white/70 p-6">
-            <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-slate-950">
-              <KeyRound className="h-5 w-5 text-emerald-700" />
+        <div className="glass-panel overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-[1.9rem]">
+          <div className="border-b border-white/70 p-3 sm:p-5 lg:p-6">
+            <h2 className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl lg:text-2xl font-black tracking-tight text-slate-950">
+              <KeyRound className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-700" />
               Password & Security
             </h2>
           </div>
-          <div className="grid gap-6 p-6 xl:grid-cols-[1.35fr_0.9fr]">
-            <div className="space-y-5">
-              <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid gap-6 p-3 sm:p-5 lg:p-6 grid-cols-1 xl:grid-cols-[1.35fr_0.9fr]">
+            <div className="space-y-4 sm:space-y-5">
+              <div className="grid gap-4 sm:gap-5 grid-cols-1 md:grid-cols-2">
                 <SecureField label="Current Password" error={passwordErrors.currentPassword?.message as string | undefined}>
-                  <Input type="password" {...registerPassword("currentPassword", { required: "Current password is required" })} className="h-11 rounded-xl bg-white/60" />
+                  <Input type="password" {...registerPassword("currentPassword", { required: "Current password is required" })} className="h-10 sm:h-11 rounded-lg sm:rounded-xl bg-white/60 text-sm" />
                 </SecureField>
                 <div />
                 <SecureField label="New Password" error={passwordErrors.newPassword?.message as string | undefined}>
-                  <Input type="password" {...registerPassword("newPassword", { required: "New password is required", minLength: { value: 8, message: "Password must be at least 8 characters" } })} className="h-11 rounded-xl bg-white/60" />
+                  <Input type="password" {...registerPassword("newPassword", { required: "New password is required", minLength: { value: 8, message: "Password must be at least 8 characters" } })} className="h-10 sm:h-11 rounded-lg sm:rounded-xl bg-white/60 text-sm" />
                 </SecureField>
                 <SecureField label="Confirm New Password" error={passwordErrors.confirmPassword?.message as string | undefined}>
-                  <Input type="password" {...registerPassword("confirmPassword", { required: "Confirm password is required" })} className="h-11 rounded-xl bg-white/60" />
+                  <Input type="password" {...registerPassword("confirmPassword", { required: "Confirm password is required" })} className="h-10 sm:h-11 rounded-lg sm:rounded-xl bg-white/60 text-sm" />
                 </SecureField>
               </div>
 
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-2 sm:gap-3">
                 <Button
                   type="button"
                   disabled={requestPasswordOtpMutation.isPending || isPasswordSubmitting}
@@ -282,27 +283,27 @@ export default function OrganizationProfile() {
                       confirmPassword: data.confirmPassword,
                     });
                   })}
-                  className="rounded-full bg-emerald-600 px-6 text-white hover:bg-emerald-700"
+                  className="h-10 sm:h-11 rounded-full bg-emerald-600 px-4 sm:px-6 text-sm sm:text-base text-white hover:bg-emerald-700"
                 >
                   {requestPasswordOtpMutation.isPending ? "Sending code..." : "Send Verification Code"}
                 </Button>
                 {passwordOtpSent && (
-                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-emerald-700">
                     Code sent to {user?.email}
                   </span>
                 )}
               </div>
 
               {passwordOtpSent && (
-                <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50/70 p-5">
-                  <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
+                <div className="rounded-[1.2rem] sm:rounded-[1.5rem] border border-amber-200 bg-amber-50/70 p-3 sm:p-4 lg:p-5">
+                  <div className="grid gap-2 sm:gap-3 grid-cols-1 md:grid-cols-[1fr_auto_auto] md:items-end">
                     <SecureField label="Verification Code" error={passwordErrors.otp?.message as string | undefined}>
-                      <Input id="otp" {...registerPassword("otp", { required: "OTP is required", minLength: { value: 6, message: "OTP must be 6 digits" }, maxLength: { value: 6, message: "OTP must be 6 digits" } })} className="h-11 rounded-xl bg-white/80" />
+                      <Input id="otp" {...registerPassword("otp", { required: "OTP is required", minLength: { value: 6, message: "OTP must be 6 digits" }, maxLength: { value: 6, message: "OTP must be 6 digits" } })} className="h-10 sm:h-11 rounded-lg sm:rounded-xl bg-white/80 text-sm" />
                     </SecureField>
-                    <Button type="button" variant="outline" onClick={handleVerifyPasswordOtp} disabled={verifyPasswordOtpMutation.isPending} className="h-11 rounded-full">
+                    <Button type="button" variant="outline" onClick={handleVerifyPasswordOtp} disabled={verifyPasswordOtpMutation.isPending} className="h-10 sm:h-11 rounded-full text-sm">
                       {verifyPasswordOtpMutation.isPending ? "Verifying..." : "Verify OTP"}
                     </Button>
-                    <Button type="button" disabled={!passwordOtpVerified || confirmPasswordMutation.isPending} onClick={handlePasswordSubmit((data) => confirmPasswordMutation.mutate(data.otp))} className="h-11 rounded-full bg-slate-950 text-white hover:bg-slate-800">
+                    <Button type="button" disabled={!passwordOtpVerified || confirmPasswordMutation.isPending} onClick={handlePasswordSubmit((data) => confirmPasswordMutation.mutate(data.otp))} className="h-10 sm:h-11 rounded-full bg-slate-950 px-4 sm:px-6 text-sm text-white hover:bg-slate-800">
                       {confirmPasswordMutation.isPending ? "Updating..." : "Update Password"}
                     </Button>
                   </div>
@@ -310,12 +311,12 @@ export default function OrganizationProfile() {
               )}
             </div>
 
-            <div className="rounded-[1.75rem] border border-emerald-100 bg-[linear-gradient(180deg,#f8fcfa_0%,#eef4f0_100%)] p-6 shadow-sm">
-              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-emerald-700">
-                <ShieldCheck className="h-4 w-4" />
+            <div className="rounded-[1.3rem] sm:rounded-[1.6rem] lg:rounded-[1.75rem] border border-emerald-100 bg-[linear-gradient(180deg,#f8fcfa_0%,#eef4f0_100%)] p-3 sm:p-5 lg:p-6 shadow-sm">
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-emerald-100 px-2.5 sm:px-3 py-1 text-[9px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-emerald-700">
+                <ShieldCheck className="h-3.5 sm:h-4 w-3.5 sm:w-4" />
                 Security Flow
               </div>
-              <div className="mt-5 space-y-4 text-sm text-slate-600">
+              <div className="mt-3 sm:mt-4 lg:mt-5 space-y-2 sm:space-y-3 text-xs sm:text-sm text-slate-600">
                 <p className="font-semibold text-slate-900">Password changes are protected by one-time email verification.</p>
                 <p>1. Enter your current password and the replacement password.</p>
                 <p>2. We send a one-time code to the admin inbox.</p>
@@ -325,13 +326,13 @@ export default function OrganizationProfile() {
           </div>
         </div>
 
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end pt-1 sm:pt-2">
           {isDemoWorkspace ? (
-            <Button type="submit" disabled={isSubmitting} className="h-12 rounded-full bg-slate-950 px-8 font-bold text-white hover:bg-slate-800">
+            <Button type="submit" disabled={isSubmitting} className="h-10 sm:h-12 rounded-full bg-slate-950 px-6 sm:px-8 text-sm sm:text-base font-bold text-white hover:bg-slate-800">
               {isSubmitting ? "Saving..." : "Save Demo Contact"}
             </Button>
           ) : (
-            <div className="rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-500">
+            <div className="rounded-full border border-slate-200 bg-slate-50 px-4 sm:px-5 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-slate-500">
               Contact details are managed by platform admin for regular workspaces.
             </div>
           )}
@@ -343,10 +344,10 @@ export default function OrganizationProfile() {
 
 function Field({ label, icon, children }: { label: string; icon?: ReactNode; children: ReactNode }) {
   return (
-    <div className="space-y-2">
-      <Label className="font-semibold text-slate-700">{label}</Label>
+    <div className="space-y-1 sm:space-y-2">
+      <Label className="text-xs sm:text-sm font-semibold text-slate-700">{label}</Label>
       <div className="relative">
-        {icon && <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
+        {icon && <div className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4">{icon}</div>}
         {children}
       </div>
     </div>
@@ -355,10 +356,10 @@ function Field({ label, icon, children }: { label: string; icon?: ReactNode; chi
 
 function SecureField({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
   return (
-    <div className="space-y-2">
-      <Label className="font-semibold text-slate-700">{label}</Label>
+    <div className="space-y-1 sm:space-y-2">
+      <Label className="text-xs sm:text-sm font-semibold text-slate-700">{label}</Label>
       {children}
-      {error && <p className="text-sm font-medium text-red-500">{error}</p>}
+      {error && <p className="text-xs sm:text-sm font-medium text-red-500">{error}</p>}
     </div>
   );
 }
@@ -388,9 +389,9 @@ function IdentityCard({ label, value, tone }: { label: string; value: string; to
   }[tone];
 
   return (
-    <div className={`rounded-[1.35rem] border p-4 shadow-sm ${toneClass}`}>
-      <div className="text-[10px] font-black uppercase tracking-[0.22em] opacity-70">{label}</div>
-      <div className="mt-2 text-lg font-black">{value}</div>
+    <div className={cn("rounded-lg sm:rounded-[1.2rem] lg:rounded-[1.35rem] border p-2.5 sm:p-3 lg:p-4 shadow-sm", toneClass)}>
+      <div className="text-[8px] sm:text-[9px] lg:text-[10px] font-black uppercase tracking-[0.22em] opacity-70">{label}</div>
+      <div className="mt-1 sm:mt-1.5 lg:mt-2 text-sm sm:text-base lg:text-lg font-black">{value}</div>
     </div>
   );
 }

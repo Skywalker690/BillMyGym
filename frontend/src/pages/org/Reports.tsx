@@ -260,7 +260,7 @@ export default function Reports() {
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
             <SummarySignal
               icon={Wallet}
               label="Total Revenue"
@@ -270,10 +270,11 @@ export default function Reports() {
                 { label: "Admission", value: money(summary.admissionRevenue) },
                 { label: "Membership", value: money(summary.membershipRevenue) },
               ]}
+              compact
             />
-            <SummarySignal icon={TrendingUp} label="Membership Revenue" value={money(summary.membershipRevenue)} tone="slate" />
-            <SummarySignal icon={Users} label="Admissions" value={compact.format(Number(summary.admissions ?? 0))} tone="sky" />
-            <SummarySignal icon={AlertTriangle} label="Current Due Amount" value={money(summary.duePayments)} tone="rose" />
+            <SummarySignal icon={TrendingUp} label="Membership" value={money(summary.membershipRevenue)} tone="slate" compact />
+            <SummarySignal icon={Users} label="Admissions" value={compact.format(Number(summary.admissions ?? 0))} tone="sky" compact />
+            <SummarySignal icon={AlertTriangle} label="Due Amount" value={money(summary.duePayments)} tone="rose" compact />
           </div>
         </div>
       </section>
@@ -420,19 +421,19 @@ export default function Reports() {
         </div>
       ) : (
         <>
-          <section className="grid gap-5 md:grid-cols-4">
-            <MetricTile label="Admission Revenue" value={money(summary.admissionRevenue)} />
-            <MetricTile label="Active Members" value={compact.format(Number(summary.activeMembers ?? 0))} />
-            <MetricTile label="Overdue Members" value={compact.format(Number(summary.overdueMembers ?? 0))} />
-            <MetricTile label="Deactivated Members" value={compact.format(Number(summary.deactivatedMembers ?? 0))} />
+          <section className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
+            <MetricTile label="Admission" value={money(summary.admissionRevenue)} />
+            <MetricTile label="Active" value={compact.format(Number(summary.activeMembers ?? 0))} />
+            <MetricTile label="Overdue" value={compact.format(Number(summary.overdueMembers ?? 0))} />
+            <MetricTile label="Deactivated" value={compact.format(Number(summary.deactivatedMembers ?? 0))} />
           </section>
 
           <section className="glass-panel overflow-hidden rounded-[1.9rem]">
-            <div className="border-b border-white/70 p-6">
+            <div className="border-b border-white/70 p-4 sm:p-6">
               <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Revenue Trend</div>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Month-wise performance</h2>
+              <h2 className="mt-2 text-xl sm:text-2xl font-black tracking-tight text-slate-950">Month-wise performance</h2>
             </div>
-            <div className="grid min-h-[340px] grid-cols-2 gap-3 p-6 sm:grid-cols-3 lg:grid-cols-6 xl:grid-cols-12">
+            <div className="grid min-h-[280px] grid-cols-3 gap-2 p-4 sm:gap-3 sm:p-6 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12">
               {rows.map((row) => {
                 const height = `${Math.max((Number(row.totalRevenue ?? 0) / maxRevenue) * 100, Number(row.totalRevenue ?? 0) > 0 ? 12 : 4)}%`;
                 const isCurrentMonth = `${row.year}-${String(row.month).padStart(2, "0")}` === currentMonthKey;
@@ -440,13 +441,13 @@ export default function Reports() {
                   <div
                     key={`${row.year}-${row.month}`}
                     className={cn(
-                      "rounded-[1.35rem] border bg-white/72 p-3 shadow-sm xl:col-span-1",
+                      "rounded-[1.1rem] sm:rounded-[1.35rem] border bg-white/72 p-2 sm:p-3 shadow-sm xl:col-span-1",
                       isCurrentMonth
                         ? "border-emerald-300 ring-4 ring-emerald-100 shadow-[0_18px_38px_-26px_rgba(5,150,105,0.9)]"
                         : "border-white/80",
                     )}
                   >
-                    <div className="flex h-40 items-end rounded-[1.1rem] bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(255,255,255,0.95))] p-3">
+                    <div className="flex h-32 sm:h-40 items-end rounded-[0.8rem] sm:rounded-[1.1rem] bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(255,255,255,0.95))] p-2 sm:p-3">
                       <div
                         className={cn(
                           "w-full rounded-full",
@@ -457,69 +458,73 @@ export default function Reports() {
                         style={{ height }}
                       />
                     </div>
-                    <div className={cn("mt-3 text-center text-[10px] font-black uppercase tracking-[0.18em]", isCurrentMonth ? "text-emerald-700" : "text-slate-500")}>
+                    <div className={cn("mt-2 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-[0.16em]", isCurrentMonth ? "text-emerald-700" : "text-slate-500")}>
                       {row.label}
                     </div>
                     {isCurrentMonth && (
-                      <div className="mt-1 text-center text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">
+                      <div className="mt-0.5 text-center text-[7px] sm:text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">
                         Current
                       </div>
                     )}
-                    <div className="mt-1 text-center text-sm font-black text-slate-950">{money(row.totalRevenue)}</div>
+                    <div className="mt-1 text-center text-xs sm:text-sm font-black text-slate-950">{money(row.totalRevenue)}</div>
                   </div>
                 );
               })}
             </div>
           </section>
 
-          <section className="space-y-5">
+          <section className="space-y-3 sm:space-y-4">
             <div className="glass-panel overflow-hidden rounded-[1.9rem]">
-              <div className="border-b border-white/70 p-6">
+              <div className="border-b border-white/70 p-4 sm:p-6">
                 <div className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Report Contents</div>
-                <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Monthly detail cards</h2>
+                <h2 className="mt-2 text-xl sm:text-2xl font-black tracking-tight text-slate-950">Monthly details</h2>
               </div>
-              <div className="space-y-4 p-6">
+              <div className="space-y-2 p-4 sm:space-y-3 sm:p-6">
                 {rows.map((row) => {
                   const isCurrentMonth = `${row.year}-${String(row.month).padStart(2, "0")}` === currentMonthKey;
                   return (
                     <div
                       key={`${row.year}-${row.month}`}
                       className={cn(
-                        "rounded-[1.55rem] border bg-white/72 p-5 shadow-sm",
+                        "rounded-[1.2rem] sm:rounded-[1.55rem] border bg-white/72 p-3 sm:p-5 shadow-sm",
                         isCurrentMonth
                           ? "border-emerald-300 ring-4 ring-emerald-100 shadow-[0_18px_42px_-28px_rgba(5,150,105,0.85)]"
                           : "border-white/80",
                       )}
                     >
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
+                      <div className="grid gap-3 sm:gap-4 lg:grid-cols-[auto_1fr_auto]">
+                        {/* Left: Month & Value */}
+                        <div className="flex flex-col justify-center">
                           <div className="flex flex-wrap items-center gap-2">
-                            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">{row.label}</div>
+                            <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">{row.label}</div>
                             {isCurrentMonth && (
-                              <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">Current month</Badge>
+                              <Badge className="text-[7px] sm:text-xs border-emerald-200 bg-emerald-100 text-emerald-800 px-1.5 sm:px-2 py-0 sm:py-0.5">Current</Badge>
                             )}
                           </div>
-                          <div className="mt-2 flex items-center gap-2 text-3xl font-black tracking-tight text-slate-950">
+                          <div className="mt-1.5 sm:mt-2 flex items-center gap-1.5 sm:gap-2 text-2xl sm:text-3xl font-black tracking-tight text-slate-950">
                             <span>{money(row.totalRevenue)}</span>
                             <RevenueInfoButton
                               admissionRevenue={money(row.admissionRevenue)}
                               membershipRevenue={money(row.membershipRevenue)}
                             />
                           </div>
-                          <div className="mt-1 text-sm font-semibold text-slate-500">Admission plus membership collections for the selected month.</div>
+                          <div className="mt-0.5 sm:hidden text-[8px] font-medium text-slate-500">Admission + Membership</div>
                         </div>
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                          <MonthDetailPill label="Admission" value={money(row.admissionRevenue)} tone="sky" />
-                          <MonthDetailPill label="Membership" value={money(row.membershipRevenue)} tone="emerald" />
-                          <MonthDetailPill label="Overdue" value={money(row.duePayments)} tone="rose" />
-                          <MonthDetailPill label="Active" value={String(row.activeMembers)} tone="slate" />
-                          <MonthDetailPill label="Deactivated" value={String(row.deactivatedMembers)} tone="amber" />
+
+                        {/* Middle: Pills */}
+                        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5 sm:gap-2">
+                          <MonthDetailPill label="Admission" value={money(row.admissionRevenue)} tone="sky" compact />
+                          <MonthDetailPill label="Membership" value={money(row.membershipRevenue)} tone="emerald" compact />
+                          <MonthDetailPill label="Overdue" value={money(row.duePayments)} tone="rose" compact />
+                          <MonthDetailPill label="Active" value={String(row.activeMembers)} tone="slate" compact />
+                          <MonthDetailPill label="Deactivated" value={String(row.deactivatedMembers)} tone="amber" compact />
                         </div>
-                      </div>
-                      <div className="mt-4 flex flex-wrap gap-3 text-sm font-bold text-slate-600">
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">{row.admissions} admissions</span>
-                        <span className="rounded-full border border-rose-100 bg-rose-50 px-3 py-1.5 text-rose-700">{row.overdueMembers} overdue members</span>
-                        <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-amber-700">{row.deactivatedMembers} deactivated this month</span>
+
+                        {/* Right: Stats (hidden on mobile) */}
+                        <div className="hidden lg:flex flex-wrap gap-1.5 items-center text-xs font-bold text-slate-600">
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1">{row.admissions} admissions</span>
+                          <span className="rounded-full border border-rose-100 bg-rose-50 px-2 py-1 text-rose-700 whitespace-nowrap">{row.overdueMembers} overdue</span>
+                        </div>
                       </div>
                     </div>
                   );
@@ -539,12 +544,14 @@ function SummarySignal({
   value,
   tone,
   breakdown,
+  compact = false,
 }: {
   icon: LucideIcon;
   label: string;
   value: string;
   tone: "emerald" | "slate" | "sky" | "rose";
   breakdown?: Array<{ label: string; value: string }>;
+  compact?: boolean;
 }) {
   const toneClass = {
     emerald: "border-emerald-100 bg-emerald-50/72 text-emerald-900",
@@ -554,13 +561,13 @@ function SummarySignal({
   }[tone];
 
   return (
-    <div className={cn("rounded-[1.5rem] border p-5 shadow-sm", toneClass)}>
-      <Icon className="h-5 w-5" />
-      <div className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] opacity-70">
+    <div className={cn("rounded-[1.2rem] sm:rounded-[1.5rem] border shadow-sm", compact ? "p-2.5 sm:p-4" : "p-5", toneClass)}>
+      <Icon className={cn(compact ? "h-4 w-4 sm:h-5 sm:w-5" : "h-5 w-5")} />
+      <div className={cn("flex items-center gap-1.5 sm:gap-2 opacity-70", compact ? "mt-2 sm:mt-3 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.18em]" : "mt-4 text-[10px] font-black uppercase tracking-[0.2em]")}>
         <span>{label}</span>
-        {breakdown && <RevenueInfoButton items={breakdown} compact />}
+        {breakdown && <RevenueInfoButton items={breakdown} compact={compact} />}
       </div>
-      <div className="mt-2 text-2xl font-black tracking-tight">{value}</div>
+      <div className={cn("font-black tracking-tight", compact ? "mt-1.5 sm:mt-2 text-base sm:text-2xl" : "mt-2 text-2xl")}>{value}</div>
     </div>
   );
 }
@@ -608,9 +615,9 @@ function RevenueInfoButton({
 
 function MetricTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="glass-panel rounded-[1.5rem] p-5">
-      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{label}</div>
-      <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{value}</div>
+    <div className="glass-panel rounded-[1.2rem] sm:rounded-[1.5rem] p-3 sm:p-4">
+      <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{label}</div>
+      <div className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-black tracking-tight text-slate-950">{value}</div>
     </div>
   );
 }
@@ -619,10 +626,12 @@ function MonthDetailPill({
   label,
   value,
   tone,
+  compact = false,
 }: {
   label: string;
   value: string;
   tone: "slate" | "emerald" | "sky" | "rose" | "amber";
+  compact?: boolean;
 }) {
   const toneClass = {
     slate: "border-slate-200 bg-slate-50 text-slate-900",
@@ -633,9 +642,9 @@ function MonthDetailPill({
   }[tone];
 
   return (
-    <div className={cn("rounded-[1.1rem] border px-4 py-3 shadow-sm", toneClass)}>
-      <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">{label}</div>
-      <div className="mt-1 text-base font-black">{value}</div>
+    <div className={cn("rounded-[1.1rem] border shadow-sm", compact ? "px-2 py-1.5 sm:px-4 sm:py-3" : "px-4 py-3", toneClass)}>
+      <div className={cn("font-black uppercase tracking-[0.2em] opacity-70", compact ? "text-[7px] sm:text-[10px]" : "text-[10px]")}>{label}</div>
+      <div className={cn("font-black", compact ? "mt-0.5 sm:mt-1 text-xs sm:text-base" : "mt-1 text-base")}>{value}</div>
     </div>
   );
 }

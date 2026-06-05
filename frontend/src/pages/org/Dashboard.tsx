@@ -260,7 +260,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4">
             <HeroMetric
               label="Collection Pace"
               value={`${collectionRate}%`}
@@ -316,7 +316,7 @@ export default function Dashboard() {
         })}
       </section>
 
-      <section className="grid gap-4 sm:gap-6 xl:grid-cols-[1fr_0.95fr]">
+      <section className="grid gap-4 sm:gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="glass-panel overflow-hidden rounded-[1.9rem]">
           <div className="border-b border-white/70 p-5 sm:p-7">
             <div className="flex items-center justify-between gap-4">
@@ -330,7 +330,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 p-3 sm:gap-4 sm:p-7">
+          <div className="grid grid-cols-2 gap-1.5 p-2 sm:grid-cols-3 sm:gap-3 sm:p-4 md:gap-4 lg:p-7">
             <RevenueBand
               label="Current Revenue"
               value={money(revenueSegmentation.totalRevenue)}
@@ -340,18 +340,21 @@ export default function Dashboard() {
                 admission: money(revenueSegmentation.admissionRevenue),
                 recurring: money(revenueSegmentation.recurringRevenue),
               }}
+              compact
             />
             <RevenueBand
               label="Expected Revenue"
               value={money(revenue.expectedRevenue)}
               accent="slate"
               helper="What the cycle should close at"
+              compact
             />
             <RevenueBand
               label="Overdue Revenue"
               value={money(revenue.overdueRevenue)}
               accent="rose"
               helper="Immediate leakage risk to recover"
+              compact
             />
           </div>
         </div>
@@ -362,50 +365,53 @@ export default function Dashboard() {
               <div className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Member Health</div>
               <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Directory Performance</h2>
             </div>
-            <div className="space-y-4 p-5 sm:space-y-5 sm:p-7">
-              <div className="relative overflow-hidden rounded-[1.8rem] border border-emerald-100 bg-[linear-gradient(135deg,rgba(16,185,129,0.12),rgba(255,255,255,0.9)_42%,rgba(14,165,233,0.12))] p-5 shadow-sm sm:p-6">
-                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-200/30 blur-2xl" />
-                <div className="absolute -bottom-12 left-10 h-28 w-28 rounded-full bg-sky-200/30 blur-2xl" />
-                <div className="relative z-10 flex flex-col gap-5">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2 p-3 sm:space-y-4 sm:p-6">
+              <div className="relative overflow-hidden rounded-[1.4rem] sm:rounded-[1.8rem] border border-emerald-100 bg-[linear-gradient(135deg,rgba(16,185,129,0.12),rgba(255,255,255,0.9)_42%,rgba(14,165,233,0.12))] p-3 shadow-sm sm:p-6">
+                <div className="absolute -right-10 -top-10 h-24 sm:h-32 w-24 sm:w-32 rounded-full bg-emerald-200/30 blur-2xl" />
+                <div className="absolute -bottom-8 sm:-bottom-12 left-6 sm:left-10 h-20 sm:h-28 w-20 sm:w-28 rounded-full bg-sky-200/30 blur-2xl" />
+                <div className="relative z-10 flex flex-col gap-2.5 sm:gap-5">
+                  <div className="flex flex-col gap-2 sm:gap-4">
                     <div>
-                      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">Collection Coverage</div>
-                      <h3 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                        {activeMembersCollected} / {activeMembersTotal}
-                      </h3>
-                      <p className="mt-2 hidden max-w-md text-sm font-medium leading-6 text-slate-600 sm:block">
-                        Members with fully covered active memberships, compared against your current active member base.
+                      <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.22em] text-emerald-700">Collection Coverage</div>
+                      <div className="mt-1.5 sm:mt-2 flex items-center justify-between gap-2">
+                        <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950">
+                          {activeMembersCollected} / {activeMembersTotal}
+                        </h3>
+                        <div className="rounded-[1rem] sm:rounded-[1.3rem] border border-white/90 bg-white/80 px-2.5 sm:px-4 py-1.5 sm:py-3 text-center shadow-sm">
+                          <div className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Coverage</div>
+                          <div className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-black tracking-tight text-slate-950">{activeCollectionRate}%</div>
+                        </div>
+                      </div>
+                      <p className="mt-1 hidden sm:block text-xs font-medium leading-5 text-slate-600">
+                        Active members fully covered
                       </p>
-                    </div>
-                    <div className="rounded-[1.3rem] border border-white/90 bg-white/80 px-4 py-3 text-right shadow-sm">
-                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Coverage Rate</div>
-                      <div className="mt-1 text-2xl font-black tracking-tight text-slate-950">{activeCollectionRate}%</div>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="h-3 overflow-hidden rounded-full bg-white/80 ring-1 ring-inset ring-emerald-100">
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <div className="h-1.5 sm:h-3 overflow-hidden rounded-full bg-white/80 ring-1 ring-inset ring-emerald-100">
                       <div
                         className="h-full rounded-full bg-[linear-gradient(90deg,#059669,#22c55e,#38bdf8)] shadow-[0_10px_30px_-12px_rgba(5,150,105,0.8)] transition-all"
                         style={{ width: `${Math.max(activeCollectionRate, activeMembersTotal > 0 ? 8 : 0)}%` }}
                       />
                     </div>
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-slate-600">
-                      <span>{activeMembersCollected} members covered</span>
-                      <span className="hidden sm:inline">{activeMembersPendingCollection} still need collection or overdue follow-up</span>
+                    <div className="flex items-center justify-between gap-1 text-[11px] sm:text-sm font-semibold text-slate-600">
+                      <span>{activeMembersCollected} covered</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span>{activeMembersPendingCollection} pending</span>
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[1.4rem] border border-white/85 bg-white/78 p-4 shadow-sm">
-                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Need Attention</div>
-                      <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{activeMembersPendingCollection}</div>
-                      <div className="mt-1 hidden text-sm font-medium text-slate-500 sm:block">Active members still waiting for collection or overdue follow-up</div>
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div className="rounded-[1rem] sm:rounded-[1.4rem] border border-white/85 bg-white/78 p-2.5 sm:p-4 shadow-sm">
+                      <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Attention</div>
+                      <div className="mt-1 text-xl sm:text-3xl font-black tracking-tight text-slate-950">{activeMembersPendingCollection}</div>
+                      <div className="mt-0.5 hidden sm:block text-xs font-medium text-slate-500">Pending</div>
                     </div>
-                    <div className="rounded-[1.4rem] border border-white/85 bg-white/78 p-4 shadow-sm">
-                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Active members</div>
-                      <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{activeMembersTotal}</div>
-                      <div className="mt-1 hidden text-sm font-medium text-slate-500 sm:block">Total active members currently in your directory</div>
+                    <div className="rounded-[1rem] sm:rounded-[1.4rem] border border-white/85 bg-white/78 p-2.5 sm:p-4 shadow-sm">
+                      <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Active</div>
+                      <div className="mt-1 text-xl sm:text-3xl font-black tracking-tight text-slate-950">{activeMembersTotal}</div>
+                      <div className="mt-0.5 hidden sm:block text-xs font-medium text-slate-500">Members</div>
                     </div>
                   </div>
                 </div>
@@ -429,16 +435,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-        <div className="space-y-6">
-          <MembershipListCard
-            title="Due Today"
-            subtitle="Active memberships ending today and ready for immediate renewal follow-up."
-            items={expiringSoon}
-            emptyMessage="No memberships expire today."
-            tone="amber"
-          />
-        </div>
+      <section className="grid gap-4 sm:gap-6">
         <div className="space-y-6">
           <MembershipListCard
             title="Overdue Memberships"
@@ -509,27 +506,27 @@ function HeroMetric({
   }[tone];
 
   return (
-    <div className={cn("rounded-[1.5rem] border p-4 shadow-sm sm:rounded-[1.6rem] sm:p-5", toneClass)}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">{label}</div>
+    <div className={cn("rounded-[1.2rem] sm:rounded-[1.5rem] border p-3 sm:p-4 sm:rounded-[1.6rem] sm:p-5 shadow-sm", toneClass)}>
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
+        <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em] sm:tracking-[0.2em] opacity-70">{label}</div>
         {infoTooltip && (
           <div className="group relative">
             <button
               type="button"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/80 bg-white/75 text-slate-600 shadow-sm transition-colors hover:bg-white hover:text-slate-900"
+              className="inline-flex h-6 sm:h-7 w-6 sm:w-7 items-center justify-center rounded-full border border-white/80 bg-white/75 text-slate-600 shadow-sm transition-colors hover:bg-white hover:text-slate-900"
               aria-label="Subscription info"
             >
-              <Info className="h-4 w-4" />
+              <Info className="h-3.5 sm:h-4 w-3.5 sm:w-4" />
             </button>
-            <div className="pointer-events-none absolute bottom-full right-0 z-20 mb-3 w-[240px] translate-y-1 rounded-2xl border border-slate-200 bg-white/95 p-4 text-left text-[11px] font-semibold leading-5 text-slate-700 opacity-0 shadow-xl backdrop-blur transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Subscription Date</div>
-              <div className="mt-2 text-sm font-black text-slate-900">{infoTooltip}</div>
+            <div className="pointer-events-none absolute bottom-full right-0 z-20 mb-2 sm:mb-3 w-[220px] sm:w-[240px] translate-y-1 rounded-2xl border border-slate-200 bg-white/95 p-3 sm:p-4 text-left text-[10px] sm:text-[11px] font-semibold leading-5 text-slate-700 opacity-0 shadow-xl backdrop-blur transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+              <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Subscription Date</div>
+              <div className="mt-2 text-xs sm:text-sm font-black text-slate-900">{infoTooltip}</div>
             </div>
           </div>
         )}
       </div>
-      <div className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{value}</div>
-      {detail ? <div className="mt-1 hidden text-sm font-semibold opacity-70 sm:block">{detail}</div> : null}
+      <div className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-black tracking-tight sm:text-3xl">{value}</div>
+      {detail ? <div className="mt-0.5 sm:mt-1 hidden text-xs sm:text-sm font-semibold opacity-70 sm:block">{detail}</div> : null}
     </div>
   );
 }
@@ -639,6 +636,7 @@ function RevenueBand({
   accent,
   helper,
   breakdown,
+  compact = false,
 }: {
   label: string;
   value: string;
@@ -648,6 +646,7 @@ function RevenueBand({
     admission: string;
     recurring: string;
   };
+  compact?: boolean;
 }) {
   const accentClass = {
     emerald: "from-emerald-500 to-emerald-300",
@@ -657,14 +656,14 @@ function RevenueBand({
   }[accent];
 
   return (
-    <div className="rounded-[1.4rem] border border-white/80 bg-white/75 p-4 shadow-sm sm:rounded-[1.5rem] sm:p-5">
-      <div className={cn("h-1.5 w-16 rounded-full bg-gradient-to-r", accentClass)} />
-      <div className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
+    <div className={cn("border border-white/80 bg-white/75 shadow-sm rounded-[1.2rem] sm:rounded-[1.4rem] lg:rounded-[1.5rem]", compact ? "p-2 sm:p-3 lg:p-4" : "p-4 sm:p-5")}>
+      <div className={cn("rounded-full bg-gradient-to-r", accentClass, compact ? "h-1 w-12 sm:h-1.5 sm:w-16" : "h-1.5 w-16")} />
+      <div className={cn("flex items-center gap-1.5 sm:gap-2 opacity-70", compact ? "mt-2 sm:mt-3 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.18em]" : "mt-4 text-[10px] font-black uppercase tracking-[0.22em]")}>
         <span>{label}</span>
         {breakdown && (
           <div className="group relative">
-            <span className="flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500 transition-colors hover:bg-slate-50">
-              <Info className="h-2.5 w-2.5" />
+            <span className={cn("flex items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500 transition-colors hover:bg-slate-50", compact ? "h-3 w-3" : "h-4 w-4")}>
+              <Info className={compact ? "h-2 w-2" : "h-2.5 w-2.5"} />
             </span>
             <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-[260px] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 text-left opacity-0 shadow-xl transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Revenue Split</div>
@@ -680,8 +679,8 @@ function RevenueBand({
           </div>
         )}
       </div>
-      <div className="mt-2 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">{value}</div>
-      <div className="mt-2 hidden text-sm font-medium leading-6 text-slate-500 sm:block">{helper}</div>
+      <div className={cn("font-black tracking-tight text-slate-950", compact ? "mt-1.5 sm:mt-2 text-lg sm:text-2xl lg:text-3xl" : "mt-2 text-2xl sm:text-3xl")}>{value}</div>
+      <div className={cn("hidden sm:block font-medium leading-5 text-slate-500", compact ? "mt-1 sm:mt-1.5 text-[10px] sm:text-xs" : "mt-2 text-sm")}>{helper}</div>
     </div>
   );
 }

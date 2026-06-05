@@ -293,14 +293,14 @@ export default function MembersList() {
           <div className="p-14 text-center text-sm font-semibold text-slate-500">No members found matching your filters.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-[980px] w-full text-left text-sm">
+            <table className="min-w-[980px] w-full text-left text-xs sm:text-sm">
               <thead className="border-b border-black/5 bg-white/30 text-slate-500">
                 <tr>
-                  <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Member</th>
-                  <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Period</th>
-                  <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Membership</th>
-                  <th className="px-6 py-5 text-xs font-black uppercase tracking-[0.2em]">Coverage</th>
-                  <th className="px-6 py-5 text-right text-xs font-black uppercase tracking-[0.2em]">Actions</th>
+                  <th className="px-2 sm:px-6 py-3 sm:py-5 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Member</th>
+                  <th className="px-2 sm:px-6 py-3 sm:py-5 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Period</th>
+                  <th className="px-2 sm:px-6 py-3 sm:py-5 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Membership</th>
+                  <th className="px-2 sm:px-6 py-3 sm:py-5 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Coverage</th>
+                  <th className="px-2 sm:px-6 py-3 sm:py-5 text-right text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5">
@@ -309,15 +309,15 @@ export default function MembersList() {
                   const status = membership?.expiringSoon ? "EXPIRING_SOON" : membership?.status ?? "NO_MEMBERSHIP";
                   return (
                     <tr key={member.id} className="transition-colors hover:bg-white/50">
-                      <td className="min-w-[240px] px-6 py-5">
-                        <div className="flex items-start justify-between gap-3">
+                      <td className="min-w-[180px] sm:min-w-[240px] px-2 sm:px-6 py-3 sm:py-5">
+                        <div className="flex items-start justify-between gap-2 sm:gap-3">
                           <div className="min-w-0">
-                            <div className="font-black text-slate-950">{member.fullName}</div>
-                            <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{member.phone || "No phone number"}</div>
-                            <div className="mt-2">
+                            <div className="font-black text-slate-950 text-sm sm:text-base">{member.fullName}</div>
+                            <div className="mt-0.5 sm:mt-1 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{member.phone || "No phone"}</div>
+                            <div className="mt-1 sm:mt-2">
                               <Badge
                                 className={cn(
-                                  "rounded-full border-transparent px-2.5 py-1 font-black tracking-[0.14em]",
+                                  "rounded-full border-transparent px-2 sm:px-2.5 py-0.5 sm:py-1 text-[8px] sm:text-xs font-black tracking-[0.12em] sm:tracking-[0.14em]",
                                   member.status === "DEACTIVATED" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700",
                                 )}
                               >
@@ -325,12 +325,12 @@ export default function MembersList() {
                               </Badge>
                             </div>
                           </div>
-                          <div className="flex shrink-0 items-center gap-2">
+                          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
                             {canSendMemberWhatsApp(member, canUseMemberMessaging) && (
                               <button
                                 type="button"
                                 className={cn(
-                                  "inline-flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition-colors",
+                                  "inline-flex h-7 sm:h-9 w-7 sm:w-9 items-center justify-center rounded-full border shadow-sm transition-colors",
                                   hasMemberPhone(member)
                                     ? "border-emerald-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
                                     : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
@@ -346,42 +346,43 @@ export default function MembersList() {
                                 }}
                                 disabled={!hasMemberPhone(member)}
                               >
-                                <MessageCircleMore className="h-4 w-4" />
+                                <MessageCircleMore className="h-3.5 sm:h-4 w-3.5 sm:w-4" />
                               </button>
                             )}
                             <Link
                               to={`/app/members/${member.id}/edit`}
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-black/5 bg-white/70 text-slate-500 shadow-sm transition-colors hover:bg-white hover:text-emerald-700"
+                              className="inline-flex h-7 sm:h-9 w-7 sm:w-9 items-center justify-center rounded-full border border-black/5 bg-white/70 text-slate-500 shadow-sm transition-colors hover:bg-white hover:text-emerald-700"
                               aria-label={`Edit ${member.fullName}`}
                               title="Edit member"
                             >
-                              <Pencil className="h-4 w-4" />
+                              <Pencil className="h-3.5 sm:h-4 w-3.5 sm:w-4" />
                             </Link>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-5 text-xs font-semibold text-slate-500">
+                      <td className="px-2 sm:px-6 py-3 sm:py-5 text-[10px] sm:text-xs font-semibold text-slate-500">
                         <div>{formatDate(membership?.startDate)}</div>
-                        <div className="mt-1">to {formatDate(membership?.endDate)}</div>
+                        <div className="mt-0.5 sm:mt-1">to {formatDate(membership?.endDate)}</div>
                       </td>
-                      <td className="px-6 py-5">
+                      <td className="px-2 sm:px-6 py-3 sm:py-5">
                         <StatusBadge status={status} />
                       </td>
-                      <td className="px-6 py-5">
+                      <td className="px-2 sm:px-6 py-3 sm:py-5">
                         <CoverageBadge membership={membership} />
                       </td>
-                      <td className="min-w-[240px] px-6 py-5">
-                        <div className="flex flex-wrap justify-end gap-2">
+                      <td className="min-w-[120px] sm:min-w-[240px] px-2 sm:px-6 py-3 sm:py-5">
+                        <div className="flex flex-wrap justify-end gap-1 sm:gap-2">
                           {canRenewMember(member) && (
                             <Button
                               type="button"
                               variant="outline"
-                              className="h-10 rounded-full border-emerald-200 bg-emerald-50 px-4 text-sm font-bold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100 hover:text-emerald-800"
+                              className="h-8 sm:h-10 rounded-full border-emerald-200 bg-emerald-50 px-2 sm:px-4 text-[10px] sm:text-sm font-bold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100 hover:text-emerald-800"
                               onClick={() => setQuickRenewMember(member)}
                               disabled={quickRenewMutation.isPending}
                             >
-                              <Zap className="mr-2 h-4 w-4" />
-                              Quick Renew
+                              <Zap className="mr-1 sm:mr-2 h-3 sm:h-4 w-3 sm:w-4" />
+                              <span className="hidden sm:inline">Quick Renew</span>
+                              <span className="sm:hidden">Renew</span>
                             </Button>
                           )}
                           <DropdownMenu>
@@ -390,10 +391,11 @@ export default function MembersList() {
                                 <Button
                                   type="button"
                                   variant="outline"
-                                  className="h-10 rounded-full border-black/10 bg-white/80 px-4 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-white hover:text-slate-950"
+                                  className="h-8 sm:h-10 rounded-full border-black/10 bg-white/80 px-2 sm:px-4 text-[10px] sm:text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-white hover:text-slate-950"
                                 >
-                                  Actions
-                                  <ChevronDown className="ml-2 h-4 w-4" />
+                                  <span className="hidden sm:inline">Actions</span>
+                                  <span className="sm:hidden">⋯</span>
+                                  <ChevronDown className="ml-1 sm:ml-2 h-3 sm:h-4 w-3 sm:w-4" />
                                 </Button>
                               }
                             />
@@ -446,7 +448,7 @@ export default function MembersList() {
         </div>
       </div>
 
-      <section className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
+      <section className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-2 lg:items-start">
         <CustomReminderLimitCard
           canUseMemberMessaging={canUseMemberMessaging}
           used={Number(subscriptionStatus?.customReminderUsage ?? 0)}
