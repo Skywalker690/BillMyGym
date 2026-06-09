@@ -9,10 +9,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class MembershipReminderScheduler {
 
+    private static final long TWO_DAYS_IN_MILLISECONDS = 2L * 24L * 60L * 60L * 1000L;
+
     private final ReminderService reminderService;
 
     @Transactional
-    @Scheduled(cron = "0 0 10 */2 * *", zone = "Asia/Kolkata")
+    @Scheduled(fixedRate = TWO_DAYS_IN_MILLISECONDS)
     public void runExpiredMemberRemindersEveryTwoDays() {
         reminderService.runScheduledExpiredMemberReminders();
     }

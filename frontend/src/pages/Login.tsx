@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,7 @@ function loadGoogleScript() {
 }
 
 export default function Login() {
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -74,6 +75,9 @@ export default function Login() {
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const onboardingEmail = searchParams.get("email") ?? "";
+  const onboardingPassword = searchParams.get("temporaryPassword") ?? "";
+  const isOnboardingLogin = searchParams.get("onboarding") === "true" && Boolean(onboardingEmail || onboardingPassword);
 
   const completeLogin = async (payload: any, fallbackEmail: string) => {
     const { accessToken, role, organizationId, user } = payload;
@@ -136,6 +140,15 @@ export default function Login() {
       setIsGoogleLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!isOnboardingLogin) {
+      return;
+    }
+    setEmail(onboardingEmail);
+    setPassword(onboardingPassword);
+    setShowPassword(true);
+  }, [isOnboardingLogin, onboardingEmail, onboardingPassword]);
 
   useEffect(() => {
     let active = true;
@@ -207,6 +220,20 @@ export default function Login() {
               </div>
 
               <form className="space-y-4" onSubmit={handleSubmit}>
+                {isOnboardingLogin && (
+                  <div className="border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium leading-6 text-orange-950">
+                    <div className="font-semibold text-orange-900">Temporary credentials are pre-filled for testing.</div>
+                    <div className="mt-1 break-all">Email: {onboardingEmail || "-"}</div>
+                    <div className="break-all">Temporary password: {onboardingPassword || "-"}</div>
+                    <div className="mt-2">
+                      Sign in once, then use{" "}
+                      <Link to={`/forgot-password?email=${encodeURIComponent(onboardingEmail)}`} className="font-semibold underline underline-offset-2">
+                        Forgot Password
+                      </Link>{" "}
+                      to reset this password.
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label htmlFor="email" className="mb-2 block text-sm font-medium text-[#8b857d]">
                     Email Address

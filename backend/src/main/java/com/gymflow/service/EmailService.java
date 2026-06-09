@@ -8,6 +8,8 @@ import com.gymflow.domain.enums.UserStatus;
 import com.gymflow.repository.AppUserRepository;
 import jakarta.mail.internet.MimeMessage;
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.text.NumberFormat;
@@ -331,6 +333,7 @@ public class EmailService {
         String accessWindow = organization.getOrganizationType() == OrganizationType.DEMO
             ? "Unlimited showcase access"
             : "Ends: " + (accessEndsAt == null ? "-" : accessEndsAt.toString());
+        String loginPath = onboardingLoginPath(toEmail, temporaryPassword);
         String content = """
             <p style="margin:0 0 16px 0;">Hello <strong>%s</strong>,</p>
             <p style="margin:0 0 16px 0;">Your organization workspace on <strong>BillMyGym</strong> is now ready. You can sign in and start managing memberships, payments, reminders, and reports from one place.</p>
@@ -349,7 +352,7 @@ public class EmailService {
             </table>
             <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:16px;padding:18px 20px;margin:0 0 22px 0;">
               <div style="font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#c2410c;margin-bottom:10px;">Important First Step</div>
-              <p style="margin:0;color:#9a3412;line-height:1.7;">Please sign in using the temporary password below and update it immediately after your first login. Keep this email secure and do not share your credentials.</p>
+              <p style="margin:0;color:#9a3412;line-height:1.7;">Click Open BillMyGym to pre-fill your email and temporary password for testing. After your first sign-in, use Forgot Password to reset this temporary password. Keep this email secure and do not share your credentials.</p>
             </div>
             <p style="margin:0 0 12px 0;">Once you sign in, you can start onboarding members, recording payments, reviewing reports, and managing renewal reminders.</p>
             <p style="margin:0;">If you need help, contact the BillMyGym support team and include your organization name so we can assist faster.</p>
@@ -362,8 +365,8 @@ public class EmailService {
             detailRow(accessEndLabel, accessWindow),
             detailRow("Admin Email", toEmail),
             detailRow("Temporary Password", temporaryPassword),
-            detailRow("Sign-in URL", "<a href=\"" + html(appUrl("/login")) + "\" style=\"color:#166534;font-weight:700;text-decoration:none;\">"
-                + html(appUrl("/login")) + "</a>")
+            detailRow("Sign-in URL", "<a href=\"" + html(appUrl(loginPath)) + "\" style=\"color:#166534;font-weight:700;text-decoration:none;\">"
+                + html(appUrl(loginPath)) + "</a>")
         );
 
         return buildShell(
@@ -372,7 +375,7 @@ public class EmailService {
             "Your admin account has been created successfully.",
             content,
             "Open BillMyGym",
-            "/login",
+            loginPath,
             "This email was sent because a BillMyGym super admin created your organization workspace."
         );
     }
@@ -885,6 +888,16 @@ public class EmailService {
             return normalizedAppPublicUrl();
         }
         return normalizedAppPublicUrl() + (path.startsWith("/") ? path : "/" + path);
+    }
+
+    private String onboardingLoginPath(String email, String temporaryPassword) {
+        return "/login?email=" + urlEncode(email)
+            + "&temporaryPassword=" + urlEncode(temporaryPassword)
+            + "&onboarding=true";
+    }
+
+    private String urlEncode(String value) {
+        return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
     }
 
     private String normalizedAppPublicUrl() {

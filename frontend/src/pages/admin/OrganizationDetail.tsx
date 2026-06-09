@@ -8,7 +8,9 @@ import {
   ArrowLeft,
   Building2,
   CalendarDays,
+  Check,
   CheckCircle2,
+  ChevronDown,
   CreditCard,
   Download,
   FileSpreadsheet,
@@ -126,6 +128,23 @@ type FormValues = {
   admissionFee: number;
 };
 
+const KERALA_DISTRICTS = [
+  "Thiruvananthapuram",
+  "Kollam",
+  "Pathanamthitta",
+  "Alappuzha",
+  "Kottayam",
+  "Idukki",
+  "Ernakulam",
+  "Thrissur",
+  "Palakkad",
+  "Malappuram",
+  "Kozhikode",
+  "Wayanad",
+  "Kannur",
+  "Kasaragod",
+] as const;
+
 const paymentBadgeClasses: Record<SubscriptionPayment["paymentStatus"], string> = {
   PAID: "border-emerald-200 bg-emerald-100 text-emerald-800",
   PENDING: "border-amber-200 bg-amber-100 text-amber-800",
@@ -192,7 +211,8 @@ export default function OrganizationDetail() {
     );
   }, [subscriptionStatus]);
 
-  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<FormValues>();
+  const { register, handleSubmit, reset, watch, setValue, formState: { isSubmitting } } = useForm<FormValues>();
+  const watchedDistrict = watch("district");
 
   useEffect(() => {
     if (!organization) return;
@@ -434,7 +454,7 @@ export default function OrganizationDetail() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-6">
-          <section className="glass-panel overflow-hidden rounded-[2rem]">
+          <section className="glass-panel overflow-visible rounded-[2rem]">
             <div className="border-b border-black/5 p-6">
               <h2 className="text-2xl font-black tracking-tight text-slate-950">Workspace Profile</h2>
               <p className="mt-1 text-sm font-semibold text-slate-500">Update the core organization record and keep the profile polished.</p>
@@ -447,7 +467,12 @@ export default function OrganizationDetail() {
                 <Input {...register("place")} className="h-11 rounded-xl bg-white/70" />
               </Field>
               <Field label="District">
-                <Input {...register("district")} className="h-11 rounded-xl bg-white/70" />
+                <DistrictCombobox
+                  value={watchedDistrict ?? ""}
+                  onChange={(value) => {
+                    setValue("district", value, { shouldValidate: true, shouldDirty: true });
+                  }}
+                />
               </Field>
               <Field label="Map Location">
                 <Input
@@ -762,6 +787,84 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
     <div className="space-y-2">
       <Label className="font-semibold text-slate-700">{label}</Label>
       {children}
+    </div>
+  );
+}
+
+function DistrictCombobox({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!wrapperRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredDistricts = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return KERALA_DISTRICTS;
+    return KERALA_DISTRICTS.filter((district) => district.toLowerCase().includes(normalized));
+  }, [query]);
+
+  return (
+    <div ref={wrapperRef} className="relative z-[80]">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="flex h-11 w-full items-center justify-between rounded-xl border border-black/5 bg-white/70 px-4 text-left text-sm font-semibold text-slate-900 shadow-sm outline-none transition hover:border-emerald-200 focus:ring-2 focus:ring-emerald-500/40"
+      >
+        <span className={value ? "text-slate-900" : "text-slate-400"}>{value || "Choose a Kerala district"}</span>
+        <ChevronDown className={`h-4 w-4 text-slate-400 transition ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full z-[90] mt-2 w-full overflow-hidden rounded-[1.4rem] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.14)]">
+          <div className="border-b border-slate-100 p-3">
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search district..."
+              className="h-11 rounded-xl bg-slate-50"
+              autoFocus
+            />
+          </div>
+          <div className="max-h-72 overflow-y-auto p-2">
+            {filteredDistricts.length === 0 ? (
+              <div className="rounded-xl px-3 py-6 text-center text-sm font-semibold text-slate-500">
+                No district matches your search.
+              </div>
+            ) : (
+              filteredDistricts.map((district) => (
+                <button
+                  key={district}
+                  type="button"
+                  onClick={() => {
+                    onChange(district);
+                    setQuery("");
+                    setOpen(false);
+                  }}
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-800"
+                >
+                  <span>{district}</span>
+                  {value === district && <Check className="h-4 w-4 text-emerald-600" />}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

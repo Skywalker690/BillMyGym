@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
-import { foundingPartnerDescription } from "@/lib/subscriptionLabels";
 
 const KERALA_DISTRICTS = [
   "Thiruvananthapuram",
@@ -35,24 +34,20 @@ const schema = z.object({
   district: z.string().min(1, "District is required"),
   monthlyMembershipFee: z.coerce.number().min(0, "Monthly membership fee must be zero or more"),
   admissionFee: z.coerce.number().min(0, "Admission fee must be zero or more"),
-  organizationType: z.enum(["REGULAR", "DEMO"]),
   subscriptionPlan: z.literal("BILLMYGYM"),
   adminName: z.string().min(1, "Admin name is required"),
   adminEmail: z.string().email("Enter a valid admin email"),
   adminPhone: z.string().min(1, "Admin phone is required"),
   password: z.string().min(8, "Temporary password must be at least 8 characters"),
-  logoUrl: z.string().optional(),
-  mapLocationLink: z.string().optional(),
 });
 
 type FormInput = z.input<typeof schema>;
 type Values = z.output<typeof schema>;
-type Step = 0 | 1 | 2;
+type Step = 0 | 1;
 
 const stepMeta = [
-  { id: 0 as Step, title: "Organization Details", caption: "Name, type, place, and district." },
+  { id: 0 as Step, title: "Organization Details", caption: "Name, place, district, and fees." },
   { id: 1 as Step, title: "Admin Details", caption: "Primary admin access and temporary password." },
-  { id: 2 as Step, title: "Geographical Details", caption: "Logo and map references for the workspace." },
 ];
 
 function generateTemporaryPassword() {
@@ -89,19 +84,15 @@ export default function OrganizationForm() {
   } = useForm<FormInput, any, Values>({
     resolver: zodResolver(schema),
     defaultValues: {
-      organizationType: "REGULAR",
       subscriptionPlan: "BILLMYGYM",
       password: generateTemporaryPassword(),
       monthlyMembershipFee: 0,
       admissionFee: 0,
       district: "",
       place: "",
-      logoUrl: "",
-      mapLocationLink: "",
     },
   });
 
-  const organizationType = watch("organizationType");
   const watchedName = watch("name");
   const watchedPlace = watch("place");
   const watchedDistrict = watch("district");
@@ -111,9 +102,6 @@ export default function OrganizationForm() {
   const watchedAdminEmail = watch("adminEmail");
   const watchedAdminPhone = watch("adminPhone");
   const watchedPassword = watch("password");
-  const watchedMapUrl = watch("mapLocationLink");
-  const watchedLogoUrl = watch("logoUrl");
-  const specialAccess = organizationType === "DEMO";
 
   const mutation = useMutation({
     mutationFn: (data: Values) =>
@@ -121,14 +109,11 @@ export default function OrganizationForm() {
         organizationName: data.name,
         place: data.place,
         district: data.district,
-        logoUrl: data.logoUrl || null,
-        mapLocationLink: data.mapLocationLink || null,
         adminFullName: data.adminName,
         adminPhoneNumber: data.adminPhone,
         adminEmail: data.adminEmail,
         monthlyMembershipFee: data.monthlyMembershipFee,
         admissionFee: data.admissionFee,
-        organizationType: data.organizationType,
         subscriptionPlan: "BILLMYGYM",
         password: data.password,
       }),
@@ -147,9 +132,8 @@ export default function OrganizationForm() {
 
   const nextStep = async () => {
     const fieldsByStep: Record<Step, Array<keyof Values>> = {
-      0: ["name", "organizationType", "place", "district", "monthlyMembershipFee", "admissionFee"],
+      0: ["name", "place", "district", "monthlyMembershipFee", "admissionFee"],
       1: ["adminName", "adminEmail", "adminPhone", "password"],
-      2: [],
     };
 
     const valid = await trigger(fieldsByStep[step]);
@@ -157,7 +141,7 @@ export default function OrganizationForm() {
       toast.error("Please complete the required fields before moving ahead.");
       return;
     }
-    if (step < 2) setStep((current) => (current + 1) as Step);
+    if (step < 1) setStep((current) => (current + 1) as Step);
   };
 
   const previousStep = () => {
@@ -173,6 +157,13 @@ export default function OrganizationForm() {
     setReviewOpen(true);
   };
 
+  const clearZeroOnFocus = (field: "monthlyMembershipFee" | "admissionFee") => {
+    const currentValue = watch(field);
+    if (Number(currentValue ?? 0) === 0) {
+      setValue(field, "" as unknown as number, { shouldDirty: true });
+    }
+  };
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
       <Button variant="ghost" onClick={() => navigate("/app/organizations")} className="px-0 text-slate-600 hover:text-slate-950">
@@ -180,7 +171,7 @@ export default function OrganizationForm() {
         Back to Organizations
       </Button>
 
-      <div className="grid gap-3 rounded-[1.7rem] border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-3">
+      <div className="grid gap-3 rounded-[1.7rem] border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
         {stepMeta.map((item, index) => {
           const active = step === item.id;
           const complete = step > item.id;
@@ -227,17 +218,7 @@ export default function OrganizationForm() {
             {step === 0 && (
               <div className="grid gap-5 md:grid-cols-2">
                 <Field label="Organization Name" error={errors.name?.message}>
-                  <Input {...register("name")} className="h-12 rounded-2xl bg-white/75" placeholder="GymMax Downtown" />
-                </Field>
-
-                <Field label="Organization Type" error={errors.organizationType?.message}>
-                  <select
-                    {...register("organizationType")}
-                    className="h-12 w-full rounded-2xl border border-black/5 bg-white/75 px-4 text-sm font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/40"
-                  >
-                    <option value="REGULAR">Regular</option>
-                    <option value="DEMO">Demo</option>
-                  </select>
+                  <Input {...register("name")} className="h-12 rounded-2xl bg-white/75" placeholder="Gym Name" />
                 </Field>
 
                 <Field label="Place" error={errors.place?.message}>
@@ -259,8 +240,8 @@ export default function OrganizationForm() {
                     min="0"
                     step="0.01"
                     {...register("monthlyMembershipFee", { valueAsNumber: true })}
+                    onFocus={() => clearZeroOnFocus("monthlyMembershipFee")}
                     className="h-12 rounded-2xl bg-white/75"
-                    placeholder="299"
                   />
                 </Field>
 
@@ -270,16 +251,10 @@ export default function OrganizationForm() {
                     min="0"
                     step="0.01"
                     {...register("admissionFee", { valueAsNumber: true })}
+                    onFocus={() => clearZeroOnFocus("admissionFee")}
                     className="h-12 rounded-2xl bg-white/75"
-                    placeholder="499"
                   />
                 </Field>
-
-                {specialAccess && (
-                  <div className="md:col-span-2 rounded-[1.5rem] border border-sky-200 bg-sky-50 p-4 text-sm font-semibold text-slate-700">
-                    {foundingPartnerDescription()}
-                  </div>
-                )}
               </div>
             )}
 
@@ -307,17 +282,6 @@ export default function OrganizationForm() {
               </div>
             )}
 
-            {step === 2 && (
-              <div className="grid gap-5 md:grid-cols-2">
-                <Field label="Logo URL">
-                  <Input {...register("logoUrl")} className="h-12 rounded-2xl bg-white/75" placeholder="https://..." />
-                </Field>
-
-                <Field label="Map URL">
-                  <Input {...register("mapLocationLink")} className="h-12 rounded-2xl bg-white/75" placeholder="https://maps.google.com/..." />
-                </Field>
-              </div>
-            )}
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/5 bg-slate-50/80 px-6 py-5">
@@ -332,7 +296,7 @@ export default function OrganizationForm() {
               Previous
             </Button>
 
-            {step < 2 ? (
+            {step < 1 ? (
               <Button type="button" onClick={nextStep} className="rounded-full bg-slate-950 px-6 font-black text-white hover:bg-slate-800">
                 Next
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -353,12 +317,11 @@ export default function OrganizationForm() {
               <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Final Review</div>
               <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Check the organization details before creating it.</h3>
             </div>
-            <div className="grid gap-4 px-6 py-5 md:grid-cols-3">
+            <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
               <ReviewColumn
                 title="Organization"
                 rows={[
                   { label: "Name", value: watchedName },
-                  { label: "Type", value: organizationType === "REGULAR" ? "Regular" : "Demo" },
                   { label: "Place", value: watchedPlace },
                   { label: "District", value: watchedDistrict },
                   { label: "Monthly Fee", value: `INR ${Number(watchedMonthlyMembershipFee ?? 0).toLocaleString("en-IN")}` },
@@ -372,13 +335,6 @@ export default function OrganizationForm() {
                   { label: "Email", value: watchedAdminEmail },
                   { label: "Phone", value: watchedAdminPhone },
                   { label: "Temp Password", value: watchedPassword },
-                ]}
-              />
-              <ReviewColumn
-                title="Location"
-                rows={[
-                  { label: "Logo URL", value: watchedLogoUrl || "Not added" },
-                  { label: "Map URL", value: watchedMapUrl || "Not added" },
                 ]}
               />
             </div>
