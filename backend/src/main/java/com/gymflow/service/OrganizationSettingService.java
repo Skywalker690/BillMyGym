@@ -38,9 +38,7 @@ public class OrganizationSettingService {
         if (request.whatsappEnabled() != null) {
             setting.setWhatsappEnabled(request.whatsappEnabled());
         }
-        if (request.emailEnabled() != null) {
-            setting.setEmailEnabled(request.emailEnabled());
-        }
+        setting.setEmailEnabled(false);
         if (request.brandingName() != null) {
             setting.setBrandingName(request.brandingName());
         }
@@ -77,7 +75,7 @@ public class OrganizationSettingService {
     private SettingsResponse toResponse(OrganizationSetting setting) {
         return new SettingsResponse(
             setting.isWhatsappEnabled(),
-            setting.isEmailEnabled(),
+            false,
             setting.getBrandingName(),
             setting.getOrganization().getMonthlyMembershipFee(),
             setting.getOrganization().getAdmissionFee()

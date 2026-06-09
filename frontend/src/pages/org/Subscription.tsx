@@ -155,7 +155,7 @@ const includedFeatures = [
   { icon: BarChart3, label: "Revenue dashboards, reports, analytics" },
   { icon: FileDown, label: "Custom date ranges and report exports" },
   { icon: MessageCircle, label: "WhatsApp reminders and renewal digests" },
-  { icon: Mail, label: "Email reminders and monthly reports" },
+  { icon: Mail, label: "Account emails and monthly reports" },
 ];
 
 const dateText = (value?: string | null) => {

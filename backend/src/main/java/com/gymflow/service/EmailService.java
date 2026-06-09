@@ -40,6 +40,9 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
+    @Value("${app.mail.from-name:BillMyGym}")
+    private String fromName;
+
     @Value("${app.public-url}")
     private String appPublicUrl;
 
@@ -293,13 +296,16 @@ public class EmailService {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom(fromEmail, SENDER_NAME);
-            helper.setReplyTo(fromEmail, SENDER_NAME);
+            helper.setFrom(normalizedFromEmail(), normalizedFromName());
+            helper.setReplyTo(normalizedFromEmail(), normalizedFromName());
             helper.setTo(toEmail);
             helper.setSubject(subject);
             helper.setText(toPlainText(html), html);
             message.setSentDate(new Date());
+            message.setHeader("Auto-Submitted", "auto-generated");
             message.setHeader("X-Auto-Response-Suppress", "All");
+            message.setHeader("X-Entity-Ref-ID", "BillMyGym");
+            message.setHeader("List-ID", "BillMyGym transactional emails <transactional.billmygym>");
             mailSender.send(message);
             if (organization != null) {
                 usageMetricService.recordEmailSent(organization);
@@ -826,6 +832,7 @@ public class EmailService {
                         <td style="padding:22px 36px 30px 36px;border-top:1px solid #e5e7eb;font-size:12px;line-height:1.8;color:#64748b;text-align:center;">
                           <div style="margin-bottom:8px;font-weight:700;color:#0f172a;">BillMyGym</div>
                           <div>%s</div>
+                          <div style="margin-top:8px;">Need help? Contact <a href="mailto:%s" style="color:#166534;text-decoration:none;font-weight:700;">%s</a>.</div>
                           <div style="margin-top:8px;">&copy; %d BillMyGym. All rights reserved.</div>
                         </td>
                       </tr>
@@ -845,6 +852,8 @@ public class EmailService {
             html(appUrl(ctaPath)),
             html(ctaLabel),
             html(footerNote),
+            html(normalizedSupportEmail()),
+            html(normalizedSupportEmail()),
             LocalDate.now(APP_ZONE).getYear()
         );
     }
@@ -902,6 +911,18 @@ public class EmailService {
 
     private String normalizedAppPublicUrl() {
         return appPublicUrl == null ? "" : appPublicUrl.trim().replaceAll("/+$", "");
+    }
+
+    private String normalizedFromEmail() {
+        return fromEmail == null ? "" : fromEmail.trim();
+    }
+
+    private String normalizedFromName() {
+        return fromName == null || fromName.isBlank() ? SENDER_NAME : fromName.trim();
+    }
+
+    private String normalizedSupportEmail() {
+        return normalizedFromEmail();
     }
 
     private String formatRole(String role) {

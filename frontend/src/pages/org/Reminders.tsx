@@ -26,7 +26,7 @@ export default function Reminders() {
       queryClient.invalidateQueries({ queryKey: ["reminderReport"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardReport"] });
       const result = response.data;
-      toast.success(`Reminder run complete: ${result.digestsSent ?? 0} digest(s) sent`);
+      toast.success(`Reminder run complete: ${result.digestsSent ?? 0} WhatsApp digest(s) sent`);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to run reminders");
@@ -95,7 +95,6 @@ export default function Reminders() {
             <div className="space-y-2 sm:space-y-4 p-3 sm:p-6">
               <SignalRow label="Manual runs used" value={unlimitedManualRuns ? `${manualRunsUsed} this month` : `${manualRunsUsed} / ${manualRunLimit}`} compact />
               <SignalRow label="WhatsApp digest" value={settings?.whatsappEnabled ? "Enabled" : "Disabled"} compact />
-              <SignalRow label="Email digest" value={settings?.emailEnabled ? "Enabled" : "Disabled"} compact />
               {unlimitedManualRuns ? (
                 <div className="rounded-[1rem] sm:rounded-[1.4rem] border border-sky-100 bg-sky-50/80 p-2.5 sm:p-4 text-[10px] sm:text-sm font-semibold text-sky-900">
                   Unlimited manual runs for demo use only.
@@ -119,7 +118,7 @@ export default function Reminders() {
           {lastRun && (
             <div className="glass-panel overflow-hidden rounded-[1.5rem] sm:rounded-[1.9rem]">
               <div className="border-b border-white/70 p-3 sm:p-6">
-                <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-950">Latest Digest</h2>
+                <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-950">Latest WhatsApp Digest</h2>
               </div>
               <div className="grid gap-2 sm:gap-4 p-3 sm:p-6 grid-cols-2 sm:grid-cols-2">
                 <MiniStat label="Members Covered" value={lastRun.memberCount ?? 0} compact />
@@ -137,7 +136,7 @@ export default function Reminders() {
             <div className="flex items-center justify-between gap-3 sm:gap-4">
               <div>
                 <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-950">Reminder Logs</h2>
-                <p className="mt-1 sm:mt-2 text-[10px] sm:text-sm font-medium text-slate-500">Digest history.</p>
+                <p className="mt-1 sm:mt-2 text-[10px] sm:text-sm font-medium text-slate-500">WhatsApp digest history.</p>
               </div>
               <div className="rounded-lg sm:rounded-2xl border border-white/80 bg-white/75 p-2 sm:p-3 shadow-sm">
                 <BellRing className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-700" />

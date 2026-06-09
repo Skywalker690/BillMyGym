@@ -28,5 +28,5 @@ Important docs in this folder:
 - [domain-model.md](domain-model.md): business entities and lifecycle rules.
 - [api-surface.md](api-surface.md): controller endpoints and role access.
 - [development-runbook.md](development-runbook.md): local setup, commands, env vars, and verification.
+- [email-deliverability.md](email-deliverability.md): production sender identity, DNS records, and inbox validation.
 - [agent-stored.md](agent-stored.md): operational memory for future agents.
-

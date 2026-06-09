@@ -13,6 +13,7 @@ export type CachedSubscriptionStatus = {
 };
 
 const SUBSCRIPTION_STATUS_STORAGE_KEY = "billmygym_subscription_status";
+let subscriptionStatusRequest: Promise<CachedSubscriptionStatus> | null = null;
 
 export function readCachedSubscriptionStatus() {
   if (!isBrowser()) {
@@ -53,13 +54,22 @@ export function clearCachedSubscriptionStatus() {
 }
 
 export async function fetchAndCacheSubscriptionStatus() {
-  const response = await api.get("/subscription/status");
-  persistSubscriptionStatus(response.data);
-  const memberPricing = toMemberPricing(response.data, response.data?.organizationId);
-  if (memberPricing) {
-    persistMemberPricing(memberPricing.organizationId, memberPricing);
+  if (!subscriptionStatusRequest) {
+    subscriptionStatusRequest = api.get("/subscription/status")
+      .then((response) => {
+        persistSubscriptionStatus(response.data);
+        const memberPricing = toMemberPricing(response.data, response.data?.organizationId);
+        if (memberPricing) {
+          persistMemberPricing(memberPricing.organizationId, memberPricing);
+        }
+        return response.data as CachedSubscriptionStatus;
+      })
+      .finally(() => {
+        subscriptionStatusRequest = null;
+      });
   }
-  return response.data as CachedSubscriptionStatus;
+
+  return subscriptionStatusRequest;
 }
 
 function isBrowser() {

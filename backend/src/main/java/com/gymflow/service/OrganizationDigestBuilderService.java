@@ -18,9 +18,7 @@ public class OrganizationDigestBuilderService {
         String brandingName = hasText(setting.getBrandingName()) ? setting.getBrandingName() : organization.getName();
         String memberList = buildMemberList(memberships);
         String whatsapp = buildWhatsappDigest(memberList, memberships.size());
-        String emailSubject = "Expired Membership Summary";
-        String email = buildEmailDigest(brandingName, memberships);
-        return new DigestContent(brandingName, whatsapp, emailSubject, email, memberships.size(), memberList);
+        return new DigestContent(brandingName, whatsapp, memberships.size(), memberList);
     }
 
     private String buildWhatsappDigest(String memberList, int memberCount) {
@@ -44,27 +42,6 @@ public class OrganizationDigestBuilderService {
         return builder.toString().trim();
     }
 
-    private String buildEmailDigest(String brandingName, List<MemberMembership> memberships) {
-        StringBuilder listBuilder = new StringBuilder();
-        for (MemberMembership membership : memberships) {
-            listBuilder.append("<li>")
-                .append(membership.getMember().getFullName())
-                .append(" - expires ")
-                .append(membership.getEndDate())
-                .append(" - ")
-                .append(membershipStatusSummary(membership))
-                .append("</li>");
-        }
-
-        return """
-            <html><body>
-            <h2>%s</h2>
-            <p>Expired memberships needing follow-up:</p>
-            <ul>%s</ul>
-            </body></html>
-            """.formatted(brandingName, listBuilder);
-    }
-
     private String membershipStatusSummary(MemberMembership membership) {
         LocalDate today = LocalDate.now(APP_ZONE);
         if (membership.getEndDate().isBefore(today)) {
@@ -85,13 +62,11 @@ public class OrganizationDigestBuilderService {
     public record DigestContent(
         String brandingName,
         String whatsappMessage,
-        String emailSubject,
-        String emailMessage,
         int memberCount,
         String memberList
     ) {
-        public DigestContent(String brandingName, String whatsappMessage, String emailSubject, String emailMessage, int memberCount) {
-            this(brandingName, whatsappMessage, emailSubject, emailMessage, memberCount, "");
+        public DigestContent(String brandingName, String whatsappMessage, int memberCount) {
+            this(brandingName, whatsappMessage, memberCount, "");
         }
     }
 }

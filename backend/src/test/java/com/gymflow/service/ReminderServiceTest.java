@@ -105,7 +105,7 @@ class ReminderServiceTest {
         when(organizationRepository.findByIdAndDeletedFalse(11L)).thenReturn(Optional.of(organization));
         when(organizationSettingService.getOrCreateSettings(11L)).thenReturn(setting);
         when(organizationDigestBuilderService.buildDigest(org.mockito.ArgumentMatchers.eq(organization), org.mockito.ArgumentMatchers.eq(setting), org.mockito.ArgumentMatchers.anyList()))
-            .thenReturn(new OrganizationDigestBuilderService.DigestContent("Brand", "wa", "subject", "email", 1));
+            .thenReturn(new OrganizationDigestBuilderService.DigestContent("Brand", "wa", 1));
         when(notificationDispatcherService.dispatchDigest(org.mockito.ArgumentMatchers.eq(organization), org.mockito.ArgumentMatchers.eq(setting), org.mockito.ArgumentMatchers.any()))
             .thenReturn(new NotificationDispatcherService.DispatchResult(true, 1));
 

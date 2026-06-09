@@ -202,7 +202,7 @@ public class ReminderService {
         log.setOrganization(organization);
         log.setMemberCount(candidateCount);
         log.setType(NotificationType.MANUAL_REMINDER_TRIGGER);
-        log.setChannel(NotificationChannel.EMAIL);
+        log.setChannel(NotificationChannel.WHATSAPP);
         log.setRecipient("MANUAL_TRIGGER");
         log.setStatus(NotificationStatus.SENT);
         log.setAttemptCount(1);

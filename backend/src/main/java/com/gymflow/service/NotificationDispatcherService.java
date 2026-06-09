@@ -24,9 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationDispatcherService {
 
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
-    private static final int MAX_ATTEMPTS = 3;
     private final NotificationLogRepository notificationLogRepository;
-    private final NotificationDeliveryLogService notificationDeliveryLogService;
     private final UsageMetricService usageMetricService;
     private final WhatsAppDeliveryService whatsAppDeliveryService;
     private final WhatsAppTemplateService whatsAppTemplateService;
@@ -48,25 +46,8 @@ public class NotificationDispatcherService {
             ));
         }
 
-        if (setting.isEmailEnabled() && hasText(organization.getAdminEmail())) {
-            deliveryLogs.add(sendWithRetry(
-                organization,
-                NotificationChannel.EMAIL,
-                organization.getAdminEmail(),
-                digestContent.emailMessage(),
-                digestContent.memberCount()
-            ));
-        }
-
         int digestsSent = (int) deliveryLogs.stream().filter(log -> log.getStatus() == NotificationStatus.SENT).count();
         if (digestsSent > 0) {
-            for (NotificationLog log : deliveryLogs) {
-                if (log.getStatus() == NotificationStatus.SENT) {
-                    if (log.getChannel() == NotificationChannel.EMAIL) {
-                        usageMetricService.recordEmailSent(organization);
-                    }
-                }
-            }
             usageMetricService.recordDigestSent(organization);
         }
 
@@ -134,61 +115,6 @@ public class NotificationDispatcherService {
         return notificationLogRepository.save(persistedLog);
     }
 
-    private NotificationLog sendWithRetry(
-        Organization organization,
-        NotificationChannel channel,
-        String recipient,
-        String message,
-        int memberCount
-    ) {
-        NotificationLog log = buildPendingLog(organization, channel, recipient, message, memberCount);
-        NotificationLog persistedLog = notificationLogRepository.save(log);
-        var deliveryLog = notificationDeliveryLogService.create(persistedLog, organization, NotificationType.ORGANIZATION_RENEWAL_DIGEST);
-
-        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-            persistedLog.setAttemptCount(attempt);
-            if (attempt > 1) {
-                persistedLog.setStatus(NotificationStatus.RETRYING);
-                notificationDeliveryLogService.markAttempt(deliveryLog, attempt, NotificationDeliveryStatus.RETRYING);
-            } else {
-                notificationDeliveryLogService.markAttempt(deliveryLog, attempt, NotificationDeliveryStatus.PENDING);
-            }
-
-            DeliveryResult result = simulateSend(channel, recipient);
-            if (result.success()) {
-                persistedLog.setStatus(NotificationStatus.SENT);
-                persistedLog.setFailureReason(null);
-                persistedLog.setSentAt(OffsetDateTime.now(APP_ZONE));
-                notificationDeliveryLogService.markAttempt(deliveryLog, attempt, NotificationDeliveryStatus.SENT);
-                auditLogService.logOrganizationActivity(
-                    "NOTIFICATION_SENT",
-                    channel.name() + " reminder sent to " + recipient,
-                    AuditActivityScope.NOTIFICATION_ACTIVITY,
-                    AuditEventStatus.SUCCESS,
-                    "NOTIFICATION",
-                    organization.getId(),
-                    recipient
-                );
-                return notificationLogRepository.save(persistedLog);
-            }
-
-            persistedLog.setFailureReason(result.failureReason());
-        }
-
-        persistedLog.setStatus(NotificationStatus.FAILED);
-        notificationDeliveryLogService.markAttempt(deliveryLog, MAX_ATTEMPTS, NotificationDeliveryStatus.FAILED);
-        auditLogService.logOrganizationActivity(
-            "NOTIFICATION_FAILED",
-            channel.name() + " reminder failed for " + recipient,
-            AuditActivityScope.NOTIFICATION_ACTIVITY,
-            AuditEventStatus.FAILED,
-            "NOTIFICATION",
-            organization.getId(),
-            recipient
-        );
-        return notificationLogRepository.save(persistedLog);
-    }
-
     private NotificationLog buildPendingLog(
         Organization organization,
         NotificationChannel channel,
@@ -210,13 +136,6 @@ public class NotificationDispatcherService {
         return log;
     }
 
-    private DeliveryResult simulateSend(NotificationChannel channel, String recipient) {
-        if (!hasText(recipient)) {
-            return new DeliveryResult(false, channel.name() + " recipient is missing");
-        }
-        return new DeliveryResult(true, null);
-    }
-
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
     }
@@ -224,6 +143,4 @@ public class NotificationDispatcherService {
     public record DispatchResult(boolean digestTriggered, int digestsSent) {
     }
 
-    private record DeliveryResult(boolean success, String failureReason) {
-    }
 }

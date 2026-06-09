@@ -28,6 +28,7 @@ spring:
       mail:
         smtp:
           auth: true
+          from: ${MAIL_ID}
           starttls:
             enable: true
             required: true
@@ -60,6 +61,8 @@ gymflow:
 
 app:
   public-url: ${APP_PUBLIC_URL:https://www.billmygym.tech}
+  mail:
+    from-name: ${MAIL_FROM_NAME:BillMyGym}
   rate-limit:
     enabled: true
     api:

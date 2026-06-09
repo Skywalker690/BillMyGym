@@ -124,6 +124,12 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
       throw new Error("Organization pricing is unavailable");
     },
     enabled: Boolean(user?.organizationId),
+    initialData: () => {
+      const organizationId = user?.organizationId ?? null;
+      return readCachedMemberPricing(organizationId)
+        ?? toMemberPricing(readCachedSubscriptionStatus(), organizationId)
+        ?? undefined;
+    },
     retry: 1,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
