@@ -88,6 +88,8 @@ aws ecr get-login-password --region ap-south-1 \
 | docker login --username AWS --password-stdin \
 811165582901.dkr.ecr.ap-south-1.amazonaws.com/billmygym
 
+docker pull 811165582901.dkr.ecr.ap-south-1.amazonaws.com/billmygym:latest
+
 
 docker stop billmygym
 docker rm -f billmygym

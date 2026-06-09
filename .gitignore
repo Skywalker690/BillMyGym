@@ -15,3 +15,4 @@ backend.zip
 /backend/boot.err
 /backend/boot.log
 /backend/src/main/resources/.env-aws
+backend/src/main/resources/script.sh
