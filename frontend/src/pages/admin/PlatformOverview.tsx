@@ -5,16 +5,13 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Building2,
-  CalendarClock,
   CheckCircle2,
   CreditCard,
   Eye,
   EyeOff,
-  Mail,
   MessageCircle,
   PauseCircle,
   Plus,
-  Rocket,
   ShieldOff,
   Sparkles,
   TrendingUp,
@@ -111,16 +108,16 @@ function percentText(value: number) {
 
 function BreakdownBar({ item, amount = false }: { key?: string; item: PlatformBreakdown; amount?: boolean }) {
   return (
-    <div className="rounded-2xl border border-white/75 bg-white/70 p-3 shadow-sm sm:p-4">
-      <div className="flex items-center justify-between gap-3">
+    <div className="min-w-0 rounded-[1.1rem] border border-white/75 bg-white/70 p-3 shadow-sm sm:rounded-2xl sm:p-4">
+      <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-3">
         <div className="min-w-0">
           <div className="truncate text-xs font-black text-slate-950 sm:text-sm">{item.label}</div>
-          <div className="mt-1 text-[10px] font-bold text-slate-500 sm:text-xs">
+          <div className="mt-1 truncate text-[10px] font-bold text-slate-500 sm:text-xs">
             {item.count} orgs
             {amount ? ` • ${item.amount > 0 ? money.format(item.amount) : "No billed revenue"}` : ""}
           </div>
         </div>
-        <Badge className={statusTone[item.key] ?? "border-slate-200 bg-slate-100 text-slate-700"}>{item.percentage}%</Badge>
+        <Badge className={`shrink-0 text-[10px] sm:text-xs ${statusTone[item.key] ?? "border-slate-200 bg-slate-100 text-slate-700"}`}>{item.percentage}%</Badge>
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 sm:mt-3 sm:h-2.5">
         <div
@@ -331,7 +328,7 @@ export default function PlatformOverview() {
                     {showLifetimeRevenue ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                <div className="mt-2 text-xl font-black">{showLifetimeRevenue ? money.format(data.lifetimeSaasRevenue) : "XXXXXXXX"}</div>
+                <div className="mt-2 text-xl font-black">{showLifetimeRevenue ? money.format(data.lifetimeSaasRevenue) : "XXXXX"}</div>
               </div>
             </div>
           </div>
@@ -342,7 +339,7 @@ export default function PlatformOverview() {
         {metricCards.map((card) => {
           const Icon = card.icon;
           return (
-            <div key={card.label} className={`relative overflow-hidden rounded-[1.15rem] border bg-gradient-to-br p-3 shadow-sm sm:rounded-[1.75rem] sm:p-5 ${card.tone} ${card.borderTone}`}>
+            <div key={card.label} className={`relative overflow-hidden rounded-[1.15rem] border bg-gradient-to-br p-3 shadow-sm sm:rounded-[1.75rem] sm:p-5 xl:col-span-1 ${card.label === "Projected MRR" ? "col-span-2" : ""} ${card.tone} ${card.borderTone}`}>
               <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
               <div className="relative z-10">
                 <Icon className="h-5 w-5 opacity-90 sm:h-7 sm:w-7" />
@@ -438,79 +435,48 @@ export default function PlatformOverview() {
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
-          <TrendingUp className="h-7 w-7 text-emerald-700" />
-          <div className="mt-5 text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Growth</div>
-          <div className="mt-2 text-3xl font-black text-slate-950">{percentText(data.organizationGrowthPercent)}</div>
-          <p className="mt-2 text-sm font-bold text-slate-500">
+      <div className="grid grid-cols-2 gap-2 sm:gap-5 lg:grid-cols-3">
+        <div className="glass-panel rounded-[1.25rem] p-3 sm:rounded-[2rem] sm:p-6">
+          <TrendingUp className="h-5 w-5 text-emerald-700 sm:h-7 sm:w-7" />
+          <div className="mt-3 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 sm:mt-5 sm:text-[11px] sm:tracking-[0.24em]">Growth</div>
+          <div className="mt-1.5 text-2xl font-black text-slate-950 sm:mt-2 sm:text-3xl">{percentText(data.organizationGrowthPercent)}</div>
+          <p className="mt-1.5 text-[11px] font-bold leading-4 text-slate-500 sm:mt-2 sm:text-sm sm:leading-5">
             {data.currentMonthNewOrganizations} orgs this month vs {data.previousMonthNewOrganizations} last month.
           </p>
         </div>
-        <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
-          <MessageCircle className="h-7 w-7 text-emerald-700" />
-          <div className="mt-5 text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Communication Load</div>
-          <div className="mt-2 text-3xl font-black text-slate-950">{compact.format(data.totalCommunicationUsage)}</div>
-          <p className="mt-2 text-sm font-bold text-slate-500">
+        <div className="glass-panel rounded-[1.25rem] p-3 sm:rounded-[2rem] sm:p-6">
+          <MessageCircle className="h-5 w-5 text-emerald-700 sm:h-7 sm:w-7" />
+          <div className="mt-3 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 sm:mt-5 sm:text-[11px] sm:tracking-[0.24em]">Communication Load</div>
+          <div className="mt-1.5 text-2xl font-black text-slate-950 sm:mt-2 sm:text-3xl">{compact.format(data.totalCommunicationUsage)}</div>
+          <p className="mt-1.5 text-[11px] font-bold leading-4 text-slate-500 sm:mt-2 sm:text-sm sm:leading-5">
             {compact.format(data.whatsappUsage)} WhatsApp and {compact.format(data.emailUsage)} email this month.
           </p>
         </div>
-        <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
-          <PauseCircle className="h-7 w-7 text-orange-600" />
-          <div className="mt-5 text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Billing Risk</div>
-          <div className="mt-2 text-3xl font-black text-slate-950">{data.paymentFailures + data.pendingPayments}</div>
-          <p className="mt-2 text-sm font-bold text-slate-500">
+        <div className="glass-panel col-span-2 rounded-[1.25rem] p-3 sm:rounded-[2rem] sm:p-6 lg:col-span-1">
+          <PauseCircle className="h-5 w-5 text-orange-600 sm:h-7 sm:w-7" />
+          <div className="mt-3 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 sm:mt-5 sm:text-[11px] sm:tracking-[0.24em]">Billing Risk</div>
+          <div className="mt-1.5 text-2xl font-black text-slate-950 sm:mt-2 sm:text-3xl">{data.paymentFailures + data.pendingPayments}</div>
+          <p className="mt-1.5 text-[11px] font-bold leading-4 text-slate-500 sm:mt-2 sm:text-sm sm:leading-5">
             {data.paymentFailures} failed payments and {data.pendingPayments} pending payments.
           </p>
         </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
-        <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Organization States</div>
-              <h2 className="mt-2 text-2xl font-black text-slate-950">Status split</h2>
+      <div>
+        <div className="glass-panel min-w-0 rounded-[1.5rem] p-4 sm:rounded-[2rem] sm:p-6">
+          <div className="flex min-w-0 items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="truncate text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 sm:text-[11px] sm:tracking-[0.24em]">Organization States</div>
+              <h2 className="mt-1 text-xl font-black text-slate-950 sm:mt-2 sm:text-2xl">Status split</h2>
             </div>
-            <ShieldOff className="h-7 w-7 text-slate-400" />
+            <ShieldOff className="h-6 w-6 shrink-0 text-slate-400 sm:h-7 sm:w-7" />
           </div>
-          <div className="mt-5 space-y-3">
+          <div className="mt-4 space-y-2.5 sm:mt-5 sm:space-y-3">
             {data.organizationsByStatus.map((item) => (
               <BreakdownBar key={item.key} item={item} />
             ))}
           </div>
         </div>
-
-        <Link to="/app/organizations" className="group block">
-          <div className="relative h-full overflow-hidden rounded-[2rem] border border-emerald-100 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.88)),radial-gradient(circle_at_top_right,rgba(52,211,153,0.32),transparent_24rem)] p-6 shadow-sm transition duration-300 group-hover:-translate-y-1 group-hover:shadow-xl sm:p-8">
-            <div className="absolute -right-12 -bottom-16 h-56 w-56 rounded-full bg-emerald-300/25 blur-3xl" />
-            <div className="relative z-10 flex h-full flex-col justify-between gap-8">
-              <div>
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-white">
-                  <Building2 className="h-7 w-7" />
-                </div>
-                <h2 className="mt-6 max-w-xl text-3xl font-black tracking-tight text-slate-950">Manage every organization from the redesigned command directory.</h2>
-                <p className="mt-3 max-w-xl text-sm font-bold leading-6 text-slate-600">
-                  Filter by lifecycle, active-member usage, owner, district, and risk. The list is optimized for quick scanning instead of heavy card browsing.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Badge className="border-sky-200 bg-sky-100 text-sky-800">
-                  <Rocket className="mr-1 h-3.5 w-3.5" />
-                  {data.pilotsEndingInThirtyDays} founding partner access windows ending soon
-                </Badge>
-                <Badge className="border-amber-200 bg-amber-100 text-amber-800">
-                  <CalendarClock className="mr-1 h-3.5 w-3.5" />
-                  {data.renewalsDueInSevenDays} renewals due
-                </Badge>
-                <Badge className="border-slate-200 bg-white text-slate-800">
-                  <Mail className="mr-1 h-3.5 w-3.5" />
-                  {compact.format(data.emailUsage)} emails
-                </Badge>
-              </div>
-            </div>
-          </div>
-        </Link>
       </div>
     </div>
   );
