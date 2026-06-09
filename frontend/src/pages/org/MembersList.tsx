@@ -12,10 +12,16 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
-import { readCachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
+import { readCachedSubscriptionStatus, type CachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
 
 const PAGE_SIZE = 40;
 const INDIAN_TIME_ZONE = "Asia/Kolkata";
+
+type MemberListSubscriptionStatus = CachedSubscriptionStatus & {
+  customReminderUsage?: number | string | null;
+  customReminderLimit?: number | string | null;
+  planAccess?: unknown;
+};
 
 const formatDate = (value?: string) =>
   value
@@ -71,7 +77,7 @@ export default function MembersList() {
     staleTime: 60_000,
   });
 
-  const subscriptionStatus = readCachedSubscriptionStatus();
+  const subscriptionStatus = readCachedSubscriptionStatus() as MemberListSubscriptionStatus | null;
 
   const reminderPreviewQuery = useQuery({
     queryKey: ["whatsappReminderPreview", reminderMember?.id],
@@ -446,7 +452,7 @@ export default function MembersList() {
         <CustomReminderLimitCard
           canUseMemberMessaging={canUseMemberMessaging}
           used={Number(subscriptionStatus?.customReminderUsage ?? 0)}
-          limit={subscriptionStatus?.customReminderLimit ?? null}
+          limit={subscriptionStatus?.customReminderLimit == null ? null : Number(subscriptionStatus.customReminderLimit)}
         />
         <MemberLimitCard
           memberLimit={memberLimit}

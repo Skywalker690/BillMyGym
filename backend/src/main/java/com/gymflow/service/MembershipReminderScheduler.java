@@ -12,8 +12,8 @@ public class MembershipReminderScheduler {
     private final ReminderService reminderService;
 
     @Transactional
-    @Scheduled(cron = "0 0 10 * * *")
-    public void runDailyReminders() {
-        reminderService.runDailyReminders();
+    @Scheduled(cron = "0 0 10 */2 * *", zone = "Asia/Kolkata")
+    public void runExpiredMemberRemindersEveryTwoDays() {
+        reminderService.runScheduledExpiredMemberReminders();
     }
 }

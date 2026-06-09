@@ -84,7 +84,7 @@ class ReminderServiceTest {
         setId(membership, 13L);
 
         OrganizationSetting setting = new OrganizationSetting();
-        when(memberMembershipRepository.findReminderCandidatesForDay(
+        when(memberMembershipRepository.findExpiredReminderCandidatesForDay(
             org.mockito.ArgumentMatchers.eq(11L),
             org.mockito.ArgumentMatchers.any(),
             org.mockito.ArgumentMatchers.any()

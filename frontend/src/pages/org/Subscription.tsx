@@ -221,15 +221,9 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
 
   const { data: subscription, isLoading } = useQuery<SubscriptionStatus | null>({
     queryKey: ["subscriptionStatus"],
-    queryFn: async () => {
-      const cachedStatus = readCachedSubscriptionStatus();
-      if (cachedStatus) {
-        return cachedStatus as SubscriptionStatus;
-      }
-      return await fetchAndCacheSubscriptionStatus() as SubscriptionStatus;
-    },
+    queryFn: async () => await fetchAndCacheSubscriptionStatus() as SubscriptionStatus,
     initialData: () => readCachedSubscriptionStatus() as SubscriptionStatus | undefined,
-    staleTime: Infinity,
+    staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
 
@@ -384,7 +378,7 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
   const isActive = subscription.organizationStatus === "ACTIVE" && !isDemo;
   const isTrial = subscription.organizationStatus === "TRIAL";
   const hasInactiveSubscription = subscription.organizationStatus === "PAUSED" || subscription.organizationStatus === "DEACTIVATED";
-  const canCheckout = !isDemo && !isActive;
+  const canCheckout = !isDemo && !isActive && !isTrial;
   const latestPayment = paymentHistory[0];
   const paymentStatus = latestPayment?.paymentStatus ?? (isDemo ? "DEMO" : isTrial ? "TRIAL" : subscription.organizationStatus);
   const includedActiveMembers = invoice.includedActiveMembers ?? 100;
@@ -461,6 +455,8 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
                     ? "Billing disabled for demo"
                     : isActive
                       ? "Subscription is active"
+                      : isTrial
+                        ? "Available after trial ends"
                       : createOrderMutation.isPending
                         ? "Opening checkout..."
                         : hasInactiveSubscription

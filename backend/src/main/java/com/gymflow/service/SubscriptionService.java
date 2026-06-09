@@ -94,6 +94,10 @@ public class SubscriptionService {
         if (organization.getOrganizationType() == OrganizationType.DEMO) {
             throw new BadRequestException("Demo organizations have billing bypass enabled.");
         }
+        if (organization.getStatus() == com.gymflow.domain.enums.OrganizationStatus.TRIAL
+            && billingLifecycleService.hasCurrentAccessWindow(organization, LocalDate.now(APP_ZONE))) {
+            throw new BadRequestException("Subscription payments are available after the free trial ends.");
+        }
         if (billingLifecycleService.hasCurrentPaidAccess(organization, LocalDate.now(APP_ZONE))) {
             throw new BadRequestException("Subscription is already active through " + organization.getSubscriptionDueDate().minusDays(1));
         }

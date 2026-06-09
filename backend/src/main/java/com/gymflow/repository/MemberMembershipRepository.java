@@ -167,6 +167,37 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
         where membership.deleted = false
           and membership.member.deleted = false
           and membership.member.status = 'ACTIVE'
+          and membership.organization.deleted = false
+          and membership.organization.status in ('ACTIVE', 'TRIAL')
+          and membership.organization.id = :organizationId
+          and membership.status = 'OVERDUE'
+          and membership.endDate < :today
+          and (membership.lastSentAt is null or membership.lastSentAt < :dayStart)
+          and not exists (
+              select newer.id
+              from MemberMembership newer
+              where newer.deleted = false
+                and newer.member = membership.member
+                and (
+                    newer.endDate > membership.endDate
+                    or (newer.endDate = membership.endDate and newer.createdAt > membership.createdAt)
+                )
+          )
+        order by membership.organization.id, membership.endDate asc
+        """)
+    List<MemberMembership> findExpiredReminderCandidatesForDay(
+        @Param("organizationId") Long organizationId,
+        @Param("dayStart") java.time.OffsetDateTime dayStart,
+        @Param("today") java.time.LocalDate today
+    );
+
+    @EntityGraph(attributePaths = {"member", "organization"})
+    @Query("""
+        select membership
+        from MemberMembership membership
+        where membership.deleted = false
+          and membership.member.deleted = false
+          and membership.member.status = 'ACTIVE'
           and membership.organization.id = :organizationId
           and membership.status = 'ACTIVE'
           and membership.endDate = :today

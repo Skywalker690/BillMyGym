@@ -69,7 +69,7 @@ public class ReminderService {
             .toOffsetDateTime();
         OrganizationSetting setting = organizationSettingService.getOrCreateSettings(organizationId);
         LocalDate today = LocalDate.now(APP_ZONE);
-        List<MemberMembership> candidates = memberMembershipRepository.findReminderCandidatesForDay(
+        List<MemberMembership> candidates = memberMembershipRepository.findExpiredReminderCandidatesForDay(
                 organizationId,
                 dayStart,
                 today
@@ -122,7 +122,7 @@ public class ReminderService {
     }
 
     @Transactional
-    public ReminderRunResponse runDailyReminders() {
+    public ReminderRunResponse runScheduledExpiredMemberReminders() {
         int processedMemberships = 0;
         int organizationsGrouped = 0;
         int digestsSent = 0;

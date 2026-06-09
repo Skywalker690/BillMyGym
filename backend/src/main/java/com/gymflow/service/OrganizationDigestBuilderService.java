@@ -18,15 +18,15 @@ public class OrganizationDigestBuilderService {
         String brandingName = hasText(setting.getBrandingName()) ? setting.getBrandingName() : organization.getName();
         String memberList = buildMemberList(memberships);
         String whatsapp = buildWhatsappDigest(memberList, memberships.size());
-        String emailSubject = "Membership Renewal Summary";
+        String emailSubject = "Expired Membership Summary";
         String email = buildEmailDigest(brandingName, memberships);
         return new DigestContent(brandingName, whatsapp, emailSubject, email, memberships.size(), memberList);
     }
 
     private String buildWhatsappDigest(String memberList, int memberCount) {
-        StringBuilder builder = new StringBuilder("BillMyGym Alert\n\nRenewal follow-ups:\n\n");
+        StringBuilder builder = new StringBuilder("BillMyGym Alert\n\nExpired memberships needing follow-up:\n\n");
         builder.append(memberList);
-        builder.append("\n\nTotal follow-ups: ").append(memberCount);
+        builder.append("\n\nTotal expired memberships: ").append(memberCount);
         return builder.toString();
     }
 
@@ -59,7 +59,7 @@ public class OrganizationDigestBuilderService {
         return """
             <html><body>
             <h2>%s</h2>
-            <p>Membership renewals needing follow-up:</p>
+            <p>Expired memberships needing follow-up:</p>
             <ul>%s</ul>
             </body></html>
             """.formatted(brandingName, listBuilder);
