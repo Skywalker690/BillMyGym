@@ -371,7 +371,7 @@ export default function OrganizationDetail() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="mx-auto max-w-7xl space-y-4 p-3 sm:space-y-6 sm:p-6 lg:p-8">
       <section className="relative overflow-hidden rounded-[2.3rem] border border-white/80 bg-slate-950 p-6 text-white shadow-[0_28px_90px_rgba(15,23,42,0.24)] sm:p-8">
         <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-emerald-400/18 blur-3xl" />
         <div className="absolute bottom-0 left-16 h-52 w-52 rounded-full bg-rose-400/12 blur-3xl" />
@@ -417,7 +417,7 @@ export default function OrganizationDetail() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
           icon={CalendarDays}
           label={organization.organizationType === "DEMO" ? "Workspace Type" : "Renewal Date"}
@@ -890,9 +890,9 @@ function SummaryCard({
   }[tone];
 
   return (
-    <div className={`group relative rounded-[1.75rem] border p-5 shadow-sm ${styles}`}>
-      <Icon className="h-6 w-6" />
-      <div className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] opacity-70">
+    <div className={`group relative rounded-[1.15rem] border p-3 shadow-sm sm:rounded-[1.75rem] sm:p-5 ${styles}`}>
+      <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+      <div className="mt-3 flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.1em] opacity-70 sm:mt-4 sm:text-[10px] sm:tracking-[0.22em]">
         <span>{label}</span>
         {infoContent && (
           <div className="relative">
@@ -905,7 +905,7 @@ function SummaryCard({
           </div>
         )}
       </div>
-      <div className="mt-2 text-2xl font-black tracking-tight">{value}</div>
+      <div className="mt-1 text-lg font-black tracking-tight sm:mt-2 sm:text-2xl">{value}</div>
     </div>
   );
 }

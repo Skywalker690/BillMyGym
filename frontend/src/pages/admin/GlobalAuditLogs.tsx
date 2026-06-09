@@ -125,17 +125,17 @@ export default function GlobalAuditLogs() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6 lg:p-8">
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="mx-auto max-w-7xl space-y-3 p-2.5 sm:space-y-5 sm:p-6 lg:p-8">
+      <section className="rounded-[1.35rem] border border-slate-200 bg-white p-3.5 shadow-sm sm:rounded-[2rem] sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">
+            <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-emerald-700 sm:px-4 sm:py-2 sm:text-[11px] sm:tracking-[0.24em]">
               Global Audit
             </div>
-            <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950">
+            <h1 className="mt-3 text-xl font-black tracking-tight text-slate-950 sm:mt-4 sm:text-3xl">
               {activeTab === "LOGIN" ? "Organization admin login activity" : "Organization subscription ledger"}
             </h1>
-            <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
+            <p className="mt-1.5 max-w-3xl text-xs font-semibold leading-5 text-slate-500 sm:mt-2 sm:text-sm sm:leading-6">
               {activeTab === "LOGIN"
                 ? "Latest org-admin login events across every organization."
                 : "Subscription payments across all organizations, including pending and failed attempts."}
@@ -146,19 +146,19 @@ export default function GlobalAuditLogs() {
             variant="outline"
             onClick={() => requestAuditRefresh(0)}
             disabled={auditQuery.isFetching}
-            className="rounded-full border-white/80 bg-white px-5 font-black"
+            className="h-9 rounded-full border-white/80 bg-white px-4 text-xs font-black sm:h-10 sm:px-5 sm:text-sm"
           >
             <RefreshCcw className={`mr-2 h-4 w-4 ${auditQuery.isFetching ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2 sm:mt-5">
           <button
             type="button"
             onClick={() => switchTab("LOGIN")}
             className={cn(
-              "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black",
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-black sm:gap-2 sm:px-4 sm:py-2 sm:text-sm",
               activeTab === "LOGIN" ? "border-emerald-200 bg-emerald-100 text-emerald-800" : "border-slate-200 bg-white text-slate-600"
             )}
           >
@@ -169,7 +169,7 @@ export default function GlobalAuditLogs() {
             type="button"
             onClick={() => switchTab("SUBSCRIPTIONS")}
             className={cn(
-              "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black",
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-black sm:gap-2 sm:px-4 sm:py-2 sm:text-sm",
               activeTab === "SUBSCRIPTIONS" ? "border-emerald-200 bg-emerald-100 text-emerald-800" : "border-slate-200 bg-white text-slate-600"
             )}
           >
@@ -179,9 +179,9 @@ export default function GlobalAuditLogs() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
         {activeTab === "SUBSCRIPTIONS" && (
-          <div className="grid gap-3 border-b border-slate-100 bg-slate-50/80 p-4 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 border-b border-slate-100 bg-slate-50/80 p-2.5 sm:grid-cols-4 sm:gap-3 sm:p-4">
             <AuditMetric label="Paid on page" value={paidOnPage} tone="emerald" />
             <AuditMetric label="Pending on page" value={pendingOnPage} tone="amber" />
             <AuditMetric label="Failed on page" value={failedOnPage} tone="rose" />
@@ -189,12 +189,12 @@ export default function GlobalAuditLogs() {
           </div>
         )}
         {auditQuery.isFetching && (
-          <div className="border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+          <div className="border-b border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500 sm:px-5 sm:py-3 sm:text-xs sm:tracking-[0.2em]">
             Refreshing audit...
           </div>
         )}
         {auditQuery.isError && (
-          <div className="border-b border-rose-100 bg-rose-50 px-5 py-4 text-sm font-semibold text-rose-700">
+          <div className="border-b border-rose-100 bg-rose-50 px-3 py-3 text-xs font-semibold text-rose-700 sm:px-5 sm:py-4 sm:text-sm">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
               {queryErrorMessage}
@@ -208,11 +208,11 @@ export default function GlobalAuditLogs() {
           <SubscriptionAuditTable rows={rows as SubscriptionAuditRow[]} />
         )}
 
-        <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-sm">
+        <div className="flex flex-col gap-3 border-t border-slate-100 px-3 py-3 text-xs sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:text-sm">
           <div className="font-semibold text-slate-500">
             Showing {rows.length} of {meta?.totalElements ?? 0}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2 sm:justify-end">
             <Button
               type="button"
               variant="outline"
@@ -221,7 +221,7 @@ export default function GlobalAuditLogs() {
             >
               Previous
             </Button>
-            <div className="font-semibold text-slate-600">
+            <div className="text-center font-semibold text-slate-600">
               Page {(meta?.page ?? 0) + 1} / {Math.max(meta?.totalPages ?? 1, 1)}
             </div>
             <Button
@@ -242,36 +242,36 @@ export default function GlobalAuditLogs() {
 function LoginAuditTable({ rows }: { rows: LoginAuditRow[] }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full text-left">
+      <table className="min-w-[760px] text-left sm:min-w-full">
         <thead className="bg-slate-50">
-          <tr className="text-xs uppercase tracking-wide text-slate-500">
-            <th className="px-4 py-3">Time</th>
-            <th className="px-4 py-3">Organization</th>
-            <th className="px-4 py-3">Admin Name</th>
-            <th className="px-4 py-3">Email</th>
-            <th className="px-4 py-3">Description</th>
+          <tr className="text-[10px] uppercase tracking-wide text-slate-500 sm:text-xs">
+            <th className="px-3 py-2.5 sm:px-4 sm:py-3">Time</th>
+            <th className="px-3 py-2.5 sm:px-4 sm:py-3">Organization</th>
+            <th className="px-3 py-2.5 sm:px-4 sm:py-3">Admin Name</th>
+            <th className="px-3 py-2.5 sm:px-4 sm:py-3">Email</th>
+            <th className="px-3 py-2.5 sm:px-4 sm:py-3">Description</th>
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 && (
             <tr>
-              <td className="px-4 py-8 text-center text-sm font-semibold text-slate-500" colSpan={5}>
+              <td className="px-3 py-6 text-center text-xs font-semibold text-slate-500 sm:px-4 sm:py-8 sm:text-sm" colSpan={5}>
                 No login audit rows found.
               </td>
             </tr>
           )}
           {rows.map((row, index) => (
-            <tr key={`${row.time}-${index}`} className="border-t border-slate-100 text-sm text-slate-700">
-              <td className="px-4 py-3">{formatDateTime(row.time)}</td>
-              <td className="px-4 py-3">
+            <tr key={`${row.time}-${index}`} className="border-t border-slate-100 text-xs text-slate-700 sm:text-sm">
+              <td className="px-3 py-2.5 sm:px-4 sm:py-3">{formatDateTime(row.time)}</td>
+              <td className="px-3 py-2.5 sm:px-4 sm:py-3">
                 <div className="inline-flex items-center gap-2 font-semibold text-slate-700">
                   <Building2 className="h-4 w-4 text-slate-300" />
                   {row.organizationName || "-"}
                 </div>
               </td>
-              <td className="px-4 py-3 font-semibold text-slate-900">{row.adminName || "-"}</td>
-              <td className="px-4 py-3">{row.email || "-"}</td>
-              <td className="px-4 py-3">{row.description}</td>
+              <td className="px-3 py-2.5 font-semibold text-slate-900 sm:px-4 sm:py-3">{row.adminName || "-"}</td>
+              <td className="px-3 py-2.5 sm:px-4 sm:py-3">{row.email || "-"}</td>
+              <td className="px-3 py-2.5 sm:px-4 sm:py-3">{row.description}</td>
             </tr>
           ))}
         </tbody>
@@ -283,51 +283,51 @@ function LoginAuditTable({ rows }: { rows: LoginAuditRow[] }) {
 function SubscriptionAuditTable({ rows }: { rows: SubscriptionAuditRow[] }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-[1240px] w-full text-left">
+      <table className="w-full min-w-[1060px] text-left sm:min-w-[1240px]">
         <thead className="bg-slate-50">
-          <tr className="text-xs uppercase tracking-wide text-slate-500">
-            <th className="px-4 py-3">Logged At</th>
-            <th className="px-4 py-3">Organization</th>
-            <th className="px-4 py-3">Plan</th>
-            <th className="px-4 py-3">Amount</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Payment Date</th>
-            <th className="px-4 py-3">Period</th>
-            <th className="px-4 py-3">Gateway</th>
-            <th className="px-4 py-3">Details</th>
+          <tr className="text-[10px] uppercase tracking-wide text-slate-500 sm:text-xs">
+            <th className="px-3 py-2.5 sm:px-4 sm:py-3">Logged At</th>
+            <th className="px-3 py-2.5 sm:px-4 sm:py-3">Organization</th>
+            <th className="px-3 py-2.5 sm:px-4 sm:py-3">Plan</th>
+            <th className="px-3 py-2.5 sm:px-4 sm:py-3">Amount</th>
+            <th className="px-3 py-2.5 sm:px-4 sm:py-3">Status</th>
+            <th className="px-3 py-2.5 sm:px-4 sm:py-3">Payment Date</th>
+            <th className="px-3 py-2.5 sm:px-4 sm:py-3">Period</th>
+            <th className="px-3 py-2.5 sm:px-4 sm:py-3">Gateway</th>
+            <th className="px-3 py-2.5 sm:px-4 sm:py-3">Details</th>
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 && (
             <tr>
-              <td className="px-4 py-8 text-center text-sm font-semibold text-slate-500" colSpan={9}>
+              <td className="px-3 py-6 text-center text-xs font-semibold text-slate-500 sm:px-4 sm:py-8 sm:text-sm" colSpan={9}>
                 No subscription rows found.
               </td>
             </tr>
           )}
           {rows.map((row, index) => (
-            <tr key={`${row.time}-${row.orderId}-${index}`} className="border-t border-slate-100 text-sm text-slate-700">
-              <td className="px-4 py-3 font-semibold text-slate-900">{formatDateTime(row.time)}</td>
-              <td className="px-4 py-3">
+            <tr key={`${row.time}-${row.orderId}-${index}`} className="border-t border-slate-100 text-xs text-slate-700 sm:text-sm">
+              <td className="px-3 py-2.5 font-semibold text-slate-900 sm:px-4 sm:py-3">{formatDateTime(row.time)}</td>
+              <td className="px-3 py-2.5 sm:px-4 sm:py-3">
                 <div className="font-semibold text-slate-900">{row.organizationName || "-"}</div>
-                <div className="mt-1 text-xs font-semibold text-slate-500">Org ID: {row.organizationId ?? "-"}</div>
+                <div className="mt-1 text-[10px] font-semibold text-slate-500 sm:text-xs">Org ID: {row.organizationId ?? "-"}</div>
               </td>
-              <td className="px-4 py-3 font-semibold">{row.plan || "-"}</td>
-              <td className="px-4 py-3 font-black text-slate-950">{money.format(Number(row.amount ?? 0))}</td>
-              <td className="px-4 py-3">
+              <td className="px-3 py-2.5 font-semibold sm:px-4 sm:py-3">{row.plan || "-"}</td>
+              <td className="px-3 py-2.5 font-black text-slate-950 sm:px-4 sm:py-3">{money.format(Number(row.amount ?? 0))}</td>
+              <td className="px-3 py-2.5 sm:px-4 sm:py-3">
                 <Badge className={paymentStatusClass(row.status)}>{row.status}</Badge>
               </td>
-              <td className="px-4 py-3">{formatDate(row.paymentDate)}</td>
-              <td className="px-4 py-3">{formatDate(row.subscriptionStart)} - {formatDate(row.subscriptionEnd)}</td>
-              <td className="px-4 py-3 text-xs font-semibold text-slate-500">
+              <td className="px-3 py-2.5 sm:px-4 sm:py-3">{formatDate(row.paymentDate)}</td>
+              <td className="px-3 py-2.5 sm:px-4 sm:py-3">{formatDate(row.subscriptionStart)} - {formatDate(row.subscriptionEnd)}</td>
+              <td className="px-3 py-2.5 text-[10px] font-semibold text-slate-500 sm:px-4 sm:py-3 sm:text-xs">
                 <div>Order: {row.orderId || "-"}</div>
                 <div className="mt-1">Payment: {row.paymentId || "-"}</div>
               </td>
-              <td className="px-4 py-3">
+              <td className="px-3 py-2.5 sm:px-4 sm:py-3">
                 <div className="font-semibold text-slate-700">
                   {row.failureReason || "Subscription payment record"}
                 </div>
-                <div className="mt-1 text-xs text-slate-500">
+                <div className="mt-1 text-[10px] text-slate-500 sm:text-xs">
                   {row.status === "PAID" ? "Successful charge captured for this organization." : row.status === "PENDING" ? "Payment is still awaiting completion or retry." : "Payment attempt failed and needs attention."}
                 </div>
               </td>
@@ -356,9 +356,9 @@ function AuditMetric({
   }[tone];
 
   return (
-    <div className={`rounded-[1.2rem] border p-4 shadow-sm ${toneClass}`}>
-      <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">{label}</div>
-      <div className="mt-2 text-2xl font-black tracking-tight">{value}</div>
+    <div className={`rounded-[1rem] border p-2.5 shadow-sm sm:rounded-[1.2rem] sm:p-4 ${toneClass}`}>
+      <div className="text-[9px] font-black uppercase tracking-[0.14em] opacity-70 sm:text-[10px] sm:tracking-[0.2em]">{label}</div>
+      <div className="mt-1.5 text-lg font-black tracking-tight sm:mt-2 sm:text-2xl">{value}</div>
     </div>
   );
 }

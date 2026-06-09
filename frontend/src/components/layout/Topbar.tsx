@@ -73,7 +73,7 @@ export function Topbar({
   const primaryName = (user?.name || user?.email || "BillMyGym").split(" ")[0];
   const initials = (user?.name || user?.email || "G").trim().charAt(0).toUpperCase();
   const isSuperAdmin = role === "SUPER_ADMIN";
-  const hideOrgAdminMobileText = role === "ORG_ADMIN";
+  const hideMobileHeaderText = role === "ORG_ADMIN" || role === "SUPER_ADMIN";
   const quickLinks = isSuperAdmin
     ? [
         {
@@ -113,21 +113,21 @@ export function Topbar({
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 overflow-x-clip px-4 py-3 lg:px-8 lg:py-4",
+        "sticky top-0 z-40 overflow-x-clip px-2.5 py-2.5 sm:px-4 sm:py-3 lg:px-8 lg:py-4",
       )}
     >
       <div
         className={cn(
-          "billmygym-shell pointer-events-auto flex min-h-[84px] min-w-0 flex-wrap items-center justify-between gap-4 overflow-visible rounded-[2rem] border border-transparent px-4 py-4 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.28)] backdrop-blur-xl transition-[border-color,background-color,box-shadow] duration-300",
+          "billmygym-shell pointer-events-auto flex min-h-[64px] min-w-0 flex-wrap items-center justify-between gap-2 overflow-visible rounded-[1.45rem] border border-transparent px-2.5 py-2.5 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.28)] backdrop-blur-xl transition-[border-color,background-color,box-shadow] duration-300 sm:min-h-[84px] sm:gap-4 sm:rounded-[2rem] sm:px-4 sm:py-4",
           scrolled
             ? "border-white/80 bg-white/92 shadow-[0_20px_45px_-28px_rgba(15,23,42,0.35)]"
             : "bg-white/78 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.22)]",
         )}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-3 lg:gap-6">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 lg:gap-6">
           <button
             onClick={onOpenMobileSidebar}
-            className="rounded-2xl border border-white/60 bg-white/70 p-3 text-slate-600 shadow-sm transition-colors hover:text-indigo-600 lg:hidden"
+            className="rounded-[1.05rem] border border-white/60 bg-white/70 p-2.5 text-slate-600 shadow-sm transition-colors hover:text-indigo-600 sm:rounded-2xl sm:p-3 lg:hidden"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -141,13 +141,13 @@ export function Topbar({
           </button>
 
           <div className="min-w-0 flex-1">
-            <div className={cn("mb-1 flex items-center gap-2", hideOrgAdminMobileText && "hidden sm:flex")}>
+            <div className={cn("mb-1 flex items-center gap-2", hideMobileHeaderText && "hidden sm:flex")}>
               <div className="h-1.5 w-1.5 rounded-full bg-emerald-600 shadow-[0_0_6px_rgba(22,163,74,0.5)]" />
               <span className="truncate text-[10px] font-black uppercase tracking-[0.28em] text-emerald-700">
                 {pageContext.eyebrow}
               </span>
             </div>
-            <div className={cn("min-w-0", hideOrgAdminMobileText && "hidden sm:block")}>
+            <div className={cn("min-w-0", hideMobileHeaderText && "hidden sm:block")}>
               <h1 className="truncate text-2xl font-black tracking-tight text-slate-900 lg:text-3xl">{pageContext.title}</h1>
               <p className="mt-1 hidden truncate text-sm font-medium text-slate-500 lg:block">{pageContext.description}</p>
             </div>
@@ -155,15 +155,15 @@ export function Topbar({
 
         </div>
 
-        <div className="flex max-w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:gap-3">
+        <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:gap-3">
           {quickLinks.map((item) => (
             <Link
               key={item.to}
               to={item.to}
-              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 sm:px-4"
+              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 sm:px-4 sm:py-3"
             >
               <item.icon className={cn("h-4 w-4", item.iconClassName)} />
-              <span className={hideOrgAdminMobileText ? "hidden lg:inline" : "hidden sm:inline"}>{item.label}</span>
+              <span className={hideMobileHeaderText ? "hidden lg:inline" : "hidden sm:inline"}>{item.label}</span>
             </Link>
           ))}
 
@@ -171,14 +171,14 @@ export function Topbar({
             <button
               onClick={() => setProfileOpen((open) => !open)}
               className={cn(
-                "group flex items-center gap-3 rounded-full border border-white/60 bg-white/85 p-2 pr-4 shadow-sm transition-colors",
+                "group flex items-center gap-2 rounded-full border border-white/60 bg-white/85 p-1.5 pr-2 shadow-sm transition-colors sm:gap-3 sm:p-2 sm:pr-4",
                 profileOpen ? "ring-2 ring-emerald-200" : "hover:bg-white",
               )}
             >
               {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt={primaryName} referrerPolicy="no-referrer" className="h-11 w-11 rounded-full object-cover" />
+                <img src={user.avatarUrl} alt={primaryName} referrerPolicy="no-referrer" className="h-9 w-9 rounded-full object-cover sm:h-11 sm:w-11" />
               ) : (
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-blue-500 text-sm font-black text-white">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-blue-500 text-xs font-black text-white sm:h-11 sm:w-11 sm:text-sm">
                   {initials}
                 </div>
               )}

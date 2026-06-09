@@ -53,15 +53,15 @@ export default function PlatformReports() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <section className="rounded-[2.2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <div className="mx-auto w-full max-w-7xl space-y-4 p-3 sm:space-y-6 sm:p-6 lg:p-8">
+      <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[2.2rem] sm:p-8">
+        <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">
+            <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-700 sm:px-4 sm:py-2 sm:text-[11px] sm:tracking-[0.24em]">
               Platform Reports
             </div>
-            <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950">Year-wise organization growth and revenue</h1>
-            <p className="mt-3 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
+            <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-950 sm:mt-4 sm:text-4xl">Year-wise organization growth and revenue</h1>
+            <p className="mt-2 max-w-3xl text-xs font-semibold leading-5 text-slate-500 sm:mt-3 sm:text-sm sm:leading-6">
               Pick a year and review how many organizations joined in each month, along with the monthly platform revenue collected.
             </p>
           </div>
@@ -82,21 +82,21 @@ export default function PlatformReports() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid grid-cols-3 gap-2 sm:gap-4 md:grid-cols-3">
         <SummaryTile icon={CalendarRange} label="Selected Year" value={String(report.year)} detail="Monthly platform report" />
         <SummaryTile icon={Building2} label="Organizations Joined" value={report.totalOrganizationsJoined.toLocaleString("en-IN")} detail="Total new gyms in this year" />
         <SummaryTile icon={IndianRupee} label="Revenue Collected" value={money.format(report.totalRevenue)} detail="Paid platform revenue in this year" />
       </section>
 
-      <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-5 py-4">
+      <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
+        <div className="border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
               <BarChart3 className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-2xl font-black tracking-tight text-slate-950">Monthly platform summary</h2>
-              <p className="mt-1 text-sm font-semibold text-slate-500">Organizations joined and platform revenue for each month of {report.year}.</p>
+              <h2 className="text-lg font-black tracking-tight text-slate-950 sm:text-2xl">Monthly platform summary</h2>
+              <p className="mt-1 text-xs font-semibold text-slate-500 sm:text-sm">Organizations joined and platform revenue for each month of {report.year}.</p>
             </div>
           </div>
         </div>
@@ -161,11 +161,11 @@ function SummaryTile({
   detail: string;
 }) {
   return (
-    <div className="rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-sm">
-      <Icon className="h-6 w-6 text-emerald-700" />
-      <div className="mt-4 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{label}</div>
-      <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{value}</div>
-      <div className="mt-1 text-sm font-semibold text-slate-500">{detail}</div>
+    <div className="rounded-[1.1rem] border border-slate-200 bg-white p-3 shadow-sm sm:rounded-[1.6rem] sm:p-5">
+      <Icon className="h-5 w-5 text-emerald-700 sm:h-6 sm:w-6" />
+      <div className="mt-3 text-[8px] font-black uppercase tracking-[0.1em] text-slate-500 sm:mt-4 sm:text-[10px] sm:tracking-[0.22em]">{label}</div>
+      <div className="mt-1 text-xl font-black tracking-tight text-slate-950 sm:mt-2 sm:text-3xl">{value}</div>
+      <div className="mt-1 line-clamp-2 text-[10px] font-semibold text-slate-500 sm:text-sm">{detail}</div>
     </div>
   );
 }

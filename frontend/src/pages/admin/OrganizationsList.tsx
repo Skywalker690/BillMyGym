@@ -202,24 +202,24 @@ export default function OrganizationsList() {
   }, [directory?.page, directory?.totalPages]);
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <section className="relative overflow-hidden rounded-[2.4rem] border border-white/80 bg-slate-950 p-6 text-white shadow-[0_30px_90px_rgba(15,23,42,0.28)] sm:p-8">
+    <div className="mx-auto w-full max-w-7xl space-y-4 p-3 sm:space-y-6 sm:p-6 lg:p-8">
+      <section className="relative overflow-hidden rounded-[1.5rem] border border-white/80 bg-slate-950 p-4 text-white shadow-[0_30px_90px_rgba(15,23,42,0.28)] sm:rounded-[2.4rem] sm:p-8">
         <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl" />
         <div className="absolute bottom-0 left-12 h-64 w-64 rounded-full bg-rose-400/10 blur-3xl" />
-        <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+        <div className="relative z-10 flex flex-col gap-4 sm:gap-8 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex items-center rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.28em] text-emerald-200">
+            <div className="inline-flex items-center rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-emerald-200 sm:px-4 sm:py-2 sm:text-[11px] sm:tracking-[0.28em]">
               Super Admin Directory
             </div>
-            <h1 className="mt-5 max-w-4xl text-4xl font-black tracking-tight sm:text-5xl">
+            <h1 className="mt-3 max-w-4xl text-2xl font-black tracking-tight sm:mt-5 sm:text-5xl">
               Review gyms with renewal pressure first, then scan the rest with clean pagination.
             </h1>
-            <p className="mt-4 max-w-3xl text-sm font-semibold leading-6 text-slate-300">
+            <p className="mt-3 max-w-3xl text-xs font-semibold leading-5 text-slate-300 sm:mt-4 sm:text-sm sm:leading-6">
               Organizations with subscription renewal required are prioritized at the top. Every tab and filter loads a fresh page of 20 so the directory stays fast and predictable.
             </p>
           </div>
           <Link to="/app/organizations/new">
-            <Button className="h-12 rounded-full bg-white px-7 font-black text-slate-950 hover:bg-emerald-50">
+            <Button className="h-10 w-full rounded-full bg-white px-5 text-xs font-black text-slate-950 hover:bg-emerald-50 sm:h-12 sm:w-auto sm:px-7 sm:text-sm">
               <Plus className="mr-2 h-5 w-5" />
               Create Organization
             </Button>
@@ -227,7 +227,7 @@ export default function OrganizationsList() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           icon={Building2}
           label="Total Organizations"
@@ -259,21 +259,21 @@ export default function OrganizationsList() {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
+        <div className="glass-panel rounded-[1.5rem] p-4 sm:rounded-[2rem] sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Subscription Distribution</div>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">BillMyGym adoption across the platform</h2>
+              <div className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-700 sm:text-[11px] sm:tracking-[0.24em]">Subscription Distribution</div>
+              <h2 className="mt-1 text-lg font-black tracking-tight text-slate-950 sm:mt-2 sm:text-2xl">BillMyGym adoption across the platform</h2>
             </div>
             <Sparkles className="h-6 w-6 text-amber-400" />
           </div>
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-4 md:grid-cols-2">
             {(summary?.subscriptionDistribution ?? []).map((item) => (
-              <div key={item.key} className="rounded-[1.5rem] border border-white/80 bg-white/80 p-4 shadow-sm">
+              <div key={item.key} className="rounded-[1.15rem] border border-white/80 bg-white/80 p-3 shadow-sm sm:rounded-[1.5rem] sm:p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="text-sm font-black text-slate-950">{item.label}</div>
-                    <div className="mt-1 text-xs font-bold text-slate-500">
+                    <div className="text-xs font-black text-slate-950 sm:text-sm">{item.label}</div>
+                    <div className="mt-1 text-[10px] font-bold text-slate-500 sm:text-xs">
                       {item.count} gyms
                     </div>
                   </div>
@@ -296,14 +296,14 @@ export default function OrganizationsList() {
           </div>
         </div>
 
-        <div className="glass-panel rounded-[2rem] p-5 sm:p-6">
-          <div className="text-[11px] font-black uppercase tracking-[0.24em] text-rose-700">Directory Controls</div>
-          <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Tabs, filters, and search</h2>
-          <div className="mt-5 flex flex-wrap gap-3">
+        <div className="glass-panel rounded-[1.5rem] p-4 sm:rounded-[2rem] sm:p-6">
+          <div className="text-[9px] font-black uppercase tracking-[0.16em] text-rose-700 sm:text-[11px] sm:tracking-[0.24em]">Directory Controls</div>
+          <h2 className="mt-1 text-lg font-black tracking-tight text-slate-950 sm:mt-2 sm:text-2xl">Tabs, filters, and search</h2>
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:mt-5 sm:flex sm:flex-wrap sm:gap-3">
             <button
               type="button"
               onClick={() => setScope("ALL")}
-              className={`rounded-full px-5 py-2 text-sm font-black transition ${
+              className={`rounded-full px-2 py-2 text-[11px] font-black transition sm:px-5 sm:text-sm ${
                 scope === "ALL" ? "bg-slate-950 text-white" : "bg-white text-slate-700 shadow-sm"
               }`}
             >
@@ -312,7 +312,7 @@ export default function OrganizationsList() {
             <button
               type="button"
               onClick={() => setScope("DEMO")}
-              className={`rounded-full px-5 py-2 text-sm font-black transition ${
+              className={`rounded-full px-2 py-2 text-[11px] font-black transition sm:px-5 sm:text-sm ${
                 scope === "DEMO" ? "bg-slate-950 text-white" : "bg-white text-slate-700 shadow-sm"
               }`}
             >
@@ -321,7 +321,7 @@ export default function OrganizationsList() {
             <button
               type="button"
               onClick={() => setScope("REGULAR_TRIAL")}
-              className={`rounded-full px-5 py-2 text-sm font-black transition ${
+              className={`rounded-full px-2 py-2 text-[11px] font-black transition sm:px-5 sm:text-sm ${
                 scope === "REGULAR_TRIAL" ? "bg-slate-950 text-white" : "bg-white text-slate-700 shadow-sm"
               }`}
             >
@@ -329,7 +329,7 @@ export default function OrganizationsList() {
             </button>
           </div>
 
-          <div className="mt-5 space-y-3">
+          <div className="mt-4 space-y-2 sm:mt-5 sm:space-y-3">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
@@ -356,7 +356,7 @@ export default function OrganizationsList() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[2rem] border border-white/80 bg-white/80 shadow-sm backdrop-blur">
+      <section className="overflow-hidden rounded-[1.5rem] border border-white/80 bg-white/80 shadow-sm backdrop-blur sm:rounded-[2rem]">
         {directoryQuery.isFetching && (
           <div className="border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
             Refreshing organizations...
@@ -537,13 +537,13 @@ function MetricCard({
   }[tone];
 
   return (
-    <div className={`relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br p-5 shadow-sm ${tones}`}>
+    <div className={`relative overflow-hidden rounded-[1.15rem] bg-gradient-to-br p-3 shadow-sm sm:rounded-[1.75rem] sm:p-5 ${tones}`}>
       <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
       <div className="relative z-10">
-        <Icon className="h-7 w-7 opacity-90" />
-        <div className="mt-5 text-[10px] font-black uppercase tracking-[0.24em] opacity-70">{label}</div>
-        <div className="mt-2 text-3xl font-black tracking-tight">{value}</div>
-        <div className="mt-2 text-sm font-bold opacity-75">{detail}</div>
+        <Icon className="h-5 w-5 opacity-90 sm:h-7 sm:w-7" />
+        <div className="mt-3 text-[9px] font-black uppercase tracking-[0.12em] opacity-70 sm:mt-5 sm:text-[10px] sm:tracking-[0.24em]">{label}</div>
+        <div className="mt-1 text-2xl font-black tracking-tight sm:mt-2 sm:text-3xl">{value}</div>
+        <div className="mt-1 line-clamp-2 text-[11px] font-bold opacity-75 sm:mt-2 sm:text-sm">{detail}</div>
       </div>
     </div>
   );
