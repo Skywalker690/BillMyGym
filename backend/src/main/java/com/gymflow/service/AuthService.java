@@ -27,7 +27,6 @@ import com.gymflow.repository.OrganizationSettingRepository;
 import com.gymflow.security.JwtService;
 import com.gymflow.security.SecurityUtils;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +34,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -413,6 +413,7 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     public UserDto getCurrentUser(String authenticatedEmail) {
         User user = userRepository.findByEmailAndDeletedFalse(authenticatedEmail)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
@@ -477,6 +478,7 @@ public class AuthService {
     private UserDto toUserDto(User user) {
         return UserDto.builder()
             .id(user.getId())
+            .name(resolveDisplayName(user))
             .email(user.getEmail())
             .role(user.getRole() == null ? null : user.getRole().name())
             .organizationId(user.getOrganization() == null ? null : user.getOrganization().getId())
@@ -490,6 +492,20 @@ public class AuthService {
             .consentRequired(legalPolicyService.requiresConsent(user))
             .consentMessage(legalPolicyService.consentMessage(user))
             .build();
+    }
+
+    private String resolveDisplayName(User user) {
+        if (user.getOrganization() != null
+            && user.getOrganization().getAdminFullName() != null
+            && !user.getOrganization().getAdminFullName().isBlank()) {
+            return user.getOrganization().getAdminFullName().trim();
+        }
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            return "User";
+        }
+        String email = user.getEmail().trim();
+        int atIndex = email.indexOf('@');
+        return atIndex > 0 ? email.substring(0, atIndex) : email;
     }
 
     public AuthDtos.LegalPolicyMetadataResponse legalPolicyMetadata() {

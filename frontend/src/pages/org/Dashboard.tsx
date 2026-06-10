@@ -167,6 +167,14 @@ function shortDashboardDate(date: Date) {
   return `${day} ${month} ${weekday}`;
 }
 
+function dashboardDisplayName(user?: { name?: string; email?: string } | null) {
+  const name = user?.name?.trim();
+  if (name) return name;
+  const email = user?.email?.trim();
+  if (!email) return "there";
+  return email.split("@")[0] || "there";
+}
+
 export default function Dashboard() {
   const { effectivePlan, isDemoWorkspace } = useDemoPlanPreview();
   const { user } = useAuth();
@@ -217,7 +225,7 @@ export default function Dashboard() {
   const subscriptionTooltipDate = subscriptionValidity?.tooltipDate;
   const subscriptionTooltipText = buildSubscriptionTooltip(subscriptionTooltipLabel, subscriptionTooltipDate);
   const now = dashboardNow();
-  const displayName = user?.name?.trim() || user?.email || "there";
+  const displayName = dashboardDisplayName(user);
   const greeting = greetingFor(now);
   const currentTime = timeLabel(now);
   const currentDate = shortDashboardDate(now);
@@ -260,39 +268,39 @@ export default function Dashboard() {
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-3 pb-8 pt-3 sm:space-y-6 sm:p-6 lg:space-y-8 lg:p-8">
       {isDemoGym && <DemoWorkspaceBanner organizationName={subscriptionStatus?.organizationName} previewPlan={effectivePlan} />}
-      <section className="relative overflow-hidden rounded-[1.8rem] bg-white border border-slate-200 shadow-sm p-5 sm:rounded-[2rem] sm:p-7 lg:p-10">
+      <section className="relative overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[2rem] sm:p-7 lg:p-10">
         <div className="absolute inset-y-0 right-0 w-[50%] bg-[radial-gradient(ellipse_at_top_right,rgba(22,163,74,0.08),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(245,158,11,0.06),transparent_50%)]" />
-        <div className="relative z-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
-          <div>
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">{currentTime}</Badge>
-              <Badge className="border-slate-200 bg-white/80 text-slate-700">{currentDate}</Badge>
-              <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">BillMyGym: All features included</Badge>
+        <div className="relative z-10 grid gap-5 sm:gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+          <div className="min-w-0">
+            <div className="mb-3 flex flex-wrap items-center gap-1.5 sm:mb-4 sm:gap-2">
+              <Badge className="border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[10px] text-emerald-800 sm:px-2.5 sm:text-xs">{currentTime}</Badge>
+              <Badge className="border-slate-200 bg-white/80 px-2 py-0.5 text-[10px] text-slate-700 sm:px-2.5 sm:text-xs">{currentDate}</Badge>
+              <Badge className="hidden border-emerald-200 bg-emerald-100 text-emerald-800 sm:inline-flex">BillMyGym: All features included</Badge>
             </div>
-            <h1 className="max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
+            <h1 className="max-w-3xl break-words text-2xl font-black tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
               {greeting}, {displayName}
             </h1>
-            <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-600 sm:mt-4 sm:text-base sm:leading-7">
+            <p className="mt-2 max-w-2xl text-xs font-medium leading-5 text-slate-600 sm:mt-4 sm:text-base sm:leading-7">
               Welcome back. Your gym dashboard is ready with collections, member health, and reminder updates for today.
             </p>
 
-            <div className="mt-5 flex flex-wrap gap-3 sm:mt-7">
-              <Link to="/app/members/new">
-                <Button className="h-12 rounded-full bg-slate-950 px-6 font-bold text-white hover:bg-slate-800">
-                  <Plus className="mr-2 h-4 w-4" />
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-7 sm:flex sm:flex-wrap sm:gap-3">
+              <Link to="/app/members/new" className="min-w-0">
+                <Button className="h-10 w-full rounded-full bg-slate-950 px-3 text-xs font-bold text-white hover:bg-slate-800 sm:h-12 sm:px-6 sm:text-sm">
+                  <Plus className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />
                   Add Member
                 </Button>
               </Link>
-              <Link to="/app/reminders">
-                <Button variant="outline" className="h-12 rounded-full border-white/80 bg-white/75 px-6 font-bold text-slate-800 hover:bg-white">
+              <Link to="/app/reminders" className="min-w-0">
+                <Button variant="outline" className="h-10 w-full rounded-full border-white/80 bg-white/75 px-3 text-xs font-bold text-slate-800 hover:bg-white sm:h-12 sm:px-6 sm:text-sm">
                   Open Reminders
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="ml-1.5 h-3.5 w-3.5 sm:ml-2 sm:h-4 sm:w-4" />
                 </Button>
               </Link>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <HeroMetric
               label="Collection Pace"
               value={`${collectionRate}%`}
