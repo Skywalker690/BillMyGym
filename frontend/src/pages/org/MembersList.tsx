@@ -207,7 +207,7 @@ export default function MembersList() {
             <div className="text-[10px] font-black uppercase tracking-[0.26em] text-emerald-700">Member Operations</div>
             <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">Members Directory</h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-600">
-              Members needing due-soon or overdue attention are surfaced first so the daily follow-up queue stays in front of your team.
+              Members needing due-soon or overdue attention are shown first.
             </p>
           </div>
           <Link to="/app/members/new">

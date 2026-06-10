@@ -7,7 +7,6 @@ import {
   Clock3,
   Crown,
   Info,
-  MessageCircleMore,
   Plus,
   TrendingUp,
   Users,
@@ -19,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
+import { useAuth } from "@/context/AuthContext";
 import { readCachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
 
 type ReminderLog = {
@@ -136,8 +136,40 @@ const shortDateTime = (value?: string) =>
       }).format(new Date(value))
     : "-";
 
+const dashboardNow = () => new Date();
+
+function greetingFor(date: Date) {
+  const hour = Number(new Intl.DateTimeFormat("en-IN", {
+    hour: "numeric",
+    hour12: false,
+    timeZone: INDIAN_TIME_ZONE,
+  }).format(date));
+
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  if (hour < 21) return "Good evening";
+  return "Good night";
+}
+
+function timeLabel(date: Date) {
+  return new Intl.DateTimeFormat("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: INDIAN_TIME_ZONE,
+  }).format(date);
+}
+
+function shortDashboardDate(date: Date) {
+  const day = new Intl.DateTimeFormat("en-IN", { day: "numeric", timeZone: INDIAN_TIME_ZONE }).format(date);
+  const month = new Intl.DateTimeFormat("en-IN", { month: "short", timeZone: INDIAN_TIME_ZONE }).format(date);
+  const weekday = new Intl.DateTimeFormat("en-IN", { weekday: "short", timeZone: INDIAN_TIME_ZONE }).format(date);
+  return `${day} ${month} ${weekday}`;
+}
+
 export default function Dashboard() {
   const { effectivePlan, isDemoWorkspace } = useDemoPlanPreview();
+  const { user } = useAuth();
   const { data: report, isLoading } = useQuery<DashboardReport>({
     queryKey: ["dashboardReport"],
     queryFn: async () => {
@@ -184,6 +216,11 @@ export default function Dashboard() {
   const subscriptionTooltipLabel = subscriptionValidity?.tooltipLabel;
   const subscriptionTooltipDate = subscriptionValidity?.tooltipDate;
   const subscriptionTooltipText = buildSubscriptionTooltip(subscriptionTooltipLabel, subscriptionTooltipDate);
+  const now = dashboardNow();
+  const displayName = user?.name?.trim() || user?.email || "there";
+  const greeting = greetingFor(now);
+  const currentTime = timeLabel(now);
+  const currentDate = shortDashboardDate(now);
 
   const statCards = [
     {
@@ -228,15 +265,15 @@ export default function Dashboard() {
         <div className="relative z-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
           <div>
             <div className="mb-4 flex flex-wrap items-center gap-2">
-              <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">Revenue OS</Badge>
-              <Badge className="hidden border-slate-200 bg-white/80 text-slate-700 sm:inline-flex">Live backend snapshot</Badge>
+              <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">{currentTime}</Badge>
+              <Badge className="border-slate-200 bg-white/80 text-slate-700">{currentDate}</Badge>
               <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">BillMyGym: All features included</Badge>
             </div>
             <h1 className="max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
-              Run your gym like a premium membership SaaS, not a spreadsheet.
+              {greeting}, {displayName}
             </h1>
             <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-600 sm:mt-4 sm:text-base sm:leading-7">
-              Collections, upcoming dues, and reminder health are surfaced in one operator view so you can protect revenue before memberships slip into overdue territory.
+              Welcome back. Your gym dashboard is ready with collections, member health, and reminder updates for today.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-3 sm:mt-7">

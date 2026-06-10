@@ -246,7 +246,7 @@ export default function Reports() {
               <Badge className="border-slate-200 bg-white/80 text-slate-700">{previewPlan ?? report?.planName ?? "PLAN"}</Badge>
             </div>
             <h1 className="mt-5 max-w-3xl text-4xl font-black tracking-tight text-slate-950 lg:text-5xl">
-              Month-wise revenue clarity for the gym.
+              Month-wise revenue.
             </h1>
             <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">
               Track admissions, membership collections, due payments, and member health in one export-ready workspace.
