@@ -2,6 +2,7 @@ package com.gymflow.service;
 
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.UsageMetric;
+import com.gymflow.domain.enums.OrganizationType;
 import com.gymflow.repository.AppUserRepository;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.UsageMetricRepository;
@@ -24,6 +25,9 @@ public class UsageMetricService {
 
     @Transactional
     public UsageMetric recordEmailSent(Organization organization) {
+        if (isDemoOrganization(organization)) {
+            return demoMetric(organization);
+        }
         UsageMetric metric = resolveMetric(organization);
         metric.incrementMonthlyEmailCount();
         refreshSnapshot(metric);
@@ -32,6 +36,9 @@ public class UsageMetricService {
 
     @Transactional
     public UsageMetric recordWhatsappDelivered(Organization organization) {
+        if (isDemoOrganization(organization)) {
+            return demoMetric(organization);
+        }
         UsageMetric metric = resolveMetric(organization);
         metric.incrementMonthlyWhatsappCount();
         refreshSnapshot(metric);
@@ -40,6 +47,9 @@ public class UsageMetricService {
 
     @Transactional
     public UsageMetric recordDigestSent(Organization organization) {
+        if (isDemoOrganization(organization)) {
+            return demoMetric(organization);
+        }
         UsageMetric metric = resolveMetric(organization);
         metric.incrementMonthlyDigestCount();
         refreshSnapshot(metric);
@@ -48,6 +58,9 @@ public class UsageMetricService {
 
     @Transactional
     public UsageMetric refreshMonthlySnapshot(Organization organization) {
+        if (isDemoOrganization(organization)) {
+            return demoMetric(organization);
+        }
         UsageMetric metric = resolveMetric(organization);
         refreshSnapshot(metric);
         return usageMetricRepository.save(metric);
@@ -60,6 +73,14 @@ public class UsageMetricService {
             currentMonth.getYear(),
             currentMonth.getMonthValue()
         ).orElseGet(() -> UsageMetric.empty(organization, currentMonth));
+    }
+
+    private boolean isDemoOrganization(Organization organization) {
+        return organization != null && organization.getOrganizationType() == OrganizationType.DEMO;
+    }
+
+    private UsageMetric demoMetric(Organization organization) {
+        return UsageMetric.empty(organization, YearMonth.now(APP_ZONE));
     }
 
     private void refreshSnapshot(UsageMetric metric) {

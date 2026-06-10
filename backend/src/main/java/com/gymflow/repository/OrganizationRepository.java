@@ -30,6 +30,8 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
 
     long countByDeletedFalse();
 
+    long countByDeletedFalseAndOrganizationTypeNot(OrganizationType organizationType);
+
     List<Organization> findAllByDeletedFalseAndStatus(OrganizationStatus status);
 
     List<Organization> findAllByDeletedFalseAndOrganizationTypeAndStatus(
@@ -39,7 +41,17 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
 
     long countByDeletedFalseAndStatus(OrganizationStatus status);
 
+    long countByDeletedFalseAndOrganizationTypeAndStatus(
+            OrganizationType organizationType,
+            OrganizationStatus status
+    );
+
     long countByDeletedFalseAndStatusIn(Collection<OrganizationStatus> statuses);
+
+    long countByDeletedFalseAndOrganizationTypeAndStatusIn(
+            OrganizationType organizationType,
+            Collection<OrganizationStatus> statuses
+    );
 
     long countByDeletedFalseAndOrganizationType(OrganizationType organizationType);
 
@@ -78,12 +90,26 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
             OffsetDateTime end
     );
 
+    long countByDeletedFalseAndOrganizationTypeAndCreatedAtBetween(
+            OrganizationType organizationType,
+            OffsetDateTime start,
+            OffsetDateTime end
+    );
+
     @Query("""
         select min(organization.createdAt)
         from Organization organization
         where organization.deleted = false
         """)
     OffsetDateTime findEarliestCreatedAt();
+
+    @Query("""
+        select min(organization.createdAt)
+        from Organization organization
+        where organization.deleted = false
+          and organization.organizationType = :organizationType
+        """)
+    OffsetDateTime findEarliestCreatedAtForOrganizationType(@Param("organizationType") OrganizationType organizationType);
 
     List<Organization> findAllByDeletedFalseAndStatusIn(
             List<OrganizationStatus> statuses

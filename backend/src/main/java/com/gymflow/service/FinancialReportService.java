@@ -260,7 +260,9 @@ public class FinancialReportService {
                 endDate = month.atEndOfMonth();
             }
             case "CURRENT_YEAR" -> {
-                startDate = LocalDate.of(today.getYear(), 1, 1);
+                LocalDate yearStart = LocalDate.of(today.getYear(), 1, 1);
+                LocalDate organizationStart = organizationStartMonth(organization, today).atDay(1);
+                startDate = organizationStart.isAfter(yearStart) ? organizationStart : yearStart;
                 endDate = today;
             }
             case "CUSTOM" -> {
@@ -283,6 +285,15 @@ public class FinancialReportService {
         }
 
         return new ReportWindow(normalizedPeriod, normalizedRange, startDate, endDate);
+    }
+
+    private YearMonth organizationStartMonth(Organization organization, LocalDate fallbackDate) {
+        if (organization.getCreatedAt() == null) {
+            return YearMonth.from(fallbackDate);
+        }
+        YearMonth joinedMonth = YearMonth.from(organization.getCreatedAt().atZoneSameInstant(APP_ZONE));
+        YearMonth currentMonth = YearMonth.from(fallbackDate);
+        return joinedMonth.isAfter(currentMonth) ? currentMonth : joinedMonth;
     }
 
     private List<YearMonth> monthsBetween(LocalDate startDate, LocalDate endDate) {

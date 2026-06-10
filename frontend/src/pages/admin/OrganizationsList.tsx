@@ -161,7 +161,7 @@ export default function OrganizationsList() {
           page,
           size: pageSize,
           search: deferredSearch || undefined,
-          includeAllTypes: scope === "ALL",
+          includeAllTypes: false,
           pilotOnly: scope === "DEMO",
           organizationType:
             scope === "ALL"

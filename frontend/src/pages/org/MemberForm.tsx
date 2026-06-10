@@ -46,7 +46,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
   const isEdit = mode === "edit";
   const isRenew = mode === "renew";
   const canLoadMember = Boolean((isEdit || isRenew) && memberId);
-  const [existingMember, setExistingMember] = useState(false);
+  const [existingMember, setExistingMember] = useState(isCreate);
 
   const { data: member, isLoading: memberLoading } = useQuery({
     queryKey: ["member", memberId],

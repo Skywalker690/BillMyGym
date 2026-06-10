@@ -61,12 +61,11 @@ public class AnalyticsService {
         LocalDate previousMonthStart = previousMonth.atDay(1);
         LocalDate previousMonthEnd = previousMonth.atEndOfMonth();
         LocalDate today = LocalDate.now(APP_ZONE);
-        long totalOrganizations = organizationRepository.countByDeletedFalse();
-        long activeOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.ACTIVE);
-        long trialOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.TRIAL);
-        long demoOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.DEMO);
-        long pausedOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.PAUSED);
-        long deactivatedOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.DEACTIVATED);
+        long totalOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.REGULAR);
+        long activeOrganizations = organizationRepository.countByDeletedFalseAndOrganizationTypeAndStatus(OrganizationType.REGULAR, OrganizationStatus.ACTIVE);
+        long trialOrganizations = organizationRepository.countByDeletedFalseAndOrganizationTypeAndStatus(OrganizationType.REGULAR, OrganizationStatus.TRIAL);
+        long pausedOrganizations = organizationRepository.countByDeletedFalseAndOrganizationTypeAndStatus(OrganizationType.REGULAR, OrganizationStatus.PAUSED);
+        long deactivatedOrganizations = organizationRepository.countByDeletedFalseAndOrganizationTypeAndStatus(OrganizationType.REGULAR, OrganizationStatus.DEACTIVATED);
         long overdueRegularOrganizations = organizationRepository.countByDeletedFalseAndOrganizationTypeAndStatusInAndSubscriptionDueDateBefore(
             OrganizationType.REGULAR,
             List.of(OrganizationStatus.ACTIVE, OrganizationStatus.TRIAL),
@@ -87,19 +86,22 @@ public class AnalyticsService {
             OrganizationStatus.ACTIVE
         );
         BigDecimal projectedMonthlyRevenue = subscriptionPricingService.projectedRevenue(activeRegularOrganizations);
-        var usage = usageMetricRepository.findByYearAndMonthAndDeletedFalse(
+        var usage = usageMetricRepository.findByYearAndMonthAndOrganizationType(
             currentMonth.getYear(),
-            currentMonth.getMonthValue()
+            currentMonth.getMonthValue(),
+            OrganizationType.REGULAR
         );
         long whatsappUsage = usage.stream().mapToLong(metric -> metric.getMonthlyWhatsappCount()).sum();
         long emailUsage = usage.stream().mapToLong(metric -> metric.getMonthlyEmailCount()).sum();
         long paymentFailures = subscriptionPaymentRepository.countByPaymentStatusAndDeletedFalse(SubscriptionPaymentStatus.FAILED);
         long pendingPayments = subscriptionPaymentRepository.countByPaymentStatusAndDeletedFalse(SubscriptionPaymentStatus.PENDING);
-        long currentMonthNewOrganizations = organizationRepository.countByDeletedFalseAndCreatedAtBetween(
+        long currentMonthNewOrganizations = organizationRepository.countByDeletedFalseAndOrganizationTypeAndCreatedAtBetween(
+            OrganizationType.REGULAR,
             startOfDay(monthStart),
             endOfDay(monthEnd)
         );
-        long previousMonthNewOrganizations = organizationRepository.countByDeletedFalseAndCreatedAtBetween(
+        long previousMonthNewOrganizations = organizationRepository.countByDeletedFalseAndOrganizationTypeAndCreatedAtBetween(
+            OrganizationType.REGULAR,
             startOfDay(previousMonthStart),
             endOfDay(previousMonthEnd)
         );
@@ -107,7 +109,7 @@ public class AnalyticsService {
             totalOrganizations,
             activeOrganizations,
             trialOrganizations,
-            demoOrganizations,
+            0,
             pausedOrganizations,
             overdueRegularOrganizations,
             deactivatedOrganizations,
@@ -157,7 +159,8 @@ public class AnalyticsService {
             .mapToObj(month -> {
                 LocalDate startDate = LocalDate.of(targetYear, month, 1);
                 LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
-                long organizationsJoined = organizationRepository.countByDeletedFalseAndCreatedAtBetween(
+                long organizationsJoined = organizationRepository.countByDeletedFalseAndOrganizationTypeAndCreatedAtBetween(
+                    OrganizationType.REGULAR,
                     startOfDay(startDate),
                     endOfDay(endDate)
                 );
@@ -183,7 +186,7 @@ public class AnalyticsService {
             .map(status -> breakdown(
                 status.name(),
                 label(status.name()),
-                organizationRepository.countByDeletedFalseAndStatus(status),
+                organizationRepository.countByDeletedFalseAndOrganizationTypeAndStatus(OrganizationType.REGULAR, status),
                 BigDecimal.ZERO,
                 totalOrganizations
             ))
@@ -207,17 +210,8 @@ public class AnalyticsService {
                 totalOrganizations
             ))
             .toList());
-        long demoOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.DEMO);
-        if (demoOrganizations > 0) {
-            items.add(breakdown(
-                "DEMO",
-                label("DEMO"),
-                demoOrganizations,
-                BigDecimal.ZERO,
-                totalOrganizations
-            ));
-        }
-        long renewalRequiredOrganizations = organizationRepository.countByDeletedFalseAndStatusIn(
+        long renewalRequiredOrganizations = organizationRepository.countByDeletedFalseAndOrganizationTypeAndStatusIn(
+            OrganizationType.REGULAR,
             List.of(OrganizationStatus.PAUSED, OrganizationStatus.DEACTIVATED)
         );
         if (renewalRequiredOrganizations > 0) {
@@ -232,7 +226,7 @@ public class AnalyticsService {
         items.add(breakdown(
             "TRIAL",
             "Free Trial Gyms",
-            organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.TRIAL),
+            organizationRepository.countByDeletedFalseAndOrganizationTypeAndStatus(OrganizationType.REGULAR, OrganizationStatus.TRIAL),
             BigDecimal.ZERO,
             totalOrganizations
         ));
@@ -326,7 +320,7 @@ public class AnalyticsService {
     }
 
     private List<Integer> resolveAvailableYears(int currentYear) {
-        OffsetDateTime earliestOrganizationCreatedAt = organizationRepository.findEarliestCreatedAt();
+        OffsetDateTime earliestOrganizationCreatedAt = organizationRepository.findEarliestCreatedAtForOrganizationType(OrganizationType.REGULAR);
         LocalDate earliestPaidPaymentDate = subscriptionPaymentRepository.findEarliestPaidPaymentDate();
         Integer earliestOrganizationYear = earliestOrganizationCreatedAt == null
             ? null

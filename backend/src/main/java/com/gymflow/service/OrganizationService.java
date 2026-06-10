@@ -265,13 +265,13 @@ public class OrganizationService {
     }
 
     private OrganizationDirectorySummary buildDirectorySummary() {
-        long totalOrganizations = organizationRepository.countByDeletedFalse();
-        long totalActiveOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.ACTIVE);
-        long totalRenewalPendingOrganizations = organizationRepository.countByDeletedFalseAndStatusIn(
+        long totalOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.REGULAR);
+        long totalActiveOrganizations = organizationRepository.countByDeletedFalseAndOrganizationTypeAndStatus(OrganizationType.REGULAR, OrganizationStatus.ACTIVE);
+        long totalRenewalPendingOrganizations = organizationRepository.countByDeletedFalseAndOrganizationTypeAndStatusIn(
+            OrganizationType.REGULAR,
             List.of(OrganizationStatus.PAUSED, OrganizationStatus.DEACTIVATED)
         );
-        long totalDemoOrganizations = organizationRepository.countByDeletedFalseAndOrganizationType(OrganizationType.DEMO);
-        long totalTrialOrganizations = organizationRepository.countByDeletedFalseAndStatus(OrganizationStatus.TRIAL);
+        long totalTrialOrganizations = organizationRepository.countByDeletedFalseAndOrganizationTypeAndStatus(OrganizationType.REGULAR, OrganizationStatus.TRIAL);
         Map<com.gymflow.domain.enums.SubscriptionPlan, Long> regularPlanCounts = organizationRepository
             .countBySubscriptionPlanForOrganizationTypeExcludingStatus(OrganizationType.REGULAR, OrganizationStatus.TRIAL)
             .stream()
@@ -286,14 +286,6 @@ public class OrganizationService {
                 return new OrganizationPlanSummary(plan.name(), "BillMyGym Plan", count, percentage);
             })
             .toList());
-        if (totalDemoOrganizations > 0) {
-            subscriptionDistribution.add(new OrganizationPlanSummary(
-                "DEMO",
-                "Demo Workspaces",
-                totalDemoOrganizations,
-                totalOrganizations <= 0 ? 0 : (int) Math.round((totalDemoOrganizations * 100.0) / totalOrganizations)
-            ));
-        }
         subscriptionDistribution.add(new OrganizationPlanSummary(
             "TRIAL",
             "Free Trial Gyms",
@@ -304,7 +296,7 @@ public class OrganizationService {
             totalOrganizations,
             totalActiveOrganizations,
             totalRenewalPendingOrganizations,
-            totalDemoOrganizations,
+            0,
             totalTrialOrganizations,
             subscriptionDistribution
         );

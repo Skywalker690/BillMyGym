@@ -83,7 +83,7 @@ public class ReportService {
             revenueSummary,
             revenueSegmentation,
             memberSummary,
-            monthlyMemberJoins(organizationId),
+            monthlyMemberJoins(organization),
             toPlanAccessResponse(planAccessService.summary(organization)),
             toPricingResponse(subscriptionPricingService.currentPrice(organization)),
             buildSubscriptionValidity(organization),
@@ -200,15 +200,19 @@ public class ReportService {
         return organization.getSubscriptionDueDate();
     }
 
-    private List<MonthlyMemberJoinResponse> monthlyMemberJoins(Long organizationId) {
+    private List<MonthlyMemberJoinResponse> monthlyMemberJoins(Organization organization) {
         YearMonth currentMonth = YearMonth.now(APP_ZONE);
-        YearMonth startMonth = currentMonth.minusMonths(5);
+        YearMonth startMonth = organizationStartMonth(organization, currentMonth);
+        YearMonth trailingWindowStart = currentMonth.minusMonths(5);
+        if (startMonth.isBefore(trailingWindowStart)) {
+            startMonth = trailingWindowStart;
+        }
         DateTimeFormatter labelFormatter = DateTimeFormatter.ofPattern("MMM");
 
         OffsetDateTime startAt = startMonth.atDay(1).atStartOfDay(APP_ZONE).toOffsetDateTime();
         OffsetDateTime endAt = currentMonth.plusMonths(1).atDay(1).atStartOfDay(APP_ZONE).toOffsetDateTime();
         Map<YearMonth, Long> joinedMembersByMonth = memberRepository.countJoinedMembersByMonth(
-                organizationId,
+                organization.getId(),
                 startAt,
                 endAt
             )
@@ -218,9 +222,11 @@ public class ReportService {
                 row -> row.getTotal() == null ? 0L : row.getTotal()
             ));
 
-        return IntStream.rangeClosed(0, 5)
+        YearMonth chartStartMonth = startMonth;
+        int monthCount = Math.toIntExact(ChronoUnit.MONTHS.between(chartStartMonth, currentMonth)) + 1;
+        return IntStream.range(0, monthCount)
             .mapToObj(offset -> {
-                YearMonth month = startMonth.plusMonths(offset);
+                YearMonth month = chartStartMonth.plusMonths(offset);
                 return new MonthlyMemberJoinResponse(
                     month.toString(),
                     month.format(labelFormatter),
@@ -228,6 +234,14 @@ public class ReportService {
                 );
             })
             .toList();
+    }
+
+    private YearMonth organizationStartMonth(Organization organization, YearMonth fallbackMonth) {
+        if (organization.getCreatedAt() == null) {
+            return fallbackMonth;
+        }
+        YearMonth joinedMonth = YearMonth.from(organization.getCreatedAt().atZoneSameInstant(APP_ZONE));
+        return joinedMonth.isAfter(fallbackMonth) ? fallbackMonth : joinedMonth;
     }
 
     private Long requireOrganizationId() {

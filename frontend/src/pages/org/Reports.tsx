@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   BarChart3,
   CalendarRange,
+  ChevronDown,
   Download,
   FileSpreadsheet,
   FileText,
@@ -74,6 +75,8 @@ const rangeOptions: Array<{ value: ReportRange; label: string }> = [
   { value: "current_year", label: "Current year" },
   { value: "custom", label: "Custom range" },
 ];
+
+const rangeLabel = (value: ReportRange) => rangeOptions.find((option) => option.value === value)?.label ?? "Date range";
 
 const INDIAN_TIME_ZONE = "Asia/Kolkata";
 
@@ -318,10 +321,9 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="grid gap-5 p-5 xl:grid-cols-[0.72fr_1.28fr]">
-            <div>
-              <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Period</div>
-              <div className="grid grid-cols-2 gap-2 rounded-[1.2rem] border border-white/80 bg-white/80 p-1.5">
+        <div className="flex flex-col gap-3 p-3 sm:p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/80 bg-white/80 p-1">
                 {(["monthly", "yearly"] as ReportPeriod[]).map((item) => (
                   <button
                     key={item}
@@ -333,9 +335,9 @@ export default function Reports() {
                       }
                     }}
                     className={cn(
-                      "h-11 rounded-[1rem] text-sm font-black capitalize transition-all",
+                      "h-9 rounded-lg px-3 text-xs font-black capitalize transition-all",
                       period === item
-                        ? "bg-slate-950 text-white shadow-[0_12px_26px_-16px_rgba(15,23,42,0.8)]"
+                        ? "bg-slate-950 text-white shadow-[0_10px_22px_-16px_rgba(15,23,42,0.8)]"
                         : "text-slate-600 hover:bg-slate-50",
                     )}
                   >
@@ -343,65 +345,69 @@ export default function Reports() {
                   </button>
                 ))}
               </div>
-            </div>
 
-            <div>
-              <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Date Range</div>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                {rangeOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setRange(option.value)}
-                    className={cn(
-                      "h-11 rounded-[1rem] border px-3 text-xs font-black transition-all",
-                      range === option.value
-                        ? "border-slate-950 bg-slate-950 text-white shadow-[0_12px_26px_-16px_rgba(15,23,42,0.8)]"
-                        : "border-white/80 bg-white/80 text-slate-600 hover:bg-slate-50",
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 rounded-xl border-white/80 bg-white/85 px-3 text-xs font-black text-slate-700 hover:bg-white"
+                    >
+                      <CalendarRange className="mr-2 h-3.5 w-3.5" />
+                      {rangeLabel(range)}
+                      <ChevronDown className="ml-2 h-3.5 w-3.5" />
+                    </Button>
+                  }
+                />
+                <DropdownMenuContent align="start" className="w-48 rounded-2xl border border-white/80 bg-white/95 p-2 shadow-[0_18px_40px_-24px_rgba(15,23,42,0.32)] backdrop-blur-xl">
+                  {rangeOptions.map((option) => (
+                    <DropdownMenuItem
+                      key={option.value}
+                      className={cn(
+                        "rounded-xl px-3 py-2 text-xs font-black",
+                        range === option.value && "bg-slate-950 text-white focus:bg-slate-950 focus:text-white",
+                      )}
+                      onClick={() => setRange(option.value)}
+                    >
+                      {option.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          </div>
 
         {range === "custom" && (
-          <div className="border-t border-white/70 p-5">
-            <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
-              <label className="space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">From</span>
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:w-[420px]">
+              <label className="space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">From</span>
                 <Input
                   type="date"
                   value={customFrom}
                   max={customTo < todayIso ? customTo : todayIso}
                   onChange={(event) => updateCustomFrom(event.target.value)}
-                  className="h-11 rounded-xl bg-white/85"
+                  className="h-10 rounded-xl bg-white/85 text-xs font-bold"
                 />
               </label>
-              <label className="space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">To</span>
+              <label className="space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">To</span>
                 <Input
                   type="date"
                   value={customTo}
                   min={customFrom}
                   max={todayIso}
                   onChange={(event) => updateCustomTo(event.target.value)}
-                  className="h-11 rounded-xl bg-white/85"
+                  className="h-10 rounded-xl bg-white/85 text-xs font-bold"
                 />
               </label>
-              <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
-                Max 36 months
-              </div>
-            </div>
             {customRangeInvalid && (
-              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
+              <div className="sm:col-span-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
                 {customRangeMessage}
               </div>
             )}
           </div>
         )}
+          </div>
 
       </section>
 
