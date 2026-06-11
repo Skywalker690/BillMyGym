@@ -8,6 +8,7 @@ import {
   Crown,
   Info,
   Plus,
+  RotateCcw,
   TrendingUp,
   Users,
   Wallet,
@@ -19,7 +20,8 @@ import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
 import { useAuth } from "@/context/AuthContext";
-import { readCachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
+import { toast } from "sonner";
+import { DEMO_ORGANIZATION_ID, demoDashboardReport } from "@/lib/demoWorkspaceData";
 
 type ReminderLog = {
   id: number;
@@ -101,11 +103,6 @@ type DashboardReport = {
   overdue?: MembershipSnapshot[];
 };
 
-type SubscriptionStatusSnapshot = {
-  organizationType?: "REGULAR" | "DEMO";
-  organizationName?: string;
-};
-
 const INDIAN_TIME_ZONE = "Asia/Kolkata";
 
 const money = (value: number | string | undefined) =>
@@ -178,30 +175,31 @@ function dashboardDisplayName(user?: { name?: string; email?: string } | null) {
 export default function Dashboard() {
   const { effectivePlan, isDemoWorkspace } = useDemoPlanPreview();
   const { user } = useAuth();
+  const now = dashboardNow();
+  const isDemoDashboard = isDemoWorkspace || user?.organizationId === DEMO_ORGANIZATION_ID;
   const { data: report, isLoading } = useQuery<DashboardReport>({
     queryKey: ["dashboardReport"],
     queryFn: async () => {
       const res = await api.get("/reports/dashboard");
       return res.data;
     },
+    enabled: !isDemoDashboard,
   });
 
-  const subscriptionStatus = readCachedSubscriptionStatus() as SubscriptionStatusSnapshot | null;
-
-  if (isLoading) {
+  if (!isDemoDashboard && isLoading) {
     return <div className="p-8">Loading dashboard...</div>;
   }
 
-  const revenue = report?.revenue ?? {};
-  const revenueSegmentation = report?.revenueSegmentation ?? {};
-  const summary = report?.memberSummary ?? {};
-  const expiringSoon = report?.expiringSoon ?? [];
-  const overdue = report?.overdue ?? [];
-  const monthlyMemberJoins = report?.monthlyMemberJoins ?? [];
+  const dashboardReport = isDemoDashboard ? demoDashboardReport(now) : report;
+  const revenue = dashboardReport?.revenue ?? {};
+  const revenueSegmentation = dashboardReport?.revenueSegmentation ?? {};
+  const summary = dashboardReport?.memberSummary ?? {};
+  const expiringSoon = dashboardReport?.expiringSoon ?? [];
+  const overdue = dashboardReport?.overdue ?? [];
+  const monthlyMemberJoins = dashboardReport?.monthlyMemberJoins ?? [];
   const joinedThisMonth = monthlyMemberJoins.at(-1)?.joinedMembers ?? 0;
-  const isDemoGym = subscriptionStatus?.organizationType === "DEMO";
-  const subscriptionValidity = report?.subscriptionValidity;
-  const subscriptionPricing = report?.subscriptionPricing;
+  const subscriptionValidity = dashboardReport?.subscriptionValidity;
+  const subscriptionPricing = dashboardReport?.subscriptionPricing;
 
   const activeMembersTotal = Number(revenue.activeMembers ?? summary.activeMembers ?? 0);
   const activeMembersPendingCollection = Number(revenue.activeMembersPendingCollection ?? 0);
@@ -224,7 +222,6 @@ export default function Dashboard() {
   const subscriptionTooltipLabel = subscriptionValidity?.tooltipLabel;
   const subscriptionTooltipDate = subscriptionValidity?.tooltipDate;
   const subscriptionTooltipText = buildSubscriptionTooltip(subscriptionTooltipLabel, subscriptionTooltipDate);
-  const now = dashboardNow();
   const displayName = dashboardDisplayName(user);
   const greeting = greetingFor(now);
   const currentTime = timeLabel(now);
@@ -267,7 +264,6 @@ export default function Dashboard() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-3 pb-8 pt-3 sm:space-y-6 sm:p-6 lg:space-y-8 lg:p-8">
-      {isDemoGym && <DemoWorkspaceBanner organizationName={subscriptionStatus?.organizationName} previewPlan={effectivePlan} />}
       <section className="relative overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[2rem] sm:p-7 lg:p-10">
         <div className="absolute inset-y-0 right-0 w-[50%] bg-[radial-gradient(ellipse_at_top_right,rgba(22,163,74,0.08),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(245,158,11,0.06),transparent_50%)]" />
         <div className="relative z-10 grid gap-5 sm:gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
@@ -297,6 +293,17 @@ export default function Dashboard() {
                   <ArrowRight className="ml-1.5 h-3.5 w-3.5 sm:ml-2 sm:h-4 sm:w-4" />
                 </Button>
               </Link>
+              {isDemoDashboard && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="col-span-2 h-10 rounded-full border-sky-200 bg-sky-50 px-3 text-xs font-bold text-sky-800 hover:bg-sky-100 sm:h-12 sm:px-6 sm:text-sm"
+                  onClick={() => toast.success("Demo dashboard restored")}
+                >
+                  <RotateCcw className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />
+                  Reset Demo View
+                </Button>
+              )}
             </div>
           </div>
 
@@ -330,7 +337,7 @@ export default function Dashboard() {
       </section>
 
       {subscriptionPricing && (
-        <PlanBillingPanel planName={(isDemoWorkspace ? effectivePlan : report?.planName) ?? "BILLMYGYM"} pricing={subscriptionPricing} />
+        <PlanBillingPanel planName={(isDemoWorkspace ? effectivePlan : dashboardReport?.planName) ?? "BILLMYGYM"} pricing={subscriptionPricing} />
       )}
 
       <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
@@ -487,41 +494,6 @@ export default function Dashboard() {
         </div>
       </section>
     </div>
-  );
-}
-
-function DemoWorkspaceBanner({
-  organizationName,
-  previewPlan,
-}: {
-  organizationName?: string;
-  previewPlan: "BILLMYGYM";
-}) {
-  return (
-    <section className="relative overflow-hidden rounded-[1.9rem] border border-sky-200 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(255,255,255,0.92)_45%,rgba(34,197,94,0.12))] p-6 shadow-sm">
-      <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-sky-200/40 blur-2xl" />
-      <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="inline-flex items-center rounded-full border border-sky-200 bg-sky-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-sky-800">
-            Demo Workspace
-          </div>
-          <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-950">
-            {organizationName || "This gym"} is running in demo mode.
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-600">
-            This workspace is intended for showcasing workflows and product demonstrations. Billing is disabled, and data here can be used safely for walkthroughs.
-          </p>
-        </div>
-        <div className="flex flex-col gap-2">
-          <div className="rounded-[1.3rem] border border-white/80 bg-white/80 px-4 py-3 text-sm font-bold text-sky-800 shadow-sm">
-            Demo gym clearly marked
-          </div>
-          <div className="rounded-[1.3rem] border border-slate-900/5 bg-slate-950 px-4 py-3 text-sm font-black uppercase tracking-[0.18em] text-white shadow-sm">
-            {previewPlan}
-          </div>
-        </div>
-      </div>
-    </section>
   );
 }
 

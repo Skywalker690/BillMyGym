@@ -5,12 +5,17 @@ import com.gymflow.domain.enums.OrganizationType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface UsageMetricRepository extends JpaRepository<UsageMetric, Long> {
 
     Optional<UsageMetric> findByOrganizationIdAndYearAndMonthAndDeletedFalse(Long organizationId, int year, int month);
+
+    @Modifying
+    @Query("delete from UsageMetric metric where metric.organization.id = :organizationId")
+    int deleteAllByOrganizationId(@Param("organizationId") Long organizationId);
 
     List<UsageMetric> findByYearAndMonthAndDeletedFalse(int year, int month);
 

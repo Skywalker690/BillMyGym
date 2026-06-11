@@ -39,6 +39,7 @@ import OrganizationDetail from "./pages/admin/OrganizationDetail";
 import GlobalAuditLogs from "./pages/admin/GlobalAuditLogs";
 import OrganizationAuditLogs from "./pages/admin/OrganizationAuditLogs";
 import AdminReferralAnalytics from "./pages/admin/AdminReferralAnalytics";
+import DemoManagement from "./pages/admin/DemoManagement";
 
 import ReferralDashboard from "./pages/org/ReferralDashboard";
 
@@ -79,6 +80,7 @@ export default function App() {
                 <Route path="/app/organizations/:id/audit-logs" element={<OrganizationAuditLogs />} />
                 <Route path="/app/audit-logs" element={<GlobalAuditLogs />} />
                 <Route path="/app/referrals/analytics" element={<AdminReferralAnalytics />} />
+                <Route path="/app/demo-management" element={<DemoManagement />} />
               </Route>
 
               {/* ORG_ADMIN Routes */}

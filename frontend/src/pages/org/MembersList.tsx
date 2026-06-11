@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import api from "@/lib/api";
 import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
 import { readCachedSubscriptionStatus, type CachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
+import { DEMO_ORGANIZATION, DEMO_ORGANIZATION_ID, demoMembersPage, demoReminderPreview } from "@/lib/demoWorkspaceData";
+import { readDemoBaileysRecipient, readDemoBaileysUrl, runDemoBaileysReminders } from "@/lib/demoBaileysClient";
 
 const PAGE_SIZE = 40;
 const INDIAN_TIME_ZONE = "Asia/Kolkata";
@@ -28,7 +30,6 @@ const formatDate = (value?: string) =>
     ? new Intl.DateTimeFormat("en-IN", {
         day: "2-digit",
         month: "short",
-        year: "numeric",
         timeZone: INDIAN_TIME_ZONE,
       }).format(new Date(`${value}T00:00:00+05:30`))
     : "-";
@@ -41,7 +42,7 @@ const money = (value?: number | string | null) =>
   }).format(Number(value ?? 0));
 
 export default function MembersList() {
-  const { effectivePlanAccess } = useDemoPlanPreview();
+  const { effectivePlanAccess, isDemoWorkspace } = useDemoPlanPreview();
   const { user } = useAuth();
   const [searchInput, setSearchInput] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
@@ -51,6 +52,7 @@ export default function MembersList() {
   const [deactivateMember, setDeactivateMember] = useState<any | null>(null);
   const [reminderMember, setReminderMember] = useState<any | null>(null);
   const queryClient = useQueryClient();
+  const isDemoDirectory = isDemoWorkspace || user?.organizationId === DEMO_ORGANIZATION_ID;
 
   const { data, isLoading } = useQuery({
     queryKey: ["members", page, appliedSearch, memberTab],
@@ -65,19 +67,21 @@ export default function MembersList() {
       });
       return res.data;
     },
+    enabled: !isDemoDirectory,
   });
 
-  const { data: organization } = useQuery({
+  const { data: liveOrganization } = useQuery({
     queryKey: ["membersDirectoryOrganization", user?.organizationId],
     queryFn: async () => {
       const res = await api.get(`/organizations/${user?.organizationId}`);
       return res.data;
     },
-    enabled: Boolean(user?.organizationId),
+    enabled: Boolean(user?.organizationId) && !isDemoDirectory,
     staleTime: 60_000,
   });
 
   const subscriptionStatus = readCachedSubscriptionStatus() as MemberListSubscriptionStatus | null;
+  const organization = isDemoDirectory ? DEMO_ORGANIZATION : liveOrganization;
 
   const reminderPreviewQuery = useQuery({
     queryKey: ["whatsappReminderPreview", reminderMember?.id],
@@ -85,12 +89,12 @@ export default function MembersList() {
       const res = await api.get(`/members/${reminderMember.id}/whatsapp-reminder/preview`);
       return res.data;
     },
-    enabled: Boolean(reminderMember?.id),
+    enabled: Boolean(reminderMember?.id) && !isDemoDirectory,
     retry: false,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.delete(`/members/${id}`),
+    mutationFn: (id: string) => isDemoDirectory ? Promise.resolve({ data: { success: true } } as any) : api.delete(`/members/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardReport"] });
@@ -102,6 +106,9 @@ export default function MembersList() {
 
   const quickRenewMutation = useMutation({
     mutationFn: async (member: any) => {
+      if (isDemoDirectory) {
+        return { data: { success: true } };
+      }
       const monthlyMembershipFee = Number(organization?.monthlyMembershipFee ?? 0);
       if (monthlyMembershipFee <= 0) {
         throw new Error("Monthly membership fee is not configured for this organization");
@@ -151,7 +158,29 @@ export default function MembersList() {
   });
 
   const sendReminderMutation = useMutation({
-    mutationFn: (memberId: string | number) => api.post(`/members/${memberId}/whatsapp-reminder/send`),
+    mutationFn: async (memberOrId: any) => {
+      if (!isDemoDirectory) {
+        return api.post(`/members/${memberOrId}/whatsapp-reminder/send`);
+      }
+      const member = typeof memberOrId === "object"
+        ? memberOrId
+        : reminderMember;
+      const preview = demoReminderPreview(member);
+      const result = await runDemoBaileysReminders([{
+        memberId: member?.id,
+        memberName: member?.fullName,
+        phone: readDemoBaileysRecipient() || member?.phone,
+        dueDate: preview.dueDate,
+        pendingAmount: preview.pendingAmount,
+        message: preview.message,
+      }], readDemoBaileysUrl());
+      return {
+        data: {
+          sent: result.messagesSent > 0,
+          failureReason: result.failedMessages > 0 ? "Connect demo WhatsApp from the Reminders page before sending." : undefined,
+        },
+      } as any;
+    },
     onSuccess: (response) => {
       const result = response.data;
       queryClient.invalidateQueries({ queryKey: ["reminderReport"] });
@@ -168,8 +197,17 @@ export default function MembersList() {
     },
   });
 
+  const demoData = useMemo(() => demoMembersPage({
+    page,
+    size: PAGE_SIZE,
+    search: appliedSearch,
+    memberStatus: memberTab,
+  }), [appliedSearch, memberTab, page]);
+  const dataForView = isDemoDirectory ? demoData : data;
+  const reminderPreview = isDemoDirectory && reminderMember ? demoReminderPreview(reminderMember) : reminderPreviewQuery.data;
+
   const members = useMemo(() => {
-    const items = [...(data?.members ?? [])];
+    const items = [...(dataForView?.members ?? [])];
     items.sort((left: any, right: any) => {
       const rankDifference = renewalPriority(left) - renewalPriority(right);
       if (rankDifference !== 0) {
@@ -185,17 +223,17 @@ export default function MembersList() {
       return String(left.fullName ?? "").localeCompare(String(right.fullName ?? ""));
     });
     return items;
-  }, [data?.members]);
-  const summary = data?.summary ?? {};
+  }, [dataForView?.members]);
+  const summary = dataForView?.summary ?? {};
   const memberLimit = summary.memberLimit;
-  const canUseMemberMessaging = Boolean(effectivePlanAccess(subscriptionStatus?.planAccess).canUsePremiumFeatures);
+  const canUseMemberMessaging = isDemoDirectory || Boolean(effectivePlanAccess(subscriptionStatus?.planAccess).canUsePremiumFeatures);
   const memberTabs = [
     { id: "ALL" as const, label: "All Members", count: summary.totalMembers ?? 0 },
     { id: "ACTIVE" as const, label: "Active", count: summary.activeMembers ?? 0 },
     { id: "DEACTIVATED" as const, label: "Deactivated", count: summary.deactivatedMembers ?? 0 },
   ];
 
-  if (isLoading) {
+  if (isLoading && !isDemoDirectory) {
     return <div className="p-8">Loading members...</div>;
   }
 
@@ -306,7 +344,7 @@ export default function MembersList() {
               <tbody className="divide-y divide-black/5">
                 {members.map((member: any) => {
                   const membership = member.currentMembership;
-                  const status = membership?.expiringSoon ? "EXPIRING_SOON" : membership?.status ?? "NO_MEMBERSHIP";
+                  const status = membership?.displayStatus ?? (membership?.expired ? "EXPIRED" : membership?.expiringSoon ? "EXPIRING_SOON" : membership?.status ?? "NO_MEMBERSHIP");
                   return (
                     <tr key={member.id} className="transition-colors hover:bg-white/50">
                       <td className="min-w-[180px] sm:min-w-[240px] px-2 sm:px-6 py-3 sm:py-5">
@@ -436,13 +474,13 @@ export default function MembersList() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-semibold text-slate-500">
-          Page {(data?.page ?? 0) + 1} of {Math.max(data?.totalPages ?? 1, 1)} · {data?.totalElements ?? 0} members
+          Page {(dataForView?.page ?? 0) + 1} of {Math.max(dataForView?.totalPages ?? 1, 1)} · {dataForView?.totalElements ?? 0} members
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" disabled={data?.first} onClick={() => setPage((value) => Math.max(value - 1, 0))}>
+          <Button variant="outline" disabled={dataForView?.first} onClick={() => setPage((value) => Math.max(value - 1, 0))}>
             Previous
           </Button>
-          <Button variant="outline" disabled={data?.last} onClick={() => setPage((value) => value + 1)}>
+          <Button variant="outline" disabled={dataForView?.last} onClick={() => setPage((value) => value + 1)}>
             Next
           </Button>
         </div>
@@ -492,9 +530,9 @@ export default function MembersList() {
         {reminderMember && (
           <WhatsappReminderModal
             member={reminderMember}
-            preview={reminderPreviewQuery.data}
-            isLoading={reminderPreviewQuery.isLoading}
-            error={reminderPreviewQuery.error}
+            preview={reminderPreview}
+            isLoading={!isDemoDirectory && reminderPreviewQuery.isLoading}
+            error={isDemoDirectory ? null : reminderPreviewQuery.error}
             isSubmitting={sendReminderMutation.isPending}
             hasFailed={sendReminderMutation.data?.data?.sent === false}
             onCancel={() => {
@@ -503,7 +541,7 @@ export default function MembersList() {
                 sendReminderMutation.reset();
               }
             }}
-            onConfirm={() => sendReminderMutation.mutate(reminderMember.id)}
+            onConfirm={() => sendReminderMutation.mutate(reminderMember)}
           />
         )}
       </AnimatePresence>
@@ -1061,6 +1099,7 @@ function StatusBadge({ status }: { status: string }) {
   const active = status === "ACTIVE";
   const expiring = status === "EXPIRING_SOON";
   const overdue = status === "OVERDUE";
+  const expired = status === "EXPIRED";
   return (
     <Badge
       variant="outline"
@@ -1069,13 +1108,15 @@ function StatusBadge({ status }: { status: string }) {
         active && "bg-emerald-100 text-emerald-800",
         expiring && "bg-amber-100 text-amber-800",
         overdue && "bg-rose-100 text-rose-800",
+        expired && "bg-slate-900 text-white",
         status === "NO_MEMBERSHIP" && "bg-slate-100 text-slate-600",
       )}
     >
       {active && <CheckCircle2 className="h-3.5 w-3.5" />}
       {expiring && <Clock3 className="h-3.5 w-3.5" />}
       {overdue && <ShieldAlert className="h-3.5 w-3.5" />}
-      {!active && !expiring && !overdue && status === "NO_MEMBERSHIP" && <XCircle className="h-3.5 w-3.5" />}
+      {expired && <ShieldAlert className="h-3.5 w-3.5" />}
+      {!active && !expiring && !overdue && !expired && status === "NO_MEMBERSHIP" && <XCircle className="h-3.5 w-3.5" />}
       {status.replace("_", " ")}
     </Badge>
   );
@@ -1086,6 +1127,14 @@ function CoverageBadge({ membership }: { membership?: any }) {
     return (
       <Badge variant="outline" className="rounded-full border-transparent bg-slate-100 px-2.5 py-1 font-black tracking-[0.14em] text-slate-700">
         N/A
+      </Badge>
+    );
+  }
+
+  if (membership.expired) {
+    return (
+      <Badge variant="outline" className="rounded-full border-transparent bg-slate-900 px-2.5 py-1 font-black tracking-[0.14em] text-white">
+        Expired
       </Badge>
     );
   }

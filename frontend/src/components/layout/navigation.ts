@@ -6,6 +6,7 @@ import {
   Building2,
   Clock3,
   CreditCard,
+  DatabaseZap,
   LayoutDashboard,
   Gift,
   type LucideIcon,
@@ -50,6 +51,12 @@ export const getSidebarNavItems = (
         label: "Audit Logs",
         href: "/app/audit-logs",
         icon: ClipboardList,
+        section: "Platform",
+      },
+      {
+        label: "Demo Management",
+        href: "/app/demo-management",
+        icon: DatabaseZap,
         section: "Platform",
       },
     ];
@@ -119,6 +126,12 @@ export const getProfileNavItems = (
         label: "Referrals",
         href: "/app/referrals/analytics",
         icon: Gift,
+        section: "Account",
+      },
+      {
+        label: "Demo Management",
+        href: "/app/demo-management",
+        icon: DatabaseZap,
         section: "Account",
       },
     ];
@@ -198,6 +211,12 @@ export const getPageContext = (pathname: string, role: AppRole | null | undefine
       eyebrow: "Audit Command",
       title: "Audit Logs",
       description: "Review the latest organization-admin login activity from one dedicated audit log.",
+    },
+    {
+      match: "/app/demo-management",
+      eyebrow: "Demo Workspace",
+      title: "Demo Management",
+      description: "Reset the internal demo organization to deterministic sales data.",
     },
     {
       match: "/app/dashboard",

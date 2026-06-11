@@ -12,12 +12,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface NotificationLogRepository extends JpaRepository<NotificationLog, Long> {
 
     long countByOrganizationIdAndDeletedFalse(Long organizationId);
+
+    @Modifying
+    @Query("delete from NotificationLog notification where notification.organization.id = :organizationId")
+    int deleteAllByOrganizationId(@Param("organizationId") Long organizationId);
 
     @EntityGraph(attributePaths = {"member", "organization"})
     List<NotificationLog> findByOrganizationIdAndDeletedFalseOrderByCreatedAtDesc(Long organizationId);

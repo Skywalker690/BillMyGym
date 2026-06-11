@@ -16,3 +16,7 @@ backend.zip
 /backend/boot.log
 /backend/src/main/resources/.env-aws
 backend/src/main/resources/script.sh
+
+# Demo WhatsApp gateway
+demo-whatsapp-gateway/node_modules/
+demo-whatsapp-gateway/.demo-baileys-auth/

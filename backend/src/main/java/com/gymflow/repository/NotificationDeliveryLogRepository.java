@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface NotificationDeliveryLogRepository extends JpaRepository<NotificationDeliveryLog, Long> {
 
@@ -19,6 +22,10 @@ public interface NotificationDeliveryLogRepository extends JpaRepository<Notific
         Instant start,
         Instant end
     );
+
+    @Modifying
+    @Query("delete from NotificationDeliveryLog log where log.organization.id = :organizationId")
+    int deleteAllByOrganizationId(@Param("organizationId") Long organizationId);
 
     Optional<NotificationDeliveryLog> findTopByOrganizationIdAndTypeOrderByCreatedAtDesc(Long organizationId, NotificationType type);
 

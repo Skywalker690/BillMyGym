@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -238,6 +239,10 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
     );
 
     long countByOrganizationIdAndDeletedFalseAndStatus(Long organizationId, MembershipStatus status);
+
+    @Modifying
+    @Query("delete from MemberMembership membership where membership.organization.id = :organizationId")
+    int deleteAllByOrganizationId(@Param("organizationId") Long organizationId);
 
     @Query("""
         select count(distinct membership.member.id)

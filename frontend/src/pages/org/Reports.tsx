@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
 import { readCachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
+import { useAuth } from "@/context/AuthContext";
+import { DEMO_ORGANIZATION_ID, demoFinancialReport } from "@/lib/demoWorkspaceData";
 
 type ReportPeriod = "monthly" | "yearly";
 type ReportRange = "current_month" | "last_month" | "current_year" | "custom";
@@ -143,6 +145,7 @@ function reportWindowLabel(startDate?: string | null, endDate?: string | null) {
 
 export default function Reports() {
   const { effectivePlan, isDemoWorkspace } = useDemoPlanPreview();
+  const { user } = useAuth();
   const [period, setPeriod] = useState<ReportPeriod>("monthly");
   const [range, setRange] = useState<ReportRange>("current_year");
   const [customFrom, setCustomFrom] = useState(() => currentYearStartInIndiaIso());
@@ -150,8 +153,9 @@ export default function Reports() {
   const [exportingType, setExportingType] = useState<"csv" | "pdf" | null>(null);
 
   const subscription = readCachedSubscriptionStatus();
+  const isDemoReports = isDemoWorkspace || user?.organizationId === DEMO_ORGANIZATION_ID;
 
-  const previewPlan = isDemoWorkspace ? effectivePlan : subscription?.subscriptionPlan ?? "BILLMYGYM";
+  const previewPlan = isDemoReports ? effectivePlan : subscription?.subscriptionPlan ?? "BILLMYGYM";
   const params = useMemo(() => {
     const next: Record<string, string> = { period, range };
     if (range === "custom") {
@@ -176,11 +180,12 @@ export default function Reports() {
       const res = await api.get("/reports/financial", { params });
       return res.data;
     },
-    enabled: !customRangeInvalid,
+    enabled: !customRangeInvalid && !isDemoReports,
   });
-  const visibleWindowLabel = reportWindowLabel(report?.startDate ?? customFrom, report?.endDate ?? customTo);
-  const visibleWindowDetail = report?.startDate && report?.endDate
-    ? `${fullDateLabel(report.startDate)} to ${fullDateLabel(report.endDate)}`
+  const visibleReport = isDemoReports ? demoFinancialReport() : report;
+  const visibleWindowLabel = reportWindowLabel(visibleReport?.startDate ?? customFrom, visibleReport?.endDate ?? customTo);
+  const visibleWindowDetail = visibleReport?.startDate && visibleReport?.endDate
+    ? `${fullDateLabel(visibleReport.startDate)} to ${fullDateLabel(visibleReport.endDate)}`
     : `${fullDateLabel(customFrom)} to ${fullDateLabel(customTo)}`;
 
   function updateCustomFrom(value: string) {
@@ -206,6 +211,10 @@ export default function Reports() {
     }
     setExportingType(type);
     try {
+      if (isDemoReports) {
+        toast.success(type === "pdf" ? "Demo PDF report prepared" : "Demo CSV report prepared");
+        return;
+      }
       const response = await api.get("/tracking/export", {
         params: { ...params, type },
         responseType: "blob",
@@ -216,7 +225,7 @@ export default function Reports() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `financial-report-${report?.startDate ?? "range"}-${report?.endDate ?? "export"}.${type}`;
+      link.download = `financial-report-${visibleReport?.startDate ?? "range"}-${visibleReport?.endDate ?? "export"}.${type}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -229,8 +238,8 @@ export default function Reports() {
     }
   }
 
-  const summary = report?.summary ?? {};
-  const rows = report?.months ?? [];
+  const summary = visibleReport?.summary ?? {};
+  const rows = visibleReport?.months ?? [];
   const maxRevenue = Math.max(...rows.map((row) => Number(row.totalRevenue ?? 0)), 1);
 
   return (
@@ -243,7 +252,7 @@ export default function Reports() {
                 <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
                 Financial Reports
               </Badge>
-              <Badge className="border-slate-200 bg-white/80 text-slate-700">{previewPlan ?? report?.planName ?? "PLAN"}</Badge>
+              <Badge className="border-slate-200 bg-white/80 text-slate-700">{previewPlan ?? visibleReport?.planName ?? "PLAN"}</Badge>
             </div>
             <h1 className="mt-5 max-w-3xl text-4xl font-black tracking-tight text-slate-950 lg:text-5xl">
               Month-wise revenue.
@@ -293,7 +302,7 @@ export default function Reports() {
               variant="outline"
               className="h-11 rounded-xl border-white/80 bg-white/80 px-4 font-bold"
               onClick={() => refetch()}
-              disabled={isFetching || customRangeInvalid}
+              disabled={isDemoReports || isFetching || customRangeInvalid}
             >
               <RefreshCw className={cn("mr-2 h-4 w-4", isFetching && "animate-spin")} />
               Refresh
@@ -411,7 +420,7 @@ export default function Reports() {
 
       </section>
 
-      {isLoading ? (
+      {isLoading && !isDemoReports ? (
         <div className="glass-panel rounded-[1.8rem] p-10 text-center text-sm font-semibold text-slate-500">
           Loading financial report...
         </div>
