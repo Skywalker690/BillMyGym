@@ -72,6 +72,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
+  const googleButtonShellRef = useRef<HTMLDivElement | null>(null);
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -152,37 +153,74 @@ export default function Login() {
 
   useEffect(() => {
     let active = true;
+    let cleanupResizeObserver: (() => void) | undefined;
+    let pendingFrame: number | undefined;
 
     const setupGoogle = async () => {
-      if (!googleClientId || !googleButtonRef.current) {
+      if (!googleClientId || !googleButtonShellRef.current || !googleButtonRef.current) {
         return;
       }
 
       const loaded = await loadGoogleScript();
-      if (!loaded || !active || !googleButtonRef.current || !window.google?.accounts?.id) {
+      if (!loaded || !active || !googleButtonShellRef.current || !googleButtonRef.current || !window.google?.accounts?.id) {
         return;
       }
 
-      googleButtonRef.current.innerHTML = "";
       window.google.accounts.id.initialize({
         client_id: googleClientId,
         callback: ({ credential }) => {
           void handleGoogleCredential(credential);
         },
       });
-      window.google.accounts.id.renderButton(googleButtonRef.current, {
-        theme: "outline",
-        size: "large",
-        shape: "rectangular",
-        width: 320,
-        text: "continue_with",
-      });
+
+      const renderGoogleButton = () => {
+        if (!active || !googleButtonShellRef.current || !googleButtonRef.current || !window.google?.accounts?.id) {
+          return;
+        }
+
+        if (pendingFrame) {
+          window.cancelAnimationFrame(pendingFrame);
+        }
+
+        pendingFrame = window.requestAnimationFrame(() => {
+          if (!active || !googleButtonShellRef.current || !googleButtonRef.current || !window.google?.accounts?.id) {
+            return;
+          }
+
+          const availableWidth = Math.floor(googleButtonShellRef.current.clientWidth);
+          const buttonWidth = Math.max(200, Math.min(400, availableWidth));
+
+          googleButtonRef.current.innerHTML = "";
+          window.google.accounts.id.renderButton(googleButtonRef.current, {
+            theme: "outline",
+            size: "large",
+            shape: "rectangular",
+            width: buttonWidth,
+            text: "continue_with",
+          });
+        });
+      };
+
+      renderGoogleButton();
+
+      if ("ResizeObserver" in window && googleButtonShellRef.current) {
+        const resizeObserver = new ResizeObserver(renderGoogleButton);
+        resizeObserver.observe(googleButtonShellRef.current);
+        cleanupResizeObserver = () => resizeObserver.disconnect();
+      } else {
+        window.addEventListener("resize", renderGoogleButton);
+        cleanupResizeObserver = () => window.removeEventListener("resize", renderGoogleButton);
+      }
     };
 
     void setupGoogle();
 
     return () => {
       active = false;
+      if (pendingFrame) {
+        window.cancelAnimationFrame(pendingFrame);
+      }
+      cleanupResizeObserver?.();
     };
   }, []);
 
@@ -247,7 +285,7 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="billmygym@gmail.com"
-                    className="h-12 rounded-none border border-[#ece7df] bg-white px-4 text-[15px] font-medium text-[#282520] shadow-none placeholder:text-[#a6a09a] focus-visible:ring-0"
+                    className="h-12 w-full rounded-[1rem] border border-[#e8e0d6] bg-white/95 px-4 text-[15px] font-medium text-[#282520] shadow-[0_10px_24px_rgba(62,39,20,0.04)] placeholder:text-[#a6a09a] focus-visible:border-[#f0b58c] focus-visible:ring-2 focus-visible:ring-[#f0b58c]/25"
                   />
                 </div>
 
@@ -265,7 +303,7 @@ export default function Login() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="********"
-                      className="h-12 rounded-none border border-[#ece7df] bg-white px-4 pr-11 text-[15px] font-medium text-[#282520] shadow-none placeholder:text-[#a6a09a] focus-visible:ring-0"
+                      className="h-12 w-full rounded-[1rem] border border-[#e8e0d6] bg-white/95 px-4 pr-11 text-[15px] font-medium text-[#282520] shadow-[0_10px_24px_rgba(62,39,20,0.04)] placeholder:text-[#a6a09a] focus-visible:border-[#f0b58c] focus-visible:ring-2 focus-visible:ring-[#f0b58c]/25"
                     />
                     <button
                       type="button"
@@ -287,7 +325,7 @@ export default function Login() {
                 <Button
                   type="submit"
                   disabled={isLoading || isGoogleLoading}
-                  className="mt-2 h-11 w-full rounded-none bg-[#f07b2f] text-base font-semibold text-white shadow-none hover:bg-[#df6d23]"
+                  className="mt-2 h-12 w-full rounded-[1rem] bg-[#f07b2f] text-base font-semibold text-white shadow-[0_16px_30px_rgba(240,123,47,0.24)] hover:bg-[#df6d23]"
                 >
                   {isLoading ? "Logging in..." : "Log in"}
                 </Button>
@@ -301,7 +339,15 @@ export default function Login() {
                 </div>
 
                 {googleClientId ? (
-                  <div className="mt-5 flex min-h-[44px] justify-center" ref={googleButtonRef} />
+                  <div
+                    ref={googleButtonShellRef}
+                    className="mt-5 flex h-12 w-full items-center justify-center overflow-hidden rounded-[1rem]"
+                  >
+                    <div
+                      ref={googleButtonRef}
+                      className="flex w-full justify-center [&>div>div]:!w-full [&>div]:!w-full [&_div[role=button]]:!w-full [&_div[role=button]]:!rounded-[1rem] [&_div[role=button]]:!border-0 [&_div[role=button]]:!shadow-none [&_iframe]:!w-full"
+                    />
+                  </div>
                 ) : (
                   <div className="mt-5 border border-[#ece2d6] bg-white px-4 py-3 text-sm text-[#7f776e]">
                     Google login is ready here and only needs `VITE_GOOGLE_CLIENT_ID` configured.
