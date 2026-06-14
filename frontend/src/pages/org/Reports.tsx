@@ -262,7 +262,7 @@ export default function Reports() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2 sm:gap-3 sm:grid-cols-3 lg:min-w-[560px]">
             <SummarySignal
               icon={Wallet}
               label="Total Revenue"
@@ -276,7 +276,6 @@ export default function Reports() {
             />
             <SummarySignal icon={TrendingUp} label="Membership" value={money(summary.membershipRevenue)} tone="slate" compact />
             <SummarySignal icon={Users} label="Admissions" value={compact.format(Number(summary.admissions ?? 0))} tone="sky" compact />
-            <SummarySignal icon={AlertTriangle} label="Due Amount" value={money(summary.duePayments)} tone="rose" compact />
           </div>
         </div>
       </section>
@@ -438,7 +437,7 @@ export default function Reports() {
               <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Revenue Trend</div>
               <h2 className="mt-2 text-xl sm:text-2xl font-black tracking-tight text-slate-950">Month-wise performance</h2>
             </div>
-            <div className="grid min-h-[280px] grid-cols-3 gap-2 p-4 sm:gap-3 sm:p-6 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12">
+            <div className="grid min-h-[280px] grid-cols-2 gap-2 p-4 sm:grid-cols-3 sm:gap-3 sm:p-6 lg:grid-cols-6">
               {rows.map((row) => {
                 const height = `${Math.max((Number(row.totalRevenue ?? 0) / maxRevenue) * 100, Number(row.totalRevenue ?? 0) > 0 ? 12 : 4)}%`;
                 const isCurrentMonth = `${row.year}-${String(row.month).padStart(2, "0")}` === currentMonthKey;
@@ -446,13 +445,13 @@ export default function Reports() {
                   <div
                     key={`${row.year}-${row.month}`}
                     className={cn(
-                      "rounded-[1.1rem] sm:rounded-[1.35rem] border bg-white/72 p-2 sm:p-3 shadow-sm xl:col-span-1",
+                      "min-w-0 rounded-[1.1rem] sm:rounded-[1.35rem] border bg-white/72 p-2 sm:p-3 shadow-sm",
                       isCurrentMonth
                         ? "border-emerald-300 ring-4 ring-emerald-100 shadow-[0_18px_38px_-26px_rgba(5,150,105,0.9)]"
                         : "border-white/80",
                     )}
                   >
-                    <div className="flex h-32 sm:h-40 items-end rounded-[0.8rem] sm:rounded-[1.1rem] bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(255,255,255,0.95))] p-2 sm:p-3">
+                    <div className="flex h-32 items-end rounded-[0.8rem] bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(255,255,255,0.95))] p-2 sm:h-40 sm:rounded-[1.1rem] sm:p-3 lg:h-56 xl:h-64">
                       <div
                         className={cn(
                           "w-full rounded-full",
@@ -466,11 +465,6 @@ export default function Reports() {
                     <div className={cn("mt-2 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-[0.16em]", isCurrentMonth ? "text-emerald-700" : "text-slate-500")}>
                       {row.label}
                     </div>
-                    {isCurrentMonth && (
-                      <div className="mt-0.5 text-center text-[7px] sm:text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">
-                        Current
-                      </div>
-                    )}
                     <div className="mt-1 text-center text-xs sm:text-sm font-black text-slate-950">{money(row.totalRevenue)}</div>
                   </div>
                 );
@@ -497,7 +491,7 @@ export default function Reports() {
                           : "border-white/80",
                       )}
                     >
-                      <div className="grid gap-3 sm:gap-4 lg:grid-cols-[auto_1fr_auto]">
+                      <div className="grid gap-3 sm:gap-4 lg:grid-cols-[minmax(170px,0.8fr)_minmax(0,2fr)_minmax(130px,auto)] lg:items-center">
                         {/* Left: Month & Value */}
                         <div className="flex flex-col justify-center">
                           <div className="flex flex-wrap items-center gap-2">

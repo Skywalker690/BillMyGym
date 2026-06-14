@@ -168,16 +168,43 @@ export function demoMemberSummary(date = new Date()) {
 
 export function demoFinancialReport(date = new Date()) {
   const current = new Date(`${isoDateInIndia(date)}T00:00:00+05:30`);
-  const monthStart = new Date(current.getFullYear(), current.getMonth(), 1);
-  const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
-  const label = new Intl.DateTimeFormat("en-IN", { month: "short", year: "numeric", timeZone: INDIAN_TIME_ZONE }).format(current);
   const summary = demoMemberSummary(date);
+  const monthProfiles = [
+    { admissionRevenue: 3600, membershipRevenue: 11200, admissions: 12, activeMembers: 18, overdueMembers: 1, deactivatedMembers: 0 },
+    { admissionRevenue: 4500, membershipRevenue: 12800, admissions: 15, activeMembers: 20, overdueMembers: 2, deactivatedMembers: 0 },
+    { admissionRevenue: 5400, membershipRevenue: 14400, admissions: 18, activeMembers: 22, overdueMembers: 2, deactivatedMembers: 1 },
+    { admissionRevenue: 6000, membershipRevenue: 15200, admissions: 20, activeMembers: 23, overdueMembers: 3, deactivatedMembers: 0 },
+    { admissionRevenue: 7200, membershipRevenue: 16800, admissions: 24, activeMembers: 24, overdueMembers: 4, deactivatedMembers: 0 },
+    { admissionRevenue: 9000, membershipRevenue: 16000, admissions: 30, activeMembers: summary.activeMemberships, overdueMembers: summary.overdueMemberships + summary.expiredMemberships, deactivatedMembers: 0 },
+  ];
+  const months = monthProfiles.map((profile, index) => {
+    const monthDate = new Date(current.getFullYear(), current.getMonth() - (monthProfiles.length - 1 - index), 1);
+    const isCurrentMonth = index === monthProfiles.length - 1;
+    const admissionRevenue = profile.admissionRevenue;
+    const membershipRevenue = profile.membershipRevenue;
+    return {
+      year: monthDate.getFullYear(),
+      month: monthDate.getMonth() + 1,
+      label: new Intl.DateTimeFormat("en-IN", { month: "short", year: "numeric", timeZone: INDIAN_TIME_ZONE }).format(monthDate),
+      totalRevenue: admissionRevenue + membershipRevenue,
+      admissionRevenue,
+      membershipRevenue,
+      duePayments: isCurrentMonth ? 4000 : 0,
+      expenses: 0,
+      admissions: profile.admissions,
+      activeMembers: profile.activeMembers,
+      overdueMembers: profile.overdueMembers,
+      deactivatedMembers: profile.deactivatedMembers,
+    };
+  });
+  const firstMonth = months[0];
+  const latestMonth = months[months.length - 1];
 
   return {
     period: "monthly",
-    range: "current_month",
-    startDate: isoDateInIndia(monthStart),
-    endDate: isoDateInIndia(monthEnd),
+    range: "demo_six_months",
+    startDate: `${firstMonth.year}-${String(firstMonth.month).padStart(2, "0")}-01`,
+    endDate: isoDateInIndia(date),
     organizationName: DEMO_ORGANIZATION.name,
     logoUrl: null,
     planName: "DEMO",
@@ -186,30 +213,17 @@ export function demoFinancialReport(date = new Date()) {
       canExportReports: true,
     },
     summary: {
-      totalRevenue: 25000,
-      admissionRevenue: 9000,
-      membershipRevenue: 16000,
-      duePayments: 4000,
-      expenses: 0,
-      admissions: 30,
-      activeMembers: summary.activeMemberships,
-      overdueMembers: summary.overdueMemberships + summary.expiredMemberships,
-      deactivatedMembers: 0,
+      totalRevenue: months.reduce((total, month) => total + month.totalRevenue, 0),
+      admissionRevenue: months.reduce((total, month) => total + month.admissionRevenue, 0),
+      membershipRevenue: months.reduce((total, month) => total + month.membershipRevenue, 0),
+      duePayments: months.reduce((total, month) => total + month.duePayments, 0),
+      expenses: months.reduce((total, month) => total + month.expenses, 0),
+      admissions: months.reduce((total, month) => total + month.admissions, 0),
+      activeMembers: latestMonth.activeMembers,
+      overdueMembers: latestMonth.overdueMembers,
+      deactivatedMembers: months.reduce((total, month) => total + month.deactivatedMembers, 0),
     },
-    months: [{
-      year: current.getFullYear(),
-      month: current.getMonth() + 1,
-      label,
-      totalRevenue: 25000,
-      admissionRevenue: 9000,
-      membershipRevenue: 16000,
-      duePayments: 4000,
-      expenses: 0,
-      admissions: 30,
-      activeMembers: summary.activeMemberships,
-      overdueMembers: summary.overdueMemberships + summary.expiredMemberships,
-      deactivatedMembers: 0,
-    }],
+    months,
   };
 }
 
@@ -305,7 +319,13 @@ export function demoWorkflowDigestMessage(date = new Date(), recipientPhone = ""
 
 export function demoMonthlyReportDigestMessage(date = new Date(), recipientPhone = "") {
   const report = demoFinancialReport(date);
-  const summary = demoMemberSummary(date);
+  const latestMonth = report.months.at(-1) ?? {
+    admissions: 0,
+    activeMembers: 0,
+    overdueMembers: 0,
+    totalRevenue: 0,
+    duePayments: 0,
+  };
   const money = new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
@@ -320,17 +340,17 @@ export function demoMonthlyReportDigestMessage(date = new Date(), recipientPhone
   return [{
     phone: recipientPhone.trim(),
     memberName: DEMO_ORGANIZATION.name,
-    memberCount: summary.activeMemberships,
+    memberCount: latestMonth.activeMembers,
     message: [
       "BillMyGym Monthly Report",
       "",
       `${DEMO_ORGANIZATION.name} | ${reportMonth}`,
       "",
-      `New members: ${report.summary.admissions}`,
-      `Active members: ${report.summary.activeMembers}`,
-      `Expired members: ${report.summary.overdueMembers}`,
-      `Collected revenue: ${money.format(report.summary.totalRevenue)}`,
-      `Pending revenue: ${money.format(report.summary.duePayments)}`,
+      `New members: ${latestMonth.admissions}`,
+      `Active members: ${latestMonth.activeMembers}`,
+      `Expired members: ${latestMonth.overdueMembers}`,
+      `Collected revenue: ${money.format(latestMonth.totalRevenue)}`,
+      `Pending revenue: ${money.format(latestMonth.duePayments)}`,
     ].join("\n"),
   }];
 }
