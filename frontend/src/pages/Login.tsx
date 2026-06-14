@@ -188,7 +188,7 @@ export default function Login() {
           }
 
           const availableWidth = Math.floor(googleButtonShellRef.current.clientWidth);
-          const buttonWidth = Math.max(200, Math.min(400, availableWidth));
+          const buttonWidth = Math.max(200, Math.min(400, availableWidth - 2));
 
           googleButtonRef.current.innerHTML = "";
           window.google.accounts.id.renderButton(googleButtonRef.current, {
@@ -341,11 +341,11 @@ export default function Login() {
                 {googleClientId ? (
                   <div
                     ref={googleButtonShellRef}
-                    className="mt-5 flex h-12 w-full items-center justify-center overflow-hidden rounded-[1rem]"
+                    className="mt-5 flex h-12 w-full items-center justify-center rounded-[1rem]"
                   >
                     <div
                       ref={googleButtonRef}
-                      className="flex w-full justify-center [&>div>div]:!w-full [&>div]:!w-full [&_div[role=button]]:!w-full [&_div[role=button]]:!rounded-[1rem] [&_div[role=button]]:!border-0 [&_div[role=button]]:!shadow-none [&_iframe]:!w-full"
+                      className="flex w-full justify-center [&>div>div]:!w-full [&>div]:!w-full [&_div[role=button]]:!box-border [&_div[role=button]]:!w-full [&_div[role=button]]:!max-w-full [&_div[role=button]]:!rounded-[1rem] [&_div[role=button]]:!border-0 [&_div[role=button]]:!shadow-none [&_iframe]:!max-w-full"
                     />
                   </div>
                 ) : (
