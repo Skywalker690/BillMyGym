@@ -1,9 +1,0 @@
-CREATE TABLE platform_settings (
-    id BIGSERIAL PRIMARY KEY,
-    deleted BOOLEAN NOT NULL DEFAULT false,
-    referrals_enabled BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
-);
-
-INSERT INTO platform_settings (id, referrals_enabled, created_at, updated_at) VALUES (1, true, NOW(), NOW());

@@ -3,7 +3,7 @@
 
 INSERT INTO organizations (
     id, name, district, place, logo_url, map_location_link, address, admin_full_name, admin_phone_number, admin_email,
-    description, monthly_membership_fee, admission_fee, organization_type, subscription_plan, status,
+    monthly_membership_fee, admission_fee, organization_type, subscription_plan, status,
     trial_start_date, trial_end_date, subscription_due_date,
     paused_at, deactivated_at, deleted, deleted_at, created_at, updated_at, version,
     referral_code, gym_coin_balance, total_coins_earned, total_coins_used, six_month_reward_claimed
@@ -41,18 +41,6 @@ SELECT
         'vishnu@starterhouse.local',
         'leena@elitebarbell.local'
     ])[org_id],
-    (ARRAY[
-        'BillMyGym workspace with healthy revenue, admission collections, and overdue exposure for dashboards.',
-        'BillMyGym workspace paused because the latest subscription renewal failed.',
-        'BillMyGym trial gym ending soon, useful for trial countdown checks.',
-        'BillMyGym workspace whose paid cycle ended and is waiting for renewal.',
-        'Regular workspace with complete reminder and report access.',
-        'Regular workspace converted from a legacy founding setup and paused after a renewal lapse.',
-        'Demo workspace with billing bypass and full BillMyGym access.',
-        'BillMyGym workspace waiting for renewal after a missed payment.',
-        'BillMyGym workspace with complete product access.',
-        'BillMyGym workspace near renewal, with active reports and export access.'
-    ])[org_id],
     (ARRAY[1500.00, 1300.00, 1200.00, 1800.00, 900.00, 1100.00, 1000.00, 1400.00, 800.00, 2200.00])[org_id]::numeric(12, 2),
     (ARRAY[500.00, 400.00, 300.00, 700.00, 0.00, 350.00, 0.00, 450.00, 250.00, 900.00])[org_id]::numeric(12, 2),
     (ARRAY['REGULAR', 'REGULAR', 'REGULAR', 'REGULAR', 'REGULAR', 'REGULAR', 'DEMO', 'REGULAR', 'REGULAR', 'REGULAR'])[org_id],
@@ -76,32 +64,32 @@ SELECT
 FROM generate_series(1, 10) AS org_id;
 
 INSERT INTO users (
-    id, organization_id, email, google_id, avatar_url, password_hash, role, status, terms_accepted, policy_version,
+    id, organization_id, email, google_id, avatar_url, password_hash, role, status, terms_accepted, privacy_accepted, policy_version,
     deleted, created_at, updated_at
 ) VALUES
-    (1, NULL, 'sanjoksiby10@gmail.com', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'SUPER_ADMIN', 'ACTIVE', NULL, NULL,
+    (1, NULL, 'sanjoksiby10@gmail.com', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'SUPER_ADMIN', 'ACTIVE', FALSE, FALSE, NULL,
         FALSE, TIMESTAMPTZ '2026-05-04 09:00:00+05:30', TIMESTAMPTZ '2026-05-22 09:00:00+05:30'),
-    (3, 2, 'owner02@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', NULL, NULL,
+    (3, 2, 'owner02@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', FALSE, FALSE, NULL,
         FALSE, TIMESTAMPTZ '2026-05-06 09:00:00+05:30', TIMESTAMPTZ '2026-05-22 09:00:00+05:30'),
-    (4, 3, 'owner03@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', NULL, NULL,
+    (4, 3, 'owner03@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', FALSE, FALSE, NULL,
         FALSE, TIMESTAMPTZ '2026-05-06 09:00:00+05:30', TIMESTAMPTZ '2026-05-22 09:00:00+05:30'),
-    (2, 5, 'sanjoksiby0@gmail.com', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', NULL, NULL,
+    (2, 5, 'sanjoksiby0@gmail.com', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', FALSE, FALSE, NULL,
         FALSE, TIMESTAMPTZ '2026-05-06 09:00:00+05:30', TIMESTAMPTZ '2026-05-22 09:00:00+05:30'),
-    (5, 1, 'owner01@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, '2026-05',
+    (5, 1, 'owner01@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, TRUE, '2026-05',
         FALSE, TIMESTAMPTZ '2026-05-07 09:00:00+05:30', TIMESTAMPTZ '2026-05-22 09:00:00+05:30'),
-    (6, 4, 'owner04@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, '2026-05',
+    (6, 4, 'owner04@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, TRUE, '2026-05',
         FALSE, TIMESTAMPTZ '2026-05-07 09:00:00+05:30', TIMESTAMPTZ '2026-05-22 09:00:00+05:30'),
-    (7, 6, 'owner06@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, '2026-05',
+    (7, 6, 'owner06@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, TRUE, '2026-05',
         FALSE, TIMESTAMPTZ '2026-05-07 09:00:00+05:30', TIMESTAMPTZ '2026-05-22 09:00:00+05:30'),
-    (8, 7, 'owner07@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, '2026-05',
+    (8, 7, 'owner07@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, TRUE, '2026-05',
         FALSE, TIMESTAMPTZ '2026-05-07 09:00:00+05:30', TIMESTAMPTZ '2026-05-22 09:00:00+05:30'),
-    (12, 7, 'demo@gymmax.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, '2026-05',
+    (12, 7, 'demo@gymmax.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, TRUE, '2026-05',
         FALSE, TIMESTAMPTZ '2026-05-07 09:00:00+05:30', TIMESTAMPTZ '2026-05-22 09:00:00+05:30'),
-    (9, 8, 'owner08@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, '2026-05',
+    (9, 8, 'owner08@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, TRUE, '2026-05',
         FALSE, TIMESTAMPTZ '2026-05-07 09:00:00+05:30', TIMESTAMPTZ '2026-05-22 09:00:00+05:30'),
-    (10, 9, 'owner09@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, '2026-05',
+    (10, 9, 'owner09@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, TRUE, '2026-05',
         FALSE, TIMESTAMPTZ '2026-05-07 09:00:00+05:30', TIMESTAMPTZ '2026-05-22 09:00:00+05:30'),
-    (11, 10, 'owner10@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, '2026-05',
+    (11, 10, 'owner10@billmygym.local', NULL, NULL, '$2b$12$n6ShiFFjgM4MFEgnFsSLneE2EbNBDRMKchwhKRNlTt54ueRkRGu/C', 'ORG_ADMIN', 'ACTIVE', TRUE, TRUE, '2026-05',
         FALSE, TIMESTAMPTZ '2026-05-07 09:00:00+05:30', TIMESTAMPTZ '2026-05-22 09:00:00+05:30');
 
 INSERT INTO organization_settings (

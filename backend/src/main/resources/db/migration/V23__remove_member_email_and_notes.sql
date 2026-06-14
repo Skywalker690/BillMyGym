@@ -1,3 +1,0 @@
-ALTER TABLE members
-    DROP COLUMN IF EXISTS email,
-    DROP COLUMN IF EXISTS notes;
