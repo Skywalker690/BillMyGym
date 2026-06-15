@@ -53,12 +53,6 @@ export const getSidebarNavItems = (
         icon: ClipboardList,
         section: "Platform",
       },
-      {
-        label: "Demo Management",
-        href: "/app/demo-management",
-        icon: DatabaseZap,
-        section: "Platform",
-      },
     ];
   }
 
@@ -128,12 +122,6 @@ export const getProfileNavItems = (
         icon: Gift,
         section: "Account",
       },
-      {
-        label: "Demo Management",
-        href: "/app/demo-management",
-        icon: DatabaseZap,
-        section: "Account",
-      },
     ];
   }
 
@@ -151,15 +139,6 @@ export const getProfileNavItems = (
       section: "Account",
     },
   ];
-
-  if (referralsEnabled) {
-    items.push({
-      label: "Referrals",
-      href: "/app/referrals",
-      icon: Gift,
-      section: "Account",
-    });
-  }
 
   return items;
 };
