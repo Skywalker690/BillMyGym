@@ -329,13 +329,13 @@ export default function MembersList() {
           <div className="p-14 text-center text-sm font-semibold text-slate-500">No members found matching your filters.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-[980px] w-full text-left text-xs sm:text-sm">
+            <table className="min-w-[600px] lg:min-w-[800px] w-full text-left text-xs sm:text-sm">
               <thead className="border-b border-black/5 bg-white/30 text-slate-500">
                 <tr>
-                  <th className="px-2 sm:px-6 py-3 sm:py-5 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Member</th>
-                  <th className="px-2 sm:px-6 py-3 sm:py-5 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Period</th>
-                  <th className="px-2 sm:px-6 py-3 sm:py-5 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Membership</th>
-                  <th className="px-2 sm:px-6 py-3 sm:py-5 text-right text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Actions</th>
+                  <th className="px-2 sm:px-6 py-2 sm:py-4 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Member</th>
+                  <th className="px-2 sm:px-6 py-2 sm:py-4 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Period</th>
+                  <th className="px-2 sm:px-6 py-2 sm:py-4 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Membership</th>
+                  <th className="px-2 sm:px-6 py-2 sm:py-4 text-right text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5">
@@ -344,7 +344,7 @@ export default function MembersList() {
                   const status = membership?.displayStatus ?? (membership?.expired ? "EXPIRED" : membership?.expiringSoon ? "EXPIRING_SOON" : membership?.status ?? "NO_MEMBERSHIP");
                   return (
                     <tr key={member.id} className="transition-colors hover:bg-white/50">
-                      <td className="min-w-[180px] sm:min-w-[240px] px-2 sm:px-6 py-3 sm:py-5">
+                      <td className="min-w-[140px] sm:min-w-[200px] px-2 sm:px-6 py-2 sm:py-4">
                         <div className="flex items-start justify-between gap-2 sm:gap-3">
                           <div className="min-w-0">
                             <div className="font-black text-slate-950 text-sm sm:text-base">{member.fullName}</div>
@@ -395,14 +395,14 @@ export default function MembersList() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-2 sm:px-6 py-3 sm:py-5 text-[10px] sm:text-xs font-semibold text-slate-500">
+                      <td className="px-2 sm:px-6 py-2 sm:py-4 text-[10px] sm:text-xs font-semibold text-slate-500">
                         <div>{formatDate(membership?.startDate)}</div>
                         <div className="mt-0.5 sm:mt-1">to {formatDate(membership?.endDate)}</div>
                       </td>
-                      <td className="px-2 sm:px-6 py-3 sm:py-5">
+                      <td className="px-2 sm:px-6 py-2 sm:py-4">
                         <StatusBadge status={status} />
                       </td>
-                      <td className="min-w-[120px] sm:min-w-[240px] px-2 sm:px-6 py-3 sm:py-5">
+                      <td className="px-2 sm:px-6 py-2 sm:py-4">
                         <div className="flex flex-wrap justify-end gap-1 sm:gap-2">
                           {canRenewMember(member) && (
                             <Button

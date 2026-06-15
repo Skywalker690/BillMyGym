@@ -677,14 +677,12 @@ function RevenueBand({
         <span>{label}</span>
         {breakdown && (
           <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-            <DropdownMenuTrigger asChild>
-              <button 
-                onMouseEnter={() => setIsOpen(true)}
-                onMouseLeave={() => setIsOpen(false)}
-                className={cn("flex items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500 transition-colors hover:bg-slate-50 outline-none", compact ? "h-3 w-3" : "h-4 w-4")}
-              >
-                <Info className={compact ? "h-2 w-2" : "h-2.5 w-2.5"} />
-              </button>
+            <DropdownMenuTrigger 
+              onMouseEnter={() => setIsOpen(true)}
+              onMouseLeave={() => setIsOpen(false)}
+              className={cn("flex items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500 transition-colors hover:bg-slate-50 outline-none cursor-pointer", compact ? "h-3 w-3" : "h-4 w-4")}
+            >
+              <Info className={compact ? "h-2 w-2" : "h-2.5 w-2.5"} />
             </DropdownMenuTrigger>
             <DropdownMenuContent 
               side="top" 

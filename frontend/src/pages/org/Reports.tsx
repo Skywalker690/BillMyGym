@@ -596,19 +596,16 @@ function RevenueInfoButton({
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          onMouseEnter={() => setIsOpen(true)}
-          onMouseLeave={() => setIsOpen(false)}
-          className={cn(
-            "inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/85 text-slate-600 shadow-sm transition-colors hover:bg-white hover:text-slate-950 outline-none",
-            compact ? "h-5 w-5" : "h-7 w-7",
-          )}
-          aria-label="Revenue split"
-        >
-          <Info className={compact ? "h-3 w-3" : "h-4 w-4"} />
-        </button>
+      <DropdownMenuTrigger 
+        onMouseEnter={() => setIsOpen(true)}
+        onMouseLeave={() => setIsOpen(false)}
+        className={cn(
+          "inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/85 text-slate-600 shadow-sm transition-colors hover:bg-white hover:text-slate-950 outline-none cursor-pointer",
+          compact ? "h-5 w-5" : "h-7 w-7",
+        )}
+        aria-label="Revenue split"
+      >
+        <Info className={compact ? "h-3 w-3" : "h-4 w-4"} />
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         side="top" 
