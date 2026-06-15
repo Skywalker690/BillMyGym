@@ -16,6 +16,11 @@ import {
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
@@ -673,11 +678,13 @@ function RevenueBand({
       <div className={cn("flex items-center gap-1.5 sm:gap-2 opacity-70", compact ? "mt-2 sm:mt-3 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.18em]" : "mt-4 text-[10px] font-black uppercase tracking-[0.22em]")}>
         <span>{label}</span>
         {breakdown && (
-          <div className="group relative">
-            <span className={cn("flex items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500 transition-colors hover:bg-slate-50", compact ? "h-3 w-3" : "h-4 w-4")}>
-              <Info className={compact ? "h-2 w-2" : "h-2.5 w-2.5"} />
-            </span>
-            <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-[260px] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 text-left opacity-0 shadow-xl transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className={cn("flex items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500 transition-colors hover:bg-slate-50 outline-none", compact ? "h-3 w-3" : "h-4 w-4")}>
+                <Info className={compact ? "h-2 w-2" : "h-2.5 w-2.5"} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="center" sideOffset={8} className="w-[260px] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Revenue Split</div>
               <div className="mt-2 flex items-center justify-between text-xs font-semibold text-slate-700">
                 <span>Admission</span>
@@ -687,8 +694,8 @@ function RevenueBand({
                 <span>Monthly</span>
                 <span>{breakdown.recurring}</span>
               </div>
-            </div>
-          </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
       <div className={cn("font-black tracking-tight text-slate-950", compact ? "mt-1.5 sm:mt-2 text-lg sm:text-2xl lg:text-3xl" : "mt-2 text-2xl sm:text-3xl")}>{value}</div>
