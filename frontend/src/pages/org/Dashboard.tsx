@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
@@ -341,10 +342,6 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {subscriptionPricing && (
-        <PlanBillingPanel planName={(isDemoWorkspace ? effectivePlan : dashboardReport?.planName) ?? "BILLMYGYM"} pricing={subscriptionPricing} />
-      )}
-
       <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {statCards.map((card) => {
           const Icon = card.icon;
@@ -665,6 +662,7 @@ function RevenueBand({
   };
   compact?: boolean;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
   const accentClass = {
     emerald: "from-emerald-500 to-emerald-300",
     slate: "from-slate-900 to-slate-500",
@@ -678,13 +676,24 @@ function RevenueBand({
       <div className={cn("flex items-center gap-1.5 sm:gap-2 opacity-70", compact ? "mt-2 sm:mt-3 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.18em]" : "mt-4 text-[10px] font-black uppercase tracking-[0.22em]")}>
         <span>{label}</span>
         {breakdown && (
-          <DropdownMenu>
+          <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
             <DropdownMenuTrigger asChild>
-              <button className={cn("flex items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500 transition-colors hover:bg-slate-50 outline-none", compact ? "h-3 w-3" : "h-4 w-4")}>
+              <button 
+                onMouseEnter={() => setIsOpen(true)}
+                onMouseLeave={() => setIsOpen(false)}
+                className={cn("flex items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500 transition-colors hover:bg-slate-50 outline-none", compact ? "h-3 w-3" : "h-4 w-4")}
+              >
                 <Info className={compact ? "h-2 w-2" : "h-2.5 w-2.5"} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="center" sideOffset={8} className="w-[260px] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
+            <DropdownMenuContent 
+              side="top" 
+              align="center" 
+              sideOffset={8} 
+              onMouseEnter={() => setIsOpen(true)}
+              onMouseLeave={() => setIsOpen(false)}
+              className="w-[260px] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl"
+            >
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Revenue Split</div>
               <div className="mt-2 flex items-center justify-between text-xs font-semibold text-slate-700">
                 <span>Admission</span>

@@ -335,7 +335,6 @@ export default function MembersList() {
                   <th className="px-2 sm:px-6 py-3 sm:py-5 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Member</th>
                   <th className="px-2 sm:px-6 py-3 sm:py-5 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Period</th>
                   <th className="px-2 sm:px-6 py-3 sm:py-5 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Membership</th>
-                  <th className="px-2 sm:px-6 py-3 sm:py-5 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Coverage</th>
                   <th className="px-2 sm:px-6 py-3 sm:py-5 text-right text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em]">Actions</th>
                 </tr>
               </thead>
@@ -402,9 +401,6 @@ export default function MembersList() {
                       </td>
                       <td className="px-2 sm:px-6 py-3 sm:py-5">
                         <StatusBadge status={status} />
-                      </td>
-                      <td className="px-2 sm:px-6 py-3 sm:py-5">
-                        <CoverageBadge membership={membership} />
                       </td>
                       <td className="min-w-[120px] sm:min-w-[240px] px-2 sm:px-6 py-3 sm:py-5">
                         <div className="flex flex-wrap justify-end gap-1 sm:gap-2">

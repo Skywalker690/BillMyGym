@@ -88,11 +88,8 @@ public class SecurityConfig {
                     "/api/analytics/platform/**",
                     "/api/referrals/analytics",
                     "/api/organizations/directory",
-                    "/api/organizations/*/membership-plans",
                     "/api/subscription/organizations/**"
                 ).hasRole(SUPER_ADMIN)
-                .requestMatchers(HttpMethod.PATCH, "/api/organizations/*/membership-plans/*").hasRole(SUPER_ADMIN)
-                .requestMatchers(HttpMethod.POST, "/api/organizations/*/membership-plans").hasRole(SUPER_ADMIN)
                 .requestMatchers(HttpMethod.PUT, "/api/organizations/*/admin").hasRole(SUPER_ADMIN)
                 .requestMatchers(HttpMethod.DELETE, "/api/organizations/*").hasRole(SUPER_ADMIN)
                 .requestMatchers(HttpMethod.POST, "/api/organizations/*/members/bulk-upload").hasRole(SUPER_ADMIN)
@@ -120,6 +117,8 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/organizations",
                     "/api/organizations/*",
+                    "/api/organizations/*/membership-plans",
+                    "/api/organizations/*/membership-plans/*",
                     "/api/referrals/settings"
                 ).hasAnyRole(SUPER_ADMIN, ORG_ADMIN)
                 .requestMatchers("/api/**").denyAll()

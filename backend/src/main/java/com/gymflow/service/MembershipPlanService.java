@@ -223,4 +223,26 @@ public class MembershipPlanService {
         plan.setDeleted(true);
         plan.setDeletedAt(OffsetDateTime.now(APP_ZONE));
     }
+
+    @Transactional
+    public void deletePlan(Long organizationId, Long planId) {
+        MembershipPlan plan = membershipPlanRepository.findByIdAndOrganizationIdAndDeletedFalse(planId, organizationId)
+            .orElseThrow(() -> new NotFoundException("Membership plan not found"));
+
+        if (plan.isDefaultPlan()) {
+            throw new BadRequestException("Cannot delete the default membership plan. Set another plan as default first.");
+        }
+
+        if (memberMembershipRepository.existsByMembershipPlanIdAndOrganizationIdAndDeletedFalseAndStatus(
+            plan.getId(),
+            organizationId,
+            MembershipStatus.ACTIVE
+        )) {
+            throw new BadRequestException("Cannot delete a plan that is currently used by active memberships.");
+        }
+
+        softDeletePlan(plan);
+        membershipPlanRepository.save(plan);
+        reportCacheService.evictOrganization(organizationId);
+    }
 }

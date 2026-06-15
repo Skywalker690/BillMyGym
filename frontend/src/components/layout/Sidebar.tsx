@@ -22,18 +22,18 @@ interface SidebarProps {
 function BillMyGymMark({ collapsed }: { collapsed: boolean }) {
   return (
     <div className="flex items-center gap-3.5 text-white">
-      <div className="relative flex h-[3.4rem] w-[3.4rem] shrink-0 items-center justify-center rounded-[1.65rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(236,253,245,0.94))] p-[7px] shadow-[0_20px_48px_-24px_rgba(255,255,255,0.95)] ring-1 ring-white/70">
-        <div className="absolute inset-[7px] rounded-[1.18rem] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.95),rgba(220,252,231,0.62)_58%,rgba(255,251,235,0.42))]" />
+      <div className="relative flex h-[3.8rem] w-[3.8rem] shrink-0 items-center justify-center rounded-[1.7rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(236,253,245,0.94))] p-[5px] shadow-[0_20px_48px_-24px_rgba(255,255,255,0.95)] ring-1 ring-white/70">
+        <div className="absolute inset-[5px] rounded-[1.3rem] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.95),rgba(220,252,231,0.62)_58%,rgba(255,251,235,0.42))]" />
         <img
           src="/web-app-manifest-512x512.png"
           alt="BillMyGym"
-          className="relative z-10 h-full w-full rounded-[1.12rem] object-contain drop-shadow-[0_10px_18px_rgba(15,23,42,0.18)]"
+          className="relative z-10 h-full w-full scale-110 rounded-[1.3rem] object-cover drop-shadow-[0_10px_18px_rgba(15,23,42,0.18)]"
         />
       </div>
       {!collapsed && (
         <div className="min-w-0">
-          <div className="text-[1.68rem] font-black leading-none tracking-tight text-white">BillMyGym</div>
-          <div className="mt-2 text-[10px] font-black uppercase tracking-[0.32em] text-amber-200/90">Revenue OS</div>
+          <div className="text-[1.75rem] font-black leading-none tracking-tight text-white">BillMyGym</div>
+          <div className="mt-1.5 text-[10px] font-black uppercase tracking-[0.32em] text-amber-200/90">Revenue OS</div>
         </div>
       )}
     </div>
