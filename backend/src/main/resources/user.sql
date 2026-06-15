@@ -102,7 +102,7 @@ INSERT INTO users (
 (
     1000,
     NULL,
-    'sanjoksiby00@gmail.com',
+    'sanjoksiby0@gmail.com',
     '$2a$10$AUf5AQTExGhfFHgRZzbH.epVzW/Re84JFF8ibaK/7NmHlbvU5JqbG',
     'SUPER_ADMIN',
     'ACTIVE',
@@ -121,7 +121,7 @@ INSERT INTO users (
 (
     2000,
     1000,
-    'sanjosiby573@gmail.com',
+    'sanjoksiby10@gmail.com',
     '$2a$10$AUf5AQTExGhfFHgRZzbH.epVzW/Re84JFF8ibaK/7NmHlbvU5JqbG',
     'ORG_ADMIN',
     'ACTIVE',
