@@ -508,6 +508,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
 
               <div className="p-6">
                 <div className="grid grid-cols-[0.88fr_1.12fr] gap-3 lg:grid-cols-2 lg:gap-6">
+                  {membershipPlans && membershipPlans.length > 1 && (
                   <div className={`rounded-[1.45rem] border p-3 shadow-sm lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none md:col-span-2 ${
                     isBrandNewMember
                       ? "border-amber-200/80 bg-white/85 lg:border-0 lg:bg-transparent"
@@ -526,6 +527,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                       </select>
                     </Field>
                   </div>
+                  )}
                   <div className={`rounded-[1.45rem] border p-3 shadow-sm lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none ${
                     isBrandNewMember
                       ? "border-amber-200/80 bg-white/85 lg:border-0 lg:bg-transparent"
