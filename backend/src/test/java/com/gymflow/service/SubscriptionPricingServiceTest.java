@@ -39,22 +39,22 @@ class SubscriptionPricingServiceTest {
         assertEquals(100L, price.activeMembers());
         assertEquals(100, price.includedMembers());
         assertEquals(0L, price.overageMembers());
-        assertEquals(new BigDecimal("4.00"), price.overageRate());
+        assertEquals(new BigDecimal("2.00"), price.overageRate());
         assertEquals(new BigDecimal("0.00"), price.overageAmount());
     }
 
     @Test
-    void chargesFourRupeesForEachActiveMemberAboveOneHundred() {
+    void chargesTwoRupeesForEachActiveMemberAboveOneHundred() {
         Organization organization = regularOrganization(12L);
         when(memberMembershipRepository.countBillableActiveMembers(eq(12L), any())).thenReturn(150L);
         SubscriptionPricingService service = new SubscriptionPricingService(memberMembershipRepository, planAccessService);
 
         var price = service.priceFor(organization, SubscriptionPlan.BILLMYGYM);
 
-        assertEquals(new BigDecimal("499.00"), price.totalAmount());
+        assertEquals(new BigDecimal("399.00"), price.totalAmount());
         assertEquals(150L, price.activeMembers());
         assertEquals(50L, price.overageMembers());
-        assertEquals(new BigDecimal("200.00"), price.overageAmount());
+        assertEquals(new BigDecimal("100.00"), price.overageAmount());
     }
 
     @Test

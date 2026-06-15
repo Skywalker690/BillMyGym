@@ -32,7 +32,7 @@ const schema = z.object({
   name: z.string().min(1, "Organization name is required"),
   place: z.string().min(1, "Place is required"),
   district: z.string().min(1, "District is required"),
-  monthlyMembershipFee: z.coerce.number().min(0, "Monthly membership fee must be zero or more"),
+  regularPlanPrice: z.coerce.number().min(0, "Regular plan price must be zero or more"),
   admissionFee: z.coerce.number().min(0, "Admission fee must be zero or more"),
   subscriptionPlan: z.literal("BILLMYGYM"),
   adminName: z.string().min(1, "Admin name is required"),
@@ -86,7 +86,7 @@ export default function OrganizationForm() {
     defaultValues: {
       subscriptionPlan: "BILLMYGYM",
       password: generateTemporaryPassword(),
-      monthlyMembershipFee: 0,
+      regularPlanPrice: 0,
       admissionFee: 0,
       district: "",
       place: "",
@@ -96,7 +96,7 @@ export default function OrganizationForm() {
   const watchedName = watch("name");
   const watchedPlace = watch("place");
   const watchedDistrict = watch("district");
-  const watchedMonthlyMembershipFee = watch("monthlyMembershipFee");
+  const watchedRegularPlanPrice = watch("regularPlanPrice");
   const watchedAdmissionFee = watch("admissionFee");
   const watchedAdminName = watch("adminName");
   const watchedAdminEmail = watch("adminEmail");
@@ -112,7 +112,7 @@ export default function OrganizationForm() {
         adminFullName: data.adminName,
         adminPhoneNumber: data.adminPhone,
         adminEmail: data.adminEmail,
-        monthlyMembershipFee: data.monthlyMembershipFee,
+        regularPlanPrice: data.regularPlanPrice,
         admissionFee: data.admissionFee,
         subscriptionPlan: "BILLMYGYM",
         password: data.password,
@@ -132,7 +132,7 @@ export default function OrganizationForm() {
 
   const nextStep = async () => {
     const fieldsByStep: Record<Step, Array<keyof Values>> = {
-      0: ["name", "place", "district", "monthlyMembershipFee", "admissionFee"],
+      0: ["name", "place", "district", "regularPlanPrice", "admissionFee"],
       1: ["adminName", "adminEmail", "adminPhone", "password"],
     };
 
@@ -157,7 +157,7 @@ export default function OrganizationForm() {
     setReviewOpen(true);
   };
 
-  const clearZeroOnFocus = (field: "monthlyMembershipFee" | "admissionFee") => {
+  const clearZeroOnFocus = (field: "regularPlanPrice" | "admissionFee") => {
     const currentValue = watch(field);
     if (Number(currentValue ?? 0) === 0) {
       setValue(field, "" as unknown as number, { shouldDirty: true });
@@ -234,13 +234,13 @@ export default function OrganizationForm() {
                   />
                 </Field>
 
-                <Field label="Monthly Membership Fee (INR)" error={errors.monthlyMembershipFee?.message}>
+                <Field label="Regular Plan Price (INR)" error={errors.regularPlanPrice?.message}>
                   <Input
                     type="number"
                     min="0"
                     step="0.01"
-                    {...register("monthlyMembershipFee", { valueAsNumber: true })}
-                    onFocus={() => clearZeroOnFocus("monthlyMembershipFee")}
+                    {...register("regularPlanPrice", { valueAsNumber: true })}
+                    onFocus={() => clearZeroOnFocus("regularPlanPrice")}
                     className="h-12 rounded-2xl bg-white/75"
                   />
                 </Field>
@@ -324,7 +324,7 @@ export default function OrganizationForm() {
                   { label: "Name", value: watchedName },
                   { label: "Place", value: watchedPlace },
                   { label: "District", value: watchedDistrict },
-                  { label: "Monthly Fee", value: `INR ${Number(watchedMonthlyMembershipFee ?? 0).toLocaleString("en-IN")}` },
+                  { label: "Regular Plan", value: `INR ${Number(watchedRegularPlanPrice ?? 0).toLocaleString("en-IN")}` },
                   { label: "Admission Fee", value: `INR ${Number(watchedAdmissionFee ?? 0).toLocaleString("en-IN")}` },
                 ]}
               />

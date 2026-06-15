@@ -22,7 +22,7 @@ public class SubscriptionPricingService {
     public static final SubscriptionPlan BILLMYGYM_PLAN = SubscriptionPlan.BILLMYGYM;
     public static final BigDecimal BASE_MONTHLY_AMOUNT = new BigDecimal("299.00");
     public static final int INCLUDED_ACTIVE_MEMBERS = 100;
-    public static final BigDecimal OVERAGE_PER_ACTIVE_MEMBER = new BigDecimal("4.00");
+    public static final BigDecimal OVERAGE_PER_ACTIVE_MEMBER = new BigDecimal("2.00");
 
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
 

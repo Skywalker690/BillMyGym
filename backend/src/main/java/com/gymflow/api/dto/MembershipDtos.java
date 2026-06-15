@@ -17,14 +17,14 @@ public class MembershipDtos {
 
     public record CreateMembershipRequest(
         @Positive Integer durationMonths,
-        @NotNull @PositiveOrZero BigDecimal planAmount,
+        Long membershipPlanId,
         LocalDate startDate
     ) {
     }
 
     public record SwitchMembershipRequest(
         @Positive Integer durationMonths,
-        @NotNull @PositiveOrZero BigDecimal planAmount,
+        @NotNull Long membershipPlanId,
         @NotNull LocalDate switchDate,
         String notes
     ) {
@@ -74,6 +74,9 @@ public class MembershipDtos {
         Long id,
         Long memberId,
         Long organizationId,
+        Long membershipPlanId,
+        String planName,
+        BigDecimal monthlyPlanPrice,
         int durationMonths,
         BigDecimal planAmount,
         LocalDate startDate,

@@ -149,11 +149,11 @@ public class FinancialReportService {
             monthStart.atStartOfDay(APP_ZONE).toInstant(),
             month.plusMonths(1).atDay(1).atStartOfDay(APP_ZONE).toInstant()
         );
-        BigDecimal monthlyFee = organization.getMonthlyMembershipFee() == null
-            ? BigDecimal.ZERO
-            : organization.getMonthlyMembershipFee();
         BigDecimal duePayments = month.equals(YearMonth.from(today))
-            ? monthlyFee.multiply(BigDecimal.valueOf(overdueMembers))
+            ? latestByMember.values().stream()
+                .filter(membership -> membership.getEndDate().isBefore(snapshotDate))
+                .map(MemberMembership::getPlanAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
             : BigDecimal.ZERO;
         BigDecimal expenses = BigDecimal.ZERO;
 
@@ -170,10 +170,7 @@ public class FinancialReportService {
             activeMembers,
             overdueMembers,
             deactivatedMembers,
-            "%s plan, monthly member fee INR %s".formatted(
-                reportPlanName(organization),
-                monthlyFee.stripTrailingZeros().toPlainString()
-            )
+            "%s plan, membership pricing follows each member plan snapshot".formatted(reportPlanName(organization))
         );
     }
 

@@ -12,8 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
-import { persistMemberPricing, readCachedMemberPricing, toMemberPricing, type MemberPricing } from "@/lib/memberPricingCache";
-import { fetchAndCacheSubscriptionStatus, readCachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
+type MembershipPlan = {
+  id: number;
+  name: string;
+  price: number | string;
+  active: boolean;
+  defaultPlan: boolean;
+};
 
 type MemberFormMode = "create" | "edit" | "renew";
 
@@ -23,6 +28,7 @@ const memberSchema = z.object({
   status: z.enum(["ACTIVE", "DEACTIVATED"]),
   deactivationReason: z.string().optional(),
   durationMonths: z.coerce.number().min(1).optional(),
+  membershipPlanId: z.coerce.number().min(1).optional(),
   planAmount: z.coerce.number().min(0).optional(),
   startDate: z.string().optional(),
   initialPaymentAmount: z.coerce.number().min(0).optional(),
@@ -70,67 +76,24 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
     refetchOnWindowFocus: false,
   });
 
-  const { data: organizationPricing, isLoading: pricingLoading } = useQuery<MemberPricing>({
-    queryKey: ["memberFormOrganizationPricing", "v2", user?.organizationId],
+  const { data: membershipPlans, isLoading: plansLoading } = useQuery<MembershipPlan[]>({
+    queryKey: ["membershipPlans", user?.organizationId],
     queryFn: async () => {
-      const organizationId = user?.organizationId ?? null;
-
-      const cachedPricing = readCachedMemberPricing(organizationId);
-      if (cachedPricing) {
-        return cachedPricing;
-      }
-
-      const statusPricing = toMemberPricing(readCachedSubscriptionStatus(), organizationId);
-      if (statusPricing) {
-        persistMemberPricing(organizationId, statusPricing);
-        return statusPricing;
-      }
-
-      try {
-        const subscriptionStatus = await fetchAndCacheSubscriptionStatus();
-        const liveStatusPricing = toMemberPricing(subscriptionStatus, organizationId);
-        if (liveStatusPricing) {
-          persistMemberPricing(organizationId, liveStatusPricing);
-          return liveStatusPricing;
-        }
-      } catch {
-        // Fall through to narrower pricing sources and the last-known-good cache.
-      }
-
-      try {
-        const settingsResponse = await api.get("/settings");
-        const settingsPricing = toMemberPricing(settingsResponse.data, organizationId);
-        if (settingsPricing) {
-          persistMemberPricing(organizationId, settingsPricing);
-          return settingsPricing;
-        }
-      } catch {
-        // Settings can be blocked in some subscription states on older backend builds.
-      }
-
-      if (organizationId) {
-        try {
-          const organizationResponse = await api.get(`/organizations/${organizationId}`);
-          const organizationPricing = toMemberPricing(organizationResponse.data, organizationId);
-          if (organizationPricing) {
-            persistMemberPricing(organizationId, organizationPricing);
-            return organizationPricing;
-          }
-        } catch {
-          // Organization profile data is a final live fallback.
-        }
-      }
-
-      throw new Error("Organization pricing is unavailable");
+      const res = await api.get("/membership-plans");
+      return res.data.plans;
     },
     enabled: Boolean(user?.organizationId),
-    initialData: () => {
-      const organizationId = user?.organizationId ?? null;
-      return readCachedMemberPricing(organizationId)
-        ?? toMemberPricing(readCachedSubscriptionStatus(), organizationId)
-        ?? undefined;
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: organizationSettings, isLoading: settingsLoading } = useQuery({
+    queryKey: ["memberFormOrganizationSettings", user?.organizationId],
+    queryFn: async () => {
+      const res = await api.get("/settings");
+      return res.data;
     },
-    retry: 1,
+    enabled: Boolean(user?.organizationId),
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
@@ -143,6 +106,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
       status: "ACTIVE",
       deactivationReason: "",
       durationMonths: 1,
+      membershipPlanId: undefined,
       planAmount: 0,
       startDate: new Date().toISOString().slice(0, 10),
       initialPaymentAmount: 0,
@@ -150,15 +114,21 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
   });
   const selectedStatus = watch("status");
   const watchedDurationMonths = Number(watch("durationMonths") ?? 1);
+  const watchedMembershipPlanId = Number(watch("membershipPlanId") ?? 0);
   const watchedInitialPaymentAmount = Number(watch("initialPaymentAmount") ?? 0);
-  const organizationMonthlyFee = Number(organizationPricing?.monthlyMembershipFee ?? 0);
-  const organizationAdmissionFee = Number(organizationPricing?.admissionFee ?? 0);
+  const defaultPlan = membershipPlans?.find((plan) => plan.defaultPlan) ?? membershipPlans?.[0];
+  const selectedPlan = membershipPlans?.find((plan) => plan.id === watchedMembershipPlanId) ?? defaultPlan;
+  const selectedMonthlyPrice = Number(selectedPlan?.price ?? 0);
+  const organizationAdmissionFee = Number(organizationSettings?.admissionFee ?? 0);
   const normalizedDurationMonths = Number.isFinite(watchedDurationMonths) && watchedDurationMonths > 0
     ? watchedDurationMonths
     : 1;
   const isBrandNewMember = isCreate && !existingMember;
-  const calculatedPlanAmount = resolveMembershipTotal(organizationMonthlyFee, normalizedDurationMonths);
-  const calculatedCollectedAmount = resolveCollectedAmount(mode, calculatedPlanAmount, organizationAdmissionFee, existingMember);
+  const shouldCollectPayment = !isCreate || !existingMember;
+  const calculatedPlanAmount = resolveMembershipTotal(selectedMonthlyPrice, normalizedDurationMonths);
+  const calculatedCollectedAmount = shouldCollectPayment
+    ? resolveCollectedAmount(mode, calculatedPlanAmount, organizationAdmissionFee, existingMember)
+    : 0;
   const durationMonthsField = register("durationMonths", { valueAsNumber: true });
   const planAmountField = register("planAmount", { valueAsNumber: true });
   const paymentCollectedField = register("initialPaymentAmount", { valueAsNumber: true });
@@ -171,6 +141,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
         status: member.status ?? "ACTIVE",
         deactivationReason: member.deactivationReason ?? "",
         durationMonths: 1,
+        membershipPlanId: undefined,
         planAmount: 0,
         startDate: new Date().toISOString().slice(0, 10),
         initialPaymentAmount: 0,
@@ -190,15 +161,22 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
         status: member.status ?? "ACTIVE",
         deactivationReason: member.deactivationReason ?? "",
         durationMonths: 1,
+        membershipPlanId: memberships?.[0]?.membershipPlanId ?? defaultPlan?.id,
         planAmount: 0,
         startDate: nextStartDate,
         initialPaymentAmount: 0,
       });
     }
-  }, [member, isEdit, isRenew, reset, memberships]);
+  }, [defaultPlan?.id, member, isEdit, isRenew, reset, memberships]);
 
   useEffect(() => {
-    if (!organizationPricing || isEdit) {
+    if (!isEdit && defaultPlan?.id && !watchedMembershipPlanId) {
+      setValue("membershipPlanId", defaultPlan.id, { shouldDirty: false });
+    }
+  }, [defaultPlan?.id, isEdit, setValue, watchedMembershipPlanId]);
+
+  useEffect(() => {
+    if (!selectedPlan || isEdit) {
       return;
     }
     setValue("planAmount", calculatedPlanAmount, { shouldDirty: false });
@@ -209,7 +187,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
     existingMember,
     isEdit,
     mode,
-    organizationPricing,
+    selectedPlan,
     setValue,
   ]);
 
@@ -227,10 +205,10 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
           ? (await api.patch(`/members/${memberId}`, memberPayload)).data
           : member;
 
-      if ((isCreate || isRenew) && savedMember && data.durationMonths && data.planAmount !== undefined && data.planAmount > 0) {
+      if ((isCreate || isRenew) && savedMember && data.durationMonths && data.membershipPlanId) {
         const membershipResponse = await api.post(`/members/${savedMember.id}/memberships`, {
           durationMonths: data.durationMonths,
-          planAmount: data.planAmount,
+          membershipPlanId: data.membershipPlanId,
           startDate: data.startDate || undefined,
         }, {
           headers: {
@@ -238,7 +216,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
           },
         });
         const membership = membershipResponse.data;
-        if (data.initialPaymentAmount && data.initialPaymentAmount > 0) {
+        if (shouldCollectPayment && data.initialPaymentAmount && data.initialPaymentAmount > 0) {
           const isAdmissionApplicable = isCreate && !existingMember && organizationAdmissionFee > 0;
           
           if (isAdmissionApplicable) {
@@ -256,7 +234,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
             });
           }
           
-          const membershipAmount = data.planAmount && data.planAmount > 0 ? data.planAmount : 0;
+          const membershipAmount = Number(membership.planAmount ?? 0);
             
           if (membershipAmount > 0) {
             // Record membership fee payment
@@ -303,7 +281,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
   }
 
   if ((isEdit || isRenew) && memberLoading) return <div className="p-8">Loading member...</div>;
-  if ((isCreate || isRenew) && pricingLoading) return <div className="p-8">Loading organization pricing...</div>;
+  if ((isCreate || isRenew) && (plansLoading || settingsLoading)) return <div className="p-8">Loading membership plans...</div>;
 
   const currentMembership = memberships?.[0];
 
@@ -343,10 +321,10 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
           </div>
 
           {(isCreate || isRenew) && (
-            <div className={`hidden sm:grid w-full grid-cols-2 gap-2 sm:gap-3 lg:w-auto ${isCreate && existingMember ? "xl:grid-cols-2" : "xl:grid-cols-3"}`}>
-              <HeroChip
-                label="Monthly Fee"
-                value={`INR ${organizationMonthlyFee.toLocaleString("en-IN")}`}
+            <div className={`hidden sm:grid w-full grid-cols-2 gap-2 sm:gap-3 lg:w-auto ${shouldCollectPayment ? "xl:grid-cols-3" : "xl:grid-cols-1"}`}>
+                <HeroChip
+                  label={selectedPlan?.name ?? "Plan"}
+                  value={`INR ${selectedMonthlyPrice.toLocaleString("en-IN")}`}
                 tone={isBrandNewMember ? "amber" : "emerald"}
               />
               {(!isCreate || !existingMember) && (
@@ -356,12 +334,14 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                   tone={isBrandNewMember ? "amber" : "emerald"}
                 />
               )}
-              <HeroChip
-                label="Payment Collected"
-                value={`INR ${watchedInitialPaymentAmount.toLocaleString("en-IN")}`}
-                className={!isCreate || !existingMember ? "col-span-2 xl:col-span-1" : ""}
-                tone={isBrandNewMember ? "amber" : "emerald"}
-              />
+              {shouldCollectPayment && (
+                <HeroChip
+                  label="Payment Collected"
+                  value={`INR ${watchedInitialPaymentAmount.toLocaleString("en-IN")}`}
+                  className="col-span-2 xl:col-span-1"
+                  tone={isBrandNewMember ? "amber" : "emerald"}
+                />
+              )}
             </div>
           )}
         </div>
@@ -486,7 +466,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                           : "border-white/80 text-emerald-700"
                       }`}>
                         <Sparkles className="h-3.5 w-3.5" />
-                        Monthly fee INR {organizationMonthlyFee.toLocaleString("en-IN")}
+                        {selectedPlan?.name ?? "Plan"} INR {selectedMonthlyPrice.toLocaleString("en-IN")}
                       </div>
                       {(!isCreate || !existingMember) && (
                         <div className={`inline-flex items-center gap-2 rounded-full border bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] ${
@@ -501,6 +481,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                     </div>
                   </div>
 
+                  {shouldCollectPayment && (
                   <div className="hidden lg:block lg:w-[380px]">
                     <div className="rounded-[1.4rem] border border-emerald-200 bg-white/90 p-4 shadow-[0_18px_42px_-28px_rgba(5,150,105,0.65)] sm:p-5">
                       <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">Payment Collected</div>
@@ -512,11 +493,30 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                       </div>
                     </div>
                   </div>
+                  )}
                 </div>
               </div>
 
               <div className="p-6">
                 <div className="grid grid-cols-[0.88fr_1.12fr] gap-3 lg:grid-cols-2 lg:gap-6">
+                  <div className={`rounded-[1.45rem] border p-3 shadow-sm lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none md:col-span-2 ${
+                    isBrandNewMember
+                      ? "border-amber-200/80 bg-white/85 lg:border-0 lg:bg-transparent"
+                      : "border-emerald-100 bg-white/85 lg:border-0 lg:bg-transparent"
+                  }`}>
+                    <Field label="Membership Plan">
+                      <select
+                        {...register("membershipPlanId", { valueAsNumber: true })}
+                        className="h-12 w-full rounded-2xl border border-black/5 bg-white/70 px-4 text-sm font-semibold text-slate-700"
+                      >
+                        {(membershipPlans ?? []).map((plan) => (
+                          <option key={plan.id} value={plan.id}>
+                            {plan.name} - INR {Number(plan.price ?? 0).toLocaleString("en-IN")}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  </div>
                   <div className={`rounded-[1.45rem] border p-3 shadow-sm lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none ${
                     isBrandNewMember
                       ? "border-amber-200/80 bg-white/85 lg:border-0 lg:bg-transparent"
@@ -542,6 +542,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                   </div>
                 </div>
                 <input type="hidden" {...planAmountField} />
+                {shouldCollectPayment && (
                 <div className="mt-6">
                   <Field label="Payment Collected" hint="Final amount tracked ">
                     <div className={`rounded-[1.5rem] border-2 p-3 shadow-[0_18px_45px_-30px_rgba(5,150,105,0.65)] sm:p-4 ${
@@ -573,6 +574,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                     </div>
                   </Field>
                 </div>
+                )}
               </div>
             </div>
           </div>

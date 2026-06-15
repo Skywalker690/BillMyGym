@@ -561,7 +561,7 @@ function PlanBillingPanel({
   const includedMembers = pricing.includedMembers ?? 100;
   const activeMembers = pricing.activeMembers ?? 0;
   const overageMembers = pricing.overageMembers ?? Math.max(activeMembers - includedMembers, 0);
-  const overageRate = pricing.overageRate ?? 4;
+  const overageRate = pricing.overageRate ?? 2;
   const overageAmount = pricing.overageAmount ?? overageMembers * overageRate;
   const totalAmount = pricing.totalAmount ?? (pricing.baseAmount ?? 0) + overageAmount;
   const includedPercent = activeMembers > 0

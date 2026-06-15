@@ -50,9 +50,6 @@ public class OrganizationMapper {
         organization.setAdminFullName(request.adminFullName());
         organization.setAdminPhoneNumber(request.adminPhoneNumber());
         organization.setAdminEmail(request.adminEmail());
-        if (request.monthlyMembershipFee() != null) {
-            organization.setMonthlyMembershipFee(request.monthlyMembershipFee());
-        }
         if (request.admissionFee() != null) {
             organization.setAdmissionFee(request.admissionFee());
         }
@@ -77,7 +74,9 @@ public class OrganizationMapper {
         organization.setAdminFullName(request.adminFullName());
         organization.setAdminPhoneNumber(request.adminPhoneNumber());
         organization.setAdminEmail(request.adminEmail());
-        if (request.monthlyMembershipFee() != null) {
+        if (request.regularPlanPrice() != null) {
+            organization.setMonthlyMembershipFee(request.regularPlanPrice());
+        } else if (request.monthlyMembershipFee() != null) {
             organization.setMonthlyMembershipFee(request.monthlyMembershipFee());
         }
         if (request.admissionFee() != null) {

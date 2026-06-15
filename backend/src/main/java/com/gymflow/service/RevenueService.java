@@ -84,10 +84,6 @@ public class RevenueService {
         BigDecimal overdueRevenue = BigDecimal.ZERO;
         long prepaidMembers = 0L;
         long activeMembersPendingCollection = 0L;
-        BigDecimal monthlyMembershipFee = organization.getMonthlyMembershipFee() == null
-            ? BigDecimal.ZERO
-            : organization.getMonthlyMembershipFee();
-
         for (MemberMembership membership : memberships) {
             if (membership.getMember().getStatus() != MemberStatus.ACTIVE) {
                 continue;
@@ -102,16 +98,16 @@ public class RevenueService {
                 && !membership.getStartDate().isAfter(monthEnd)
                 && !membership.getEndDate().isBefore(monthStart);
             if (isCurrentObligation && membership.getStatus() == MembershipStatus.ACTIVE) {
-                pendingRevenue = pendingRevenue.add(
-                    coverage.pendingAmount().compareTo(BigDecimal.ZERO) > 0 ? monthlyMembershipFee : BigDecimal.ZERO
-                );
                 if (coverage.pendingAmount().compareTo(BigDecimal.ZERO) > 0) {
+                    pendingRevenue = pendingRevenue.add(coverage.pendingAmount());
                     activeMembersPendingCollection++;
                 }
             }
             if (membership.getStatus() == MembershipStatus.OVERDUE) {
-                overdueRevenue = overdueRevenue.add(monthlyMembershipFee);
-                activeMembersPendingCollection++;
+                if (coverage.pendingAmount().compareTo(BigDecimal.ZERO) > 0) {
+                    overdueRevenue = overdueRevenue.add(coverage.pendingAmount());
+                    activeMembersPendingCollection++;
+                }
             }
             if (membership.getDurationMonths() > 1 && coverage.pendingAmount().compareTo(BigDecimal.ZERO) == 0
                 && membership.getStatus() == MembershipStatus.ACTIVE) {

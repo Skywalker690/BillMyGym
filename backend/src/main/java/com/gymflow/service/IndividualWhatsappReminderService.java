@@ -140,9 +140,9 @@ public class IndividualWhatsappReminderService {
         }
 
         LocalDate dueDate = membership.getEndDate().plusDays(1);
-        BigDecimal pendingAmount = organization.getMonthlyMembershipFee() == null
+        BigDecimal pendingAmount = membership.getPlanAmount() == null
             ? BigDecimal.ZERO
-            : organization.getMonthlyMembershipFee();
+            : membership.getPlanAmount();
         String message = buildMessage(member, organization, dueDate, pendingAmount);
         return new ReminderContext(organization, member, membership, dueDate, pendingAmount, message);
     }

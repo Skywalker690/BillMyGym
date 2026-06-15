@@ -6,6 +6,7 @@ import com.gymflow.api.dto.MembershipDtos.SwitchMembershipRequest;
 import com.gymflow.api.error.BadRequestException;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
+import com.gymflow.domain.MembershipPlan;
 import com.gymflow.domain.enums.AuditCategory;
 import com.gymflow.domain.enums.AuditActivityScope;
 import com.gymflow.domain.enums.AuditEventStatus;
@@ -35,6 +36,7 @@ public class MembershipWorkflowService {
     private final MemberCreditLedgerService memberCreditLedgerService;
     private final MembershipOperationIdempotencyService idempotencyService;
     private final OrganizationSettingService organizationSettingService;
+    private final MembershipPlanService membershipPlanService;
     private final AuditLogService auditLogService;
     private final ReportCacheService reportCacheService;
 
@@ -65,12 +67,13 @@ public class MembershipWorkflowService {
             membershipLifecycleService.refreshMembership(latestMembership, reminderDays);
         }
         boolean renewalFlow = latestMembership != null;
+        MembershipPlan selectedPlan = resolveCreatePlan(organizationId, request, latestMembership);
 
         MemberMembership membership = new MemberMembership();
         membership.setMember(member);
         membership.setOrganization(member.getOrganization());
+        applyPlanSnapshot(membership, selectedPlan, request.durationMonths());
         membership.setDurationMonths(request.durationMonths());
-        membership.setPlanAmount(resolveMembershipAmount(member, request.durationMonths()));
 
         LocalDate startDate = resolveCreateStartDate(request, latestMembership);
         membership.setStartDate(startDate);
@@ -168,7 +171,7 @@ public class MembershipWorkflowService {
         newMembership.setMember(member);
         newMembership.setOrganization(member.getOrganization());
         newMembership.setDurationMonths(request.durationMonths());
-        newMembership.setPlanAmount(scale(request.planAmount()));
+        applyPlanSnapshot(newMembership, membershipPlanService.requireActivePlan(organizationId, request.membershipPlanId()), request.durationMonths());
         newMembership.setStartDate(switchDate);
         newMembership.setEndDate(membershipLifecycleService.calculateMembershipEndDate(switchDate, request.durationMonths()));
         membershipLifecycleService.refreshMembership(
@@ -259,10 +262,24 @@ public class MembershipWorkflowService {
         return MoneyUtils.normalize(amount);
     }
 
-    private BigDecimal resolveMembershipAmount(Member member, int durationMonths) {
-        BigDecimal recurringFee = member.getOrganization().getMonthlyMembershipFee() == null
-            ? BigDecimal.ZERO
-            : member.getOrganization().getMonthlyMembershipFee();
-        return MoneyUtils.normalize(recurringFee.multiply(BigDecimal.valueOf(durationMonths)));
+    private MembershipPlan resolveCreatePlan(Long organizationId, CreateMembershipRequest request, MemberMembership latestMembership) {
+        if (request.membershipPlanId() != null) {
+            return membershipPlanService.requireActivePlan(organizationId, request.membershipPlanId());
+        }
+        if (latestMembership != null && latestMembership.getMembershipPlan() != null) {
+            try {
+                return membershipPlanService.requireActivePlan(organizationId, latestMembership.getMembershipPlan().getId());
+            } catch (BadRequestException ignored) {
+                // Fall back to the current default plan when an old plan was deactivated.
+            }
+        }
+        return membershipPlanService.requireDefaultPlan(organizationId);
+    }
+
+    private void applyPlanSnapshot(MemberMembership membership, MembershipPlan plan, int durationMonths) {
+        membership.setMembershipPlan(plan);
+        membership.setPlanName(plan.getName());
+        membership.setMonthlyPlanPrice(scale(plan.getPrice()));
+        membership.setPlanAmount(scale(plan.getPrice().multiply(BigDecimal.valueOf(durationMonths))));
     }
 }

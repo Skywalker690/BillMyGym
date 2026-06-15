@@ -42,9 +42,6 @@ public class OrganizationSettingService {
         if (request.brandingName() != null) {
             setting.setBrandingName(request.brandingName());
         }
-        if (request.monthlyMembershipFee() != null) {
-            setting.getOrganization().setMonthlyMembershipFee(request.monthlyMembershipFee());
-        }
         if (request.admissionFee() != null) {
             setting.getOrganization().setAdmissionFee(request.admissionFee());
         }

@@ -38,8 +38,18 @@ public class MemberMembership extends BaseEntity {
     @JoinColumn(name = "organization_id", nullable = false)
     private Organization organization;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "membership_plan_id", nullable = false)
+    private MembershipPlan membershipPlan;
+
     @Column(nullable = false)
     private int durationMonths;
+
+    @Column(nullable = false, length = 120)
+    private String planName = "Regular";
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal monthlyPlanPrice = BigDecimal.ZERO;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal planAmount = BigDecimal.ZERO;

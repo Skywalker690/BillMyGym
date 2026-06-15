@@ -75,10 +75,10 @@ public class MonthlyOrganizationReportService {
         long overdueMembers = latestMemberships.values().stream()
             .filter(membership -> membership.getEndDate().isBefore(snapshotDate))
             .count();
-        BigDecimal monthlyFee = organization.getMonthlyMembershipFee() == null
-            ? BigDecimal.ZERO
-            : organization.getMonthlyMembershipFee();
-        BigDecimal pendingRevenue = monthlyFee.multiply(BigDecimal.valueOf(overdueMembers));
+        BigDecimal pendingRevenue = latestMemberships.values().stream()
+            .filter(membership -> membership.getEndDate().isBefore(snapshotDate))
+            .map(MemberMembership::getPlanAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
         long deactivatedMembers = auditLogRepository.countByOrganizationIdAndEventBetween(
             organization.getId(),
             "MEMBER_DEACTIVATED",

@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import api from "@/lib/api";
 import { useDemoPlanPreview } from "@/context/DemoPlanPreviewContext";
 import { readCachedSubscriptionStatus, type CachedSubscriptionStatus } from "@/lib/subscriptionStatusCache";
-import { DEMO_ORGANIZATION, DEMO_ORGANIZATION_ID, demoMembersPage, demoReminderPreview } from "@/lib/demoWorkspaceData";
+import { DEMO_ORGANIZATION_ID, demoMembersPage, demoReminderPreview } from "@/lib/demoWorkspaceData";
 import { readDemoBaileysRecipient, readDemoBaileysUrl, runDemoBaileysReminders } from "@/lib/demoBaileysClient";
 
 const PAGE_SIZE = 40;
@@ -70,18 +70,7 @@ export default function MembersList() {
     enabled: !isDemoDirectory,
   });
 
-  const { data: liveOrganization } = useQuery({
-    queryKey: ["membersDirectoryOrganization", user?.organizationId],
-    queryFn: async () => {
-      const res = await api.get(`/organizations/${user?.organizationId}`);
-      return res.data;
-    },
-    enabled: Boolean(user?.organizationId) && !isDemoDirectory,
-    staleTime: 60_000,
-  });
-
   const subscriptionStatus = readCachedSubscriptionStatus() as MemberListSubscriptionStatus | null;
-  const organization = isDemoDirectory ? DEMO_ORGANIZATION : liveOrganization;
 
   const reminderPreviewQuery = useQuery({
     queryKey: ["whatsappReminderPreview", reminderMember?.id],
@@ -109,18 +98,17 @@ export default function MembersList() {
       if (isDemoDirectory) {
         return { data: { success: true } };
       }
-      const monthlyMembershipFee = Number(organization?.monthlyMembershipFee ?? 0);
-      if (monthlyMembershipFee <= 0) {
-        throw new Error("Monthly membership fee is not configured for this organization");
-      }
-
       const membership = member.currentMembership;
+      const membershipPlanId = membership?.membershipPlanId;
+      if (!membershipPlanId) {
+        throw new Error("Current membership plan is unavailable for quick renew");
+      }
       const startDate = resolveQuickRenewStartDate(membership?.endDate);
       const membershipResponse = await api.post(
         `/members/${member.id}/memberships`,
         {
           durationMonths: 1,
-          planAmount: monthlyMembershipFee,
+          membershipPlanId,
           startDate,
         },
         {
@@ -129,12 +117,13 @@ export default function MembersList() {
           },
         }
       );
+      const renewalAmount = Number(membershipResponse.data?.planAmount ?? 0);
 
       await api.post(
         "/payments",
         {
           membershipId: membershipResponse.data.id,
-          amount: monthlyMembershipFee,
+          amount: renewalAmount,
           paymentDate: new Date().toISOString().slice(0, 10),
           paymentType: membership ? "RENEWAL" : "NEW_MEMBERSHIP",
           paymentStatus: "PAID",
@@ -502,7 +491,6 @@ export default function MembersList() {
       {quickRenewMember && (
         <QuickRenewModal
           member={quickRenewMember}
-          monthlyMembershipFee={Number(organization?.monthlyMembershipFee ?? 0)}
           isSubmitting={quickRenewMutation.isPending}
           onCancel={() => {
             if (!quickRenewMutation.isPending) {
@@ -786,18 +774,18 @@ function formatReminderDate(value?: string) {
 
 function QuickRenewModal({
   member,
-  monthlyMembershipFee,
   isSubmitting,
   onCancel,
   onConfirm,
 }: {
   member: any;
-  monthlyMembershipFee: number;
   isSubmitting: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
   const membership = member.currentMembership;
+  const planName = membership?.planName ?? "Current plan";
+  const monthlyPlanPrice = Number(membership?.monthlyPlanPrice ?? membership?.planAmount ?? 0);
   const nextStartDate = resolveQuickRenewStartDate(membership?.endDate);
   const nextEndDate = new Date(`${nextStartDate}T00:00:00`);
   nextEndDate.setMonth(nextEndDate.getMonth() + 1);
@@ -835,11 +823,11 @@ function QuickRenewModal({
               <div>
                 <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Collected On Confirm</div>
                 <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                  INR {monthlyMembershipFee.toLocaleString("en-IN")}
+                  INR {monthlyPlanPrice.toLocaleString("en-IN")}
                 </div>
               </div>
               <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
-                Start date: {formatDate(nextStartDate)}
+                {planName} | Start date: {formatDate(nextStartDate)}
               </div>
             </div>
           </div>
@@ -858,7 +846,7 @@ function QuickRenewModal({
               type="button"
               className="h-11 rounded-full bg-emerald-600 px-6 font-bold text-white hover:bg-emerald-700"
               onClick={onConfirm}
-              disabled={isSubmitting || monthlyMembershipFee <= 0}
+              disabled={isSubmitting || !membership?.membershipPlanId}
             >
               {isSubmitting ? "Renewing..." : "Yes, Quick Renew"}
             </Button>

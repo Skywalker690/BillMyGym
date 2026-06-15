@@ -66,6 +66,7 @@ public class AuthService {
     private final ReferralService referralService;
     private final PlatformSettingService platformSettingService;
     private final LegalPolicyService legalPolicyService;
+    private final MembershipPlanService membershipPlanService;
 
     @Value("${google.client.id}")
     private String googleClientId;
@@ -97,6 +98,7 @@ public class AuthService {
             billingLifecycleService.startRegularTrial(organization, today);
         }
         Organization savedOrganization = organizationRepository.save(organization);
+        membershipPlanService.createDefaultPlanForOrganization(savedOrganization, request.regularPlanPrice());
 
         OrganizationSetting setting = new OrganizationSetting();
         setting.setOrganization(savedOrganization);
@@ -159,6 +161,7 @@ public class AuthService {
         
         billingLifecycleService.startRegularTrial(organization, today);
         Organization savedOrganization = organizationRepository.save(organization);
+        membershipPlanService.createDefaultPlanForOrganization(savedOrganization, request.regularPlanPrice());
 
         OrganizationSetting setting = new OrganizationSetting();
         setting.setOrganization(savedOrganization);

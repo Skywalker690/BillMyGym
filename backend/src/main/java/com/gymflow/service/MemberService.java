@@ -15,6 +15,7 @@ import com.gymflow.api.mapper.MemberMapper;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
+import com.gymflow.domain.MembershipPlan;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.enums.AuditCategory;
 import com.gymflow.domain.enums.AuditActivityScope;
@@ -88,6 +89,7 @@ public class MemberService {
     private final MemberCreditLedgerService memberCreditLedgerService;
     private final OrganizationSettingService organizationSettingService;
     private final MemberLimitService memberLimitService;
+    private final MembershipPlanService membershipPlanService;
     private final AuditLogService auditLogService;
     private final ReportCacheService reportCacheService;
 
@@ -486,6 +488,9 @@ public class MemberService {
         );
         return new CurrentMembershipSummary(
             membership.getId(),
+            membership.getMembershipPlan().getId(),
+            membership.getPlanName(),
+            membership.getMonthlyPlanPrice(),
             membership.getDurationMonths(),
             membership.getPlanAmount(),
             membership.getStartDate(),
@@ -533,13 +538,15 @@ public class MemberService {
     }
 
     private MemberMembership toImportedMembership(Member member, ParsedImportRow row, Organization organization) {
+        MembershipPlan defaultPlan = membershipPlanService.requireDefaultPlan(organization.getId());
         MemberMembership membership = new MemberMembership();
         membership.setMember(member);
         membership.setOrganization(organization);
+        membership.setMembershipPlan(defaultPlan);
+        membership.setPlanName(defaultPlan.getName());
+        membership.setMonthlyPlanPrice(MoneyUtils.normalize(defaultPlan.getPrice()));
         membership.setDurationMonths(BULK_IMPORT_MEMBERSHIP_DURATION_MONTHS);
-        membership.setPlanAmount(MoneyUtils.normalize(
-            organization.getMonthlyMembershipFee() == null ? BigDecimal.ZERO : organization.getMonthlyMembershipFee()
-        ));
+        membership.setPlanAmount(MoneyUtils.normalize(defaultPlan.getPrice()));
         membership.setStartDate(row.lastSubscriptionDate());
         membership.setEndDate(row.lastSubscriptionDate().plusMonths(BULK_IMPORT_MEMBERSHIP_DURATION_MONTHS));
         membershipLifecycleService.refreshMembership(membership, DUE_TODAY_WINDOW_DAYS);

@@ -88,8 +88,11 @@ public class SecurityConfig {
                     "/api/analytics/platform/**",
                     "/api/referrals/analytics",
                     "/api/organizations/directory",
+                    "/api/organizations/*/membership-plans",
                     "/api/subscription/organizations/**"
                 ).hasRole(SUPER_ADMIN)
+                .requestMatchers(HttpMethod.PATCH, "/api/organizations/*/membership-plans/*").hasRole(SUPER_ADMIN)
+                .requestMatchers(HttpMethod.POST, "/api/organizations/*/membership-plans").hasRole(SUPER_ADMIN)
                 .requestMatchers(HttpMethod.PUT, "/api/organizations/*/admin").hasRole(SUPER_ADMIN)
                 .requestMatchers(HttpMethod.DELETE, "/api/organizations/*").hasRole(SUPER_ADMIN)
                 .requestMatchers(HttpMethod.POST, "/api/organizations/*/members/bulk-upload").hasRole(SUPER_ADMIN)
@@ -102,6 +105,7 @@ public class SecurityConfig {
                     "/api/reports/**",
                     "/api/reminders/**",
                     "/api/settings/**",
+                    "/api/membership-plans",
                     "/api/notifications/**",
                     "/api/tracking/**",
                     "/api/analytics/organization",

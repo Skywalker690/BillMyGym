@@ -24,6 +24,7 @@ import {
   Trash2,
   Upload,
   User2,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,6 +117,15 @@ type BulkImportResponse = {
   }>;
 };
 
+type MembershipPlan = {
+  id: number;
+  organizationId: number;
+  name: string;
+  price: number | string;
+  active: boolean;
+  defaultPlan: boolean;
+};
+
 type FormValues = {
   name: string;
   place: string;
@@ -124,8 +134,12 @@ type FormValues = {
   adminName: string;
   adminPhone: string;
   adminEmail: string;
-  monthlyMembershipFee: number;
   admissionFee: number;
+};
+
+type MembershipPlanFormValues = {
+  name: string;
+  price: number;
 };
 
 const KERALA_DISTRICTS = [
@@ -171,6 +185,9 @@ export default function OrganizationDetail() {
   const [bulkImportSummary, setBulkImportSummary] = useState<BulkImportResponse | null>(null);
   const [bulkImportIssues, setBulkImportIssues] = useState<BulkImportIssue[]>([]);
   const [bulkImportMessage, setBulkImportMessage] = useState<string | null>(null);
+  const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
+  const [planDraft, setPlanDraft] = useState<MembershipPlanFormValues>({ name: "", price: 0 });
+  const [newPlanDraft, setNewPlanDraft] = useState<MembershipPlanFormValues>({ name: "", price: 0 });
   const bulkImportInputRef = useRef<HTMLInputElement | null>(null);
 
   const { data: organization, isLoading } = useQuery<Organization>({
@@ -189,6 +206,15 @@ export default function OrganizationDetail() {
     },
     enabled: Boolean(id),
     staleTime: 60_000,
+  });
+
+  const { data: membershipPlansResponse } = useQuery<{ plans: MembershipPlan[] }>({
+    queryKey: ["organizationMembershipPlans", id],
+    queryFn: async () => {
+      const res = await api.get(`/organizations/${id}/membership-plans`);
+      return res.data;
+    },
+    enabled: Boolean(id),
   });
 
   useEffect(() => {
@@ -224,7 +250,6 @@ export default function OrganizationDetail() {
       adminName: organization.adminFullName ?? "",
       adminPhone: organization.adminPhoneNumber ?? "",
       adminEmail: organization.adminEmail ?? "",
-      monthlyMembershipFee: Number(organization.monthlyMembershipFee ?? 0),
       admissionFee: Number(organization.admissionFee ?? 0),
     });
   }, [organization, reset]);
@@ -239,7 +264,6 @@ export default function OrganizationDetail() {
       adminFullName: data.adminName,
       adminPhoneNumber: data.adminPhone,
       adminEmail: data.adminEmail,
-      monthlyMembershipFee: data.monthlyMembershipFee,
       admissionFee: data.admissionFee,
       organizationType: organization?.organizationType,
       subscriptionPlan: organization?.subscriptionPlan,
@@ -262,6 +286,32 @@ export default function OrganizationDetail() {
       navigate("/app/organizations");
     },
     onError: () => toast.error("Failed to delete organization"),
+  });
+
+  const createPlanMutation = useMutation({
+    mutationFn: (data: MembershipPlanFormValues) => api.post(`/organizations/${id}/membership-plans`, {
+      name: data.name,
+      price: Number(data.price ?? 0),
+      active: true,
+      defaultPlan: false,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organizationMembershipPlans", id] });
+      setNewPlanDraft({ name: "", price: 0 });
+      toast.success("Membership plan created");
+    },
+    onError: (error: any) => toast.error(error?.api?.message || "Failed to create membership plan"),
+  });
+
+  const updatePlanMutation = useMutation({
+    mutationFn: ({ planId, data }: { planId: number; data: Partial<MembershipPlanFormValues> & { active?: boolean; defaultPlan?: boolean } }) =>
+      api.patch(`/organizations/${id}/membership-plans/${planId}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organizationMembershipPlans", id] });
+      setEditingPlanId(null);
+      toast.success("Membership plan updated");
+    },
+    onError: (error: any) => toast.error(error?.api?.message || "Failed to update membership plan"),
   });
 
   const loadMoreHistoryMutation = useMutation({
@@ -324,6 +374,8 @@ export default function OrganizationDetail() {
   }, [organization]);
 
   const visibleBulkImportIssues = useMemo(() => bulkImportIssues.slice(0, 8), [bulkImportIssues]);
+  const membershipPlans = membershipPlansResponse?.plans ?? [];
+  const defaultMembershipPlan = membershipPlans.find((plan) => plan.defaultPlan);
 
   if (isLoading) return <div className="p-8 text-sm font-semibold text-slate-500">Loading organization...</div>;
   if (!organization) return <div className="p-8 text-sm font-semibold text-slate-500">Organization not found.</div>;
@@ -493,9 +545,6 @@ export default function OrganizationDetail() {
               <p className="mt-1 text-sm font-semibold text-slate-500">Manage subscription state, workspace type, and visible renewal signals.</p>
             </div>
             <div className="grid gap-5 p-6 md:grid-cols-2">
-              <Field label="Monthly Membership Fee (INR)">
-                <Input type="number" min="0" step="0.01" {...register("monthlyMembershipFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-white/70" />
-              </Field>
               <Field label="Admission Fee (INR)">
                 <Input type="number" min="0" step="0.01" {...register("admissionFee", { valueAsNumber: true })} className="h-11 rounded-xl bg-white/70" />
               </Field>
@@ -504,6 +553,145 @@ export default function OrganizationDetail() {
               <DateTile label="Trial Window" value={`${formatDate(organization.trialStartDate)} - ${formatDate(organization.trialEndDate)}`} attention={organization.status === "TRIAL" && needsRenewalAttention} />
               <DateTile label="Workspace Type" value={organization.organizationType === "DEMO" ? "Demo Workspace" : "Regular Workspace"} attention={organization.organizationType === "DEMO"} />
               <DateTile label="Renewal Date" value={formatDate(organization.subscriptionDueDate)} attention={organization.organizationType === "REGULAR" && needsRenewalAttention} />
+            </div>
+          </section>
+
+          <section className="glass-panel overflow-hidden rounded-[2rem]">
+            <div className="border-b border-black/5 p-6">
+              <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-slate-950">
+                <IndianRupee className="h-6 w-6 text-emerald-700" />
+                Membership Management
+              </h2>
+              <p className="mt-1 text-sm font-semibold text-slate-500">Manage recurring membership plans for this organization.</p>
+            </div>
+
+            <div className="space-y-4 p-6">
+              <div className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
+                <Input
+                  value={newPlanDraft.name}
+                  onChange={(event) => setNewPlanDraft((current) => ({ ...current, name: event.target.value }))}
+                  placeholder="Plan name"
+                  className="h-11 rounded-xl bg-white/70"
+                />
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={newPlanDraft.price}
+                  onChange={(event) => setNewPlanDraft((current) => ({ ...current, price: Number(event.target.value) }))}
+                  className="h-11 rounded-xl bg-white/70"
+                />
+                <Button
+                  type="button"
+                  onClick={() => createPlanMutation.mutate(newPlanDraft)}
+                  disabled={createPlanMutation.isPending || !newPlanDraft.name.trim()}
+                  className="h-11 rounded-xl bg-slate-950 px-5 font-black text-white hover:bg-slate-800"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Plan
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {membershipPlans.map((plan) => {
+                  const editing = editingPlanId === plan.id;
+                  const price = Number(plan.price ?? 0);
+                  return (
+                    <div key={plan.id} className="rounded-[1.4rem] border border-white/80 bg-white/75 p-4 shadow-sm">
+                      <div className="grid gap-3 lg:grid-cols-[1fr_160px_auto] lg:items-center">
+                        {editing ? (
+                          <>
+                            <Input
+                              value={planDraft.name}
+                              onChange={(event) => setPlanDraft((current) => ({ ...current, name: event.target.value }))}
+                              className="h-10 rounded-xl bg-white"
+                            />
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={planDraft.price}
+                              onChange={(event) => setPlanDraft((current) => ({ ...current, price: Number(event.target.value) }))}
+                              className="h-10 rounded-xl bg-white"
+                            />
+                            <div className="flex flex-wrap gap-2 lg:justify-end">
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => updatePlanMutation.mutate({ planId: plan.id, data: planDraft })}
+                                disabled={updatePlanMutation.isPending || !planDraft.name.trim()}
+                                className="rounded-full bg-emerald-600 font-black text-white hover:bg-emerald-700"
+                              >
+                                Save
+                              </Button>
+                              <Button type="button" size="sm" variant="outline" onClick={() => setEditingPlanId(null)} className="rounded-full bg-white font-black">
+                                Cancel
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-lg font-black text-slate-950">{plan.name}</span>
+                                {plan.defaultPlan && <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">Default</Badge>}
+                                <Badge className={plan.active ? "border-slate-200 bg-white text-slate-700" : "border-rose-200 bg-rose-100 text-rose-800"}>
+                                  {plan.active ? "Active" : "Inactive"}
+                                </Badge>
+                              </div>
+                              <div className="mt-1 text-sm font-semibold text-slate-500">INR {price.toLocaleString("en-IN")} per month</div>
+                            </div>
+                            <div className="text-sm font-black text-slate-950 lg:text-right">INR {price.toLocaleString("en-IN")}</div>
+                            <div className="flex flex-wrap gap-2 lg:justify-end">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditingPlanId(plan.id);
+                                  setPlanDraft({ name: plan.name, price });
+                                }}
+                                className="rounded-full bg-white font-black"
+                              >
+                                Edit
+                              </Button>
+                              {!plan.defaultPlan && plan.active && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => updatePlanMutation.mutate({ planId: plan.id, data: { defaultPlan: true } })}
+                                  disabled={updatePlanMutation.isPending}
+                                  className="rounded-full bg-white font-black"
+                                >
+                                  Set Default
+                                </Button>
+                              )}
+                              {!plan.defaultPlan && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => updatePlanMutation.mutate({ planId: plan.id, data: { active: !plan.active } })}
+                                  disabled={updatePlanMutation.isPending}
+                                  className="rounded-full bg-white font-black"
+                                >
+                                  {plan.active ? "Deactivate" : "Activate"}
+                                </Button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {!membershipPlans.length && (
+                  <div className="rounded-[1.4rem] border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">
+                    No membership plans found. Add a Regular plan before creating memberships.
+                  </div>
+                )}
+              </div>
             </div>
           </section>
 
@@ -684,7 +872,7 @@ export default function OrganizationDetail() {
               <InfoRow icon={CalendarDays} label="Joined GymMax" value={formatDate(subscriptionStatus?.joinedAt)} />
               <InfoRow icon={MapPin} label="Place" value={organization.place || "Not set"} />
               <InfoRow icon={MapPin} label="District" value={organization.district || "Not set"} />
-              <InfoRow icon={IndianRupee} label="Monthly Fee" value={money.format(organization.monthlyMembershipFee ?? 0)} />
+              <InfoRow icon={IndianRupee} label="Default Plan" value={defaultMembershipPlan ? `${defaultMembershipPlan.name} - ${money.format(defaultMembershipPlan.price ?? 0)}` : "Not set"} />
               <InfoRow icon={IndianRupee} label="Admission Fee" value={money.format(organization.admissionFee ?? 0)} />
               <InfoRow icon={Mail} label="Admin Email" value={organization.adminEmail || "Not set"} />
               <InfoRow icon={Phone} label="Admin Phone" value={organization.adminPhoneNumber || "Not set"} />

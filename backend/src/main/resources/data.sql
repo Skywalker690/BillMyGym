@@ -107,6 +107,24 @@ SELECT
     TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((org_id % 6 + 1) || ' days')::interval
 FROM generate_series(1, 10) AS org_id;
 
+INSERT INTO membership_plans (
+    id, organization_id, name, price, active, default_plan, deleted, deleted_at, version, created_at, updated_at
+)
+SELECT
+    org_id,
+    org_id,
+    'Regular',
+    organization.monthly_membership_fee,
+    TRUE,
+    TRUE,
+    FALSE,
+    NULL,
+    0,
+    TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((30 + org_id) || ' days')::interval,
+    TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((org_id % 6 + 1) || ' days')::interval
+FROM organizations organization
+JOIN generate_series(1, 10) AS org_id ON org_id = organization.id;
+
 INSERT INTO members (
     id, organization_id, full_name, phone, status, deleted, deleted_at, deactivated_at, deactivation_reason,
     created_at, updated_at, version
@@ -138,13 +156,16 @@ FROM generate_series(1, 10) AS org_id
 CROSS JOIN generate_series(1, 10) AS slot_id;
 
 INSERT INTO member_memberships (
-    id, member_id, organization_id, duration_months, plan_amount, start_date, end_date, status,
+    id, member_id, organization_id, membership_plan_id, plan_name, monthly_plan_price, duration_months, plan_amount, start_date, end_date, status,
     last_sent_at, deleted, deleted_at, version, created_at, updated_at
 )
 SELECT
     seeded.id,
     seeded.member_id,
     seeded.organization_id,
+    seeded.membership_plan_id,
+    seeded.plan_name,
+    seeded.monthly_plan_price,
     seeded.duration_months,
     seeded.plan_amount,
     seeded.start_date,
@@ -167,12 +188,15 @@ FROM (
         member.id,
         member.id AS member_id,
         member.organization_id,
+        membership_plan.id AS membership_plan_id,
+        membership_plan.name AS plan_name,
+        membership_plan.price AS monthly_plan_price,
         slot.slot_id,
         CASE WHEN slot.slot_id = 6 THEN 3 WHEN slot.slot_id = 7 THEN 12 ELSE 1 END AS duration_months,
         CASE
-            WHEN slot.slot_id = 6 THEN organization.monthly_membership_fee * 3
-            WHEN slot.slot_id = 7 THEN organization.monthly_membership_fee * 12
-            ELSE organization.monthly_membership_fee
+            WHEN slot.slot_id = 6 THEN membership_plan.price * 3
+            WHEN slot.slot_id = 7 THEN membership_plan.price * 12
+            ELSE membership_plan.price
         END AS plan_amount,
         CASE
             WHEN slot.slot_id = 1 THEN DATE '2026-05-01'
@@ -200,6 +224,7 @@ FROM (
         END AS end_date
     FROM members member
     JOIN organizations organization ON organization.id = member.organization_id
+    JOIN membership_plans membership_plan ON membership_plan.organization_id = organization.id AND membership_plan.default_plan = TRUE AND membership_plan.deleted = FALSE
     CROSS JOIN LATERAL (SELECT ((member.id - 1) % 10) + 1 AS slot_id) slot
 ) seeded;
 
@@ -381,7 +406,13 @@ SELECT
     org_id,
     org_id,
     ((org_id - 1) * 10) + CASE WHEN org_id % 2 = 0 THEN 8 ELSE 3 END,
-    'Hello, your gym membership is overdue. Due Amount: INR ' || (SELECT monthly_membership_fee::int FROM organizations WHERE id = org_id) || '.',
+    'Hello, your gym membership is overdue. Due Amount: INR ' || (
+        SELECT member_memberships.plan_amount::int
+        FROM member_memberships
+        WHERE member_memberships.organization_id = org_id
+        ORDER BY member_memberships.id
+        LIMIT 1
+    ) || '.',
     CASE WHEN org_id IN (3, 8) THEN NULL ELSE TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((org_id % 6 + 1) || ' hours')::interval END,
     CASE WHEN org_id = 8 THEN 'PENDING' WHEN org_id = 3 THEN 'FAILED' ELSE 'SENT' END,
     FALSE,
@@ -512,6 +543,7 @@ END $$;
 SELECT setval('organizations_id_seq', COALESCE((SELECT MAX(id) FROM organizations), 1), TRUE);
 SELECT setval('users_id_seq', COALESCE((SELECT MAX(id) FROM users), 1), TRUE);
 SELECT setval('organization_settings_id_seq', COALESCE((SELECT MAX(id) FROM organization_settings), 1), TRUE);
+SELECT setval('membership_plans_id_seq', COALESCE((SELECT MAX(id) FROM membership_plans), 1), TRUE);
 SELECT setval('members_id_seq', COALESCE((SELECT MAX(id) FROM members), 1), TRUE);
 SELECT setval('member_memberships_id_seq', COALESCE((SELECT MAX(id) FROM member_memberships), 1), TRUE);
 SELECT setval('member_payments_id_seq', COALESCE((SELECT MAX(id) FROM member_payments), 1), TRUE);

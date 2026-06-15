@@ -20,3 +20,4 @@ backend/src/main/resources/script.sh
 # Demo WhatsApp gateway
 demo-whatsapp-gateway/node_modules/
 demo-whatsapp-gateway/.demo-baileys-auth/
+backend/src/main/resources/application-dev.yml

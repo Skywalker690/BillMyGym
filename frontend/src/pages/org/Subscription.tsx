@@ -181,7 +181,7 @@ function loadRazorpayScript() {
 function fallbackPricing(subscription: SubscriptionStatus): SubscriptionPricing {
   const activeMembers = Number(subscription.activeMembers ?? 0);
   const includedMembers = 100;
-  const overageRate = 4;
+  const overageRate = 2;
   const overageMembers = Math.max(activeMembers - includedMembers, 0);
   const overageAmount = overageMembers * overageRate;
   return {

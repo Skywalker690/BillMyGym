@@ -240,6 +240,8 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
 
     long countByOrganizationIdAndDeletedFalseAndStatus(Long organizationId, MembershipStatus status);
 
+    boolean existsByMembershipPlanIdAndOrganizationIdAndDeletedFalseAndStatus(Long membershipPlanId, Long organizationId, MembershipStatus status);
+
     @Modifying
     @Query("delete from MemberMembership membership where membership.organization.id = :organizationId")
     int deleteAllByOrganizationId(@Param("organizationId") Long organizationId);

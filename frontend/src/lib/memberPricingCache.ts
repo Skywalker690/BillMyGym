@@ -1,6 +1,5 @@
 export type MemberPricing = {
   organizationId?: number | null;
-  monthlyMembershipFee: number;
   admissionFee: number;
 };
 
@@ -13,7 +12,6 @@ export function toMemberPricing(value: unknown, organizationId?: number | null):
 
   const source = value as {
     organizationId?: number | string | null;
-    monthlyMembershipFee?: number | string | null;
     admissionFee?: number | string | null;
   };
   const sourceOrganizationId = source.organizationId == null ? organizationId : Number(source.organizationId);
@@ -21,15 +19,13 @@ export function toMemberPricing(value: unknown, organizationId?: number | null):
     return null;
   }
 
-  const monthlyMembershipFee = Number(source.monthlyMembershipFee);
   const admissionFee = Number(source.admissionFee ?? 0);
-  if (!Number.isFinite(monthlyMembershipFee) || monthlyMembershipFee <= 0 || !Number.isFinite(admissionFee) || admissionFee < 0) {
+  if (!Number.isFinite(admissionFee) || admissionFee < 0) {
     return null;
   }
 
   return {
     organizationId: organizationId ?? (Number.isFinite(sourceOrganizationId) ? sourceOrganizationId : null),
-    monthlyMembershipFee,
     admissionFee,
   };
 }

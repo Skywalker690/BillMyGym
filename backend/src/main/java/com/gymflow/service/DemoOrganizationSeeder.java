@@ -5,6 +5,7 @@ import com.gymflow.api.error.NotFoundException;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
 import com.gymflow.domain.MemberPayment;
+import com.gymflow.domain.MembershipPlan;
 import com.gymflow.domain.NotificationDeliveryLog;
 import com.gymflow.domain.NotificationLog;
 import com.gymflow.domain.Organization;
@@ -62,6 +63,7 @@ public class DemoOrganizationSeeder {
     private final WhatsappReminderLogRepository whatsappReminderLogRepository;
     private final UsageMetricRepository usageMetricRepository;
     private final ReportCacheService reportCacheService;
+    private final MembershipPlanService membershipPlanService;
 
     @Transactional
     public DemoResetResult resetDemoWorkspace() {
@@ -104,10 +106,11 @@ public class DemoOrganizationSeeder {
         organization.setSubscriptionDueDate(today.plusMonths(1));
         organizationRepository.save(organization);
 
+        MembershipPlan regularPlan = membershipPlanService.ensureRegularDefaultPlan(organization, MONTHLY_FEE);
         List<MemberMembership> memberships = new ArrayList<>();
         for (int index = 1; index <= 30; index++) {
             Member member = memberRepository.save(demoMember(organization, index));
-            MemberMembership membership = memberMembershipRepository.save(demoMembership(member, organization, index, today));
+            MemberMembership membership = memberMembershipRepository.save(demoMembership(member, organization, regularPlan, index, today));
             memberships.add(membership);
             seedPayments(organization, member, membership, index, currentMonth);
         }
@@ -125,10 +128,13 @@ public class DemoOrganizationSeeder {
         return member;
     }
 
-    private MemberMembership demoMembership(Member member, Organization organization, int index, LocalDate today) {
+    private MemberMembership demoMembership(Member member, Organization organization, MembershipPlan regularPlan, int index, LocalDate today) {
         MemberMembership membership = new MemberMembership();
         membership.setMember(member);
         membership.setOrganization(organization);
+        membership.setMembershipPlan(regularPlan);
+        membership.setPlanName(regularPlan.getName());
+        membership.setMonthlyPlanPrice(regularPlan.getPrice());
         membership.setDurationMonths(1);
         membership.setPlanAmount(MONTHLY_FEE);
 
