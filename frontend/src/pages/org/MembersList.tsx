@@ -822,14 +822,11 @@ function QuickRenewModal({
             Quick Renew
           </div>
           <h2 className="mt-5 text-3xl font-black tracking-tight text-slate-950">Renew {member.fullName} instantly?</h2>
-          <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
-            This will create a fresh 1 month membership from this page itself and record the full renewal payment in one smooth step.
-          </p>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
             <RenewMetric label="Member" value={member.fullName} tone="slate" />
             <RenewMetric label="Current Expiry" value={formatDate(membership?.endDate)} tone="amber" />
-            <RenewMetric label="Next Expiry" value={formatDate(nextEndDate.toISOString().slice(0, 10))} tone="emerald" />
+            <RenewMetric label="Next Expiry" value={formatDate(nextEndDate.toISOString().slice(0, 10))} tone="emerald" className="col-span-2 md:col-span-1" />
           </div>
 
           <div className="mt-5 rounded-[1.6rem] border border-white/80 bg-white/80 p-5 shadow-sm">
@@ -972,7 +969,7 @@ function DeactivateMemberModal({
   );
 }
 
-function RenewMetric({ label, value, tone }: { label: string; value: string; tone: "slate" | "amber" | "emerald" }) {
+function RenewMetric({ label, value, tone, className }: { label: string; value: string; tone: "slate" | "amber" | "emerald"; className?: string }) {
   const toneClasses = {
     slate: "border-slate-200 bg-white/80 text-slate-900",
     amber: "border-amber-200 bg-amber-50/80 text-amber-900",
@@ -980,7 +977,7 @@ function RenewMetric({ label, value, tone }: { label: string; value: string; ton
   }[tone];
 
   return (
-    <div className={`rounded-[1.4rem] border p-4 shadow-sm ${toneClasses}`}>
+    <div className={`rounded-[1.4rem] border p-4 shadow-sm ${toneClasses} ${className ?? ""}`}>
       <div className="text-[10px] font-black uppercase tracking-[0.22em] opacity-70">{label}</div>
       <div className="mt-2 text-lg font-black">{value}</div>
     </div>

@@ -262,7 +262,7 @@ export default function Reports() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:gap-3 sm:grid-cols-3 lg:min-w-[560px]">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 lg:min-w-[560px]">
             <SummarySignal
               icon={Wallet}
               label="Total Revenue"
@@ -275,7 +275,7 @@ export default function Reports() {
               compact
             />
             <SummarySignal icon={TrendingUp} label="Membership" value={money(summary.membershipRevenue)} tone="slate" compact />
-            <SummarySignal icon={Users} label="Admissions" value={compact.format(Number(summary.admissions ?? 0))} tone="sky" compact />
+            <SummarySignal icon={Users} label="Admissions" value={compact.format(Number(summary.admissions ?? 0))} tone="sky" compact className="col-span-2 sm:col-span-1" />
           </div>
         </div>
       </section>
@@ -427,7 +427,14 @@ export default function Reports() {
         <>
           <section className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
             <MetricTile label="Admission" value={money(summary.admissionRevenue)} />
-            <MetricTile label="Active" value={compact.format(Number(summary.activeMembers ?? 0))} />
+            <MetricTile 
+              label="Total Revenue" 
+              value={money(summary.totalRevenue)} 
+              breakdown={[
+                { label: "Admission", value: money(summary.admissionRevenue) },
+                { label: "Membership", value: money(summary.membershipRevenue) },
+              ]}
+            />
             <MetricTile label="Overdue" value={compact.format(Number(summary.overdueMembers ?? 0))} />
             <MetricTile label="Deactivated" value={compact.format(Number(summary.deactivatedMembers ?? 0))} />
           </section>
@@ -511,18 +518,18 @@ export default function Reports() {
                         </div>
 
                         {/* Middle: Pills */}
-                        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5 sm:gap-2">
+                        <div className={cn("grid grid-cols-2 gap-1.5 sm:gap-2", isCurrentMonth ? "sm:grid-cols-5" : "sm:grid-cols-4")}>
                           <MonthDetailPill label="Admission" value={money(row.admissionRevenue)} tone="sky" compact />
                           <MonthDetailPill label="Membership" value={money(row.membershipRevenue)} tone="emerald" compact />
-                          <MonthDetailPill label="Overdue" value={money(row.duePayments)} tone="rose" compact />
+                          {isCurrentMonth && <MonthDetailPill label="Overdue" value={money(row.duePayments)} tone="rose" compact />}
                           <MonthDetailPill label="Active" value={String(row.activeMembers)} tone="slate" compact />
                           <MonthDetailPill label="Deactivated" value={String(row.deactivatedMembers)} tone="amber" compact />
                         </div>
 
                         {/* Right: Stats (hidden on mobile) */}
-                        <div className="hidden lg:flex flex-wrap gap-1.5 items-center text-xs font-bold text-slate-600">
+                        <div className="hidden lg:flex flex-wrap gap-1.5 items-center justify-end text-xs font-bold text-slate-600">
                           <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1">{row.admissions} admissions</span>
-                          <span className="rounded-full border border-rose-100 bg-rose-50 px-2 py-1 text-rose-700 whitespace-nowrap">{row.overdueMembers} overdue</span>
+                          {isCurrentMonth && <span className="rounded-full border border-rose-100 bg-rose-50 px-2 py-1 text-rose-700 whitespace-nowrap">{row.overdueMembers} overdue</span>}
                         </div>
                       </div>
                     </div>
@@ -544,6 +551,7 @@ function SummarySignal({
   tone,
   breakdown,
   compact = false,
+  className,
 }: {
   icon: LucideIcon;
   label: string;
@@ -551,6 +559,7 @@ function SummarySignal({
   tone: "emerald" | "slate" | "sky" | "rose";
   breakdown?: Array<{ label: string; value: string }>;
   compact?: boolean;
+  className?: string;
 }) {
   const toneClass = {
     emerald: "border-emerald-100 bg-emerald-50/72 text-emerald-900",
@@ -560,7 +569,7 @@ function SummarySignal({
   }[tone];
 
   return (
-    <div className={cn("rounded-[1.2rem] sm:rounded-[1.5rem] border shadow-sm", compact ? "p-2.5 sm:p-4" : "p-5", toneClass)}>
+    <div className={cn("rounded-[1.2rem] sm:rounded-[1.5rem] border shadow-sm", compact ? "p-2.5 sm:p-4" : "p-5", toneClass, className)}>
       <Icon className={cn(compact ? "h-4 w-4 sm:h-5 sm:w-5" : "h-5 w-5")} />
       <div className={cn("flex items-center gap-1.5 sm:gap-2 opacity-70", compact ? "mt-2 sm:mt-3 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.18em]" : "mt-4 text-[10px] font-black uppercase tracking-[0.2em]")}>
         <span>{label}</span>
@@ -588,34 +597,39 @@ function RevenueInfoButton({
   ];
 
   return (
-    <div className="group relative inline-flex">
-      <button
-        type="button"
-        className={cn(
-          "inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/85 text-slate-600 shadow-sm transition-colors hover:bg-white hover:text-slate-950",
-          compact ? "h-5 w-5" : "h-7 w-7",
-        )}
-        aria-label="Revenue split"
-      >
-        <Info className={compact ? "h-3 w-3" : "h-4 w-4"} />
-      </button>
-      <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-3 w-56 -translate-x-1/2 translate-y-1 rounded-2xl border border-slate-200 bg-white/95 p-4 text-left text-xs font-semibold text-slate-700 opacity-0 shadow-xl backdrop-blur transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/85 text-slate-600 shadow-sm transition-colors hover:bg-white hover:text-slate-950 outline-none",
+            compact ? "h-5 w-5" : "h-7 w-7",
+          )}
+          aria-label="Revenue split"
+        >
+          <Info className={compact ? "h-3 w-3" : "h-4 w-4"} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="bottom" align="center" sideOffset={8} className="w-56 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur">
         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Revenue Split</div>
         {breakdown.map((item) => (
-          <div key={item.label} className="mt-2 flex items-center justify-between gap-4">
+          <div key={item.label} className="mt-2 flex items-center justify-between gap-4 text-xs font-semibold text-slate-700">
             <span>{item.label}</span>
             <span className="font-black text-slate-950">{item.value}</span>
           </div>
         ))}
-      </div>
-    </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
-function MetricTile({ label, value }: { label: string; value: string }) {
+function MetricTile({ label, value, breakdown }: { label: string; value: string; breakdown?: Array<{ label: string; value: string }> }) {
   return (
     <div className="glass-panel rounded-[1.2rem] sm:rounded-[1.5rem] p-3 sm:p-4">
-      <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{label}</div>
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{label}</div>
+        {breakdown && <RevenueInfoButton items={breakdown} compact />}
+      </div>
       <div className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-black tracking-tight text-slate-950">{value}</div>
     </div>
   );
