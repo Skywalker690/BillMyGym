@@ -106,9 +106,10 @@ public class SubscriptionService {
         BigDecimal baseAmount = MoneyUtils.normalize(pricing.totalAmount());
         
         BigDecimal gymCoinsUsed = BigDecimal.ZERO;
-        if (Boolean.TRUE.equals(request.useGymCoins()) && organization.getGymCoinBalance() != null) {
-            gymCoinsUsed = organization.getGymCoinBalance().min(baseAmount);
-        }
+        // GymCoins feature disabled for now
+        // if (Boolean.TRUE.equals(request.useGymCoins()) && organization.getGymCoinBalance() != null) {
+        //     gymCoinsUsed = organization.getGymCoinBalance().min(baseAmount);
+        // }
         BigDecimal monthlyAmount = baseAmount.subtract(gymCoinsUsed);
 
         LocalDate start = resolveNextSubscriptionStart(organization);

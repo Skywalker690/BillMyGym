@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 public class BillingLifecycleService {
 
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Kolkata");
-    private static final int TRIAL_ACCESS_DAYS = 60;
+
 
     public void startRegularTrial(Organization organization, LocalDate startDate) {
         LocalDate trialEndDate = trialEndDate(startDate);
@@ -97,7 +97,7 @@ public class BillingLifecycleService {
     }
 
     public LocalDate trialEndDate(LocalDate startDate) {
-        return startDate.plusDays(TRIAL_ACCESS_DAYS - 1L);
+        return startDate.plusMonths(2).minusDays(1);
     }
 
     public LocalDate billingPeriodEnd(LocalDate periodStart) {

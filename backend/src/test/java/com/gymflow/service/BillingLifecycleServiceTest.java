@@ -44,10 +44,10 @@ class BillingLifecycleServiceTest {
         billingLifecycleService.startRegularTrial(organization, trialStart);
 
         assertEquals(OrganizationStatus.TRIAL, organization.getStatus());
-        assertEquals(LocalDate.of(2026, 7, 29), organization.getTrialEndDate());
-        assertEquals(LocalDate.of(2026, 7, 30), organization.getSubscriptionDueDate());
-        assertTrue(billingLifecycleService.hasCurrentAccessWindow(organization, LocalDate.of(2026, 7, 29)));
-        assertFalse(billingLifecycleService.hasCurrentAccessWindow(organization, LocalDate.of(2026, 7, 30)));
+        assertEquals(LocalDate.of(2026, 7, 30), organization.getTrialEndDate());
+        assertEquals(LocalDate.of(2026, 7, 31), organization.getSubscriptionDueDate());
+        assertTrue(billingLifecycleService.hasCurrentAccessWindow(organization, LocalDate.of(2026, 7, 30)));
+        assertFalse(billingLifecycleService.hasCurrentAccessWindow(organization, LocalDate.of(2026, 7, 31)));
     }
 
     @Test
@@ -57,6 +57,6 @@ class BillingLifecycleServiceTest {
 
         LocalDate checkoutDate = LocalDate.of(2026, 6, 15);
 
-        assertEquals(LocalDate.of(2026, 7, 30), billingLifecycleService.nextChargeStartDate(organization, checkoutDate));
+        assertEquals(LocalDate.of(2026, 7, 31), billingLifecycleService.nextChargeStartDate(organization, checkoutDate));
     }
 }

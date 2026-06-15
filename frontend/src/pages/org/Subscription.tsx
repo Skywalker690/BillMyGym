@@ -217,7 +217,6 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
   const [purchaseSuccess, setPurchaseSuccess] = useState<PurchaseSuccessState | null>(null);
   const [paymentHistory, setPaymentHistory] = useState<SubscriptionPayment[]>([]);
   const [paymentHistoryPage, setPaymentHistoryPage] = useState<PaymentHistoryPage | null>(null);
-  const [useGymCoins, setUseGymCoins] = useState(false);
 
   const { data: subscription, isLoading } = useQuery<SubscriptionStatus | null>({
     queryKey: ["subscriptionStatus"],
@@ -283,7 +282,7 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
     mutationFn: async () => {
       const res = await api.post(
         "/subscription/create",
-        { subscriptionPlan: "BILLMYGYM", useGymCoins },
+        { subscriptionPlan: "BILLMYGYM" },
         {
           headers: {
             "X-Idempotency-Key": crypto.randomUUID(),
@@ -386,7 +385,7 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
     ? Math.min(Math.round((Math.min(invoice.currentActiveMembers, includedActiveMembers) / includedActiveMembers) * 100), 100)
     : 0;
   const gymCoins = Number(subscription.gymCoinBalance ?? 0);
-  const estimatedCheckoutAmount = useGymCoins ? Math.max(pricing.totalAmount - gymCoins, 0) : pricing.totalAmount;
+  const estimatedCheckoutAmount = pricing.totalAmount;
   const currentPeriod = subscription.currentPeriodStart && subscription.currentPeriodEnd
     ? `${dateText(subscription.currentPeriodStart)} - ${dateText(subscription.currentPeriodEnd)}`
     : isTrial
@@ -488,17 +487,7 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
                 <InfoLine label="Current billing period" value={currentPeriod} />
                 <InfoLine label="Payment status" value={String(paymentStatus).replaceAll("_", " ")} />
               </div>
-              {gymCoins > 0 && canCheckout && (
-                <label className={immersive ? "mt-5 flex items-center gap-3 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-4 text-sm font-bold text-emerald-50" : "mt-5 flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-bold text-emerald-800"}>
-                  <input
-                    type="checkbox"
-                    checked={useGymCoins}
-                    onChange={(event) => setUseGymCoins(event.target.checked)}
-                    className="h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-600"
-                  />
-                  Use {money.format(gymCoins)} GymCoins on checkout
-                </label>
-              )}
+
             </div>
           </div>
         </section>

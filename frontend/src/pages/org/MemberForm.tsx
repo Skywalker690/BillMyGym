@@ -460,14 +460,16 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                     )}
 
                     <div className="mt-5 flex flex-wrap items-center gap-3">
-                      <div className={`inline-flex items-center gap-2 rounded-full border bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] ${
-                        isBrandNewMember
-                          ? "border-amber-200/70 text-amber-700 lg:border-white/80 lg:text-emerald-700"
-                          : "border-white/80 text-emerald-700"
-                      }`}>
-                        <Sparkles className="h-3.5 w-3.5" />
-                        {selectedPlan?.name ?? "Plan"} INR {selectedMonthlyPrice.toLocaleString("en-IN")}
-                      </div>
+                      {(!isCreate || !existingMember) && (
+                        <div className={`inline-flex items-center gap-2 rounded-full border bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] ${
+                          isBrandNewMember
+                            ? "border-amber-200/70 text-amber-700 lg:border-white/80 lg:text-emerald-700"
+                            : "border-white/80 text-emerald-700"
+                        }`}>
+                          <Sparkles className="h-3.5 w-3.5" />
+                          {selectedPlan?.name ?? "Plan"} INR {selectedMonthlyPrice.toLocaleString("en-IN")}
+                        </div>
+                      )}
                       {(!isCreate || !existingMember) && (
                         <div className={`inline-flex items-center gap-2 rounded-full border bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] ${
                           isBrandNewMember
