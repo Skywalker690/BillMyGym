@@ -70,6 +70,16 @@ export default function MembersList() {
     enabled: !isDemoDirectory,
   });
 
+  const { data: membershipPlans } = useQuery<any[]>({
+    queryKey: ["membershipPlans", user?.organizationId],
+    queryFn: async () => {
+      if (isDemoDirectory) return [];
+      const res = await api.get("/membership-plans");
+      return res.data.plans;
+    },
+    enabled: Boolean(user?.organizationId),
+  });
+
   const subscriptionStatus = readCachedSubscriptionStatus() as MemberListSubscriptionStatus | null;
 
   const reminderPreviewQuery = useQuery({
@@ -94,21 +104,20 @@ export default function MembersList() {
   });
 
   const quickRenewMutation = useMutation({
-    mutationFn: async (member: any) => {
+    mutationFn: async ({ member, planId }: { member: any; planId: number }) => {
       if (isDemoDirectory) {
         return { data: { success: true } };
       }
       const membership = member.currentMembership;
-      const membershipPlanId = membership?.membershipPlanId;
-      if (!membershipPlanId) {
-        throw new Error("Current membership plan is unavailable for quick renew");
+      if (!planId) {
+        throw new Error("A membership plan must be selected for quick renew");
       }
       const startDate = resolveQuickRenewStartDate(membership?.endDate);
       const membershipResponse = await api.post(
         `/members/${member.id}/memberships`,
         {
           durationMonths: 1,
-          membershipPlanId,
+          membershipPlanId: planId,
           startDate,
         },
         {
@@ -491,13 +500,14 @@ export default function MembersList() {
       {quickRenewMember && (
         <QuickRenewModal
           member={quickRenewMember}
+          membershipPlans={membershipPlans ?? []}
           isSubmitting={quickRenewMutation.isPending}
           onCancel={() => {
             if (!quickRenewMutation.isPending) {
               setQuickRenewMember(null);
             }
           }}
-          onConfirm={() => quickRenewMutation.mutate(quickRenewMember)}
+          onConfirm={(planId) => quickRenewMutation.mutate({ member: quickRenewMember, planId })}
         />
       )}
 
@@ -774,18 +784,22 @@ function formatReminderDate(value?: string) {
 
 function QuickRenewModal({
   member,
+  membershipPlans,
   isSubmitting,
   onCancel,
   onConfirm,
 }: {
   member: any;
+  membershipPlans: any[];
   isSubmitting: boolean;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (planId: number) => void;
 }) {
   const membership = member.currentMembership;
-  const planName = membership?.planName ?? "Current plan";
-  const monthlyPlanPrice = Number(membership?.monthlyPlanPrice ?? membership?.planAmount ?? 0);
+  const [selectedPlanId, setSelectedPlanId] = useState<number>(membership?.membershipPlanId || (membershipPlans?.[0]?.id ?? 0));
+  const selectedPlan = membershipPlans?.find((p) => p.id === selectedPlanId);
+  const planName = selectedPlan?.name ?? membership?.planName ?? "Current plan";
+  const monthlyPlanPrice = Number(selectedPlan?.price ?? membership?.monthlyPlanPrice ?? membership?.planAmount ?? 0);
   const nextStartDate = resolveQuickRenewStartDate(membership?.endDate);
   const nextEndDate = new Date(`${nextStartDate}T00:00:00`);
   nextEndDate.setMonth(nextEndDate.getMonth() + 1);
@@ -826,8 +840,25 @@ function QuickRenewModal({
                   INR {monthlyPlanPrice.toLocaleString("en-IN")}
                 </div>
               </div>
-              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
-                {planName} | Start date: {formatDate(nextStartDate)}
+              <div className="flex flex-col gap-2">
+                <select
+                  value={selectedPlanId}
+                  onChange={(e) => setSelectedPlanId(Number(e.target.value))}
+                  className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none cursor-pointer pr-10 relative"
+                  style={{ backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23065f46' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 1rem center", backgroundSize: "1em" }}
+                >
+                  {(membershipPlans ?? []).map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.name}
+                    </option>
+                  ))}
+                  {!membershipPlans?.length && (
+                    <option value={membership?.membershipPlanId}>{planName}</option>
+                  )}
+                </select>
+                <div className="text-[11px] font-semibold text-slate-500 text-right">
+                  Start date: {formatDate(nextStartDate)}
+                </div>
               </div>
             </div>
           </div>
@@ -845,8 +876,8 @@ function QuickRenewModal({
             <Button
               type="button"
               className="h-11 rounded-full bg-emerald-600 px-6 font-bold text-white hover:bg-emerald-700"
-              onClick={onConfirm}
-              disabled={isSubmitting || !membership?.membershipPlanId}
+              onClick={() => onConfirm(selectedPlanId)}
+              disabled={isSubmitting || !selectedPlanId}
             >
               {isSubmitting ? "Renewing..." : "Yes, Quick Renew"}
             </Button>

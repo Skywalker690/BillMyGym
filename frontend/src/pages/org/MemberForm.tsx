@@ -155,19 +155,26 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
         nextStartDate = baseDate.toISOString().slice(0, 10);
       }
       
+      const planId = memberships?.[0]?.membershipPlanId ?? defaultPlan?.id;
+      const planToUse = membershipPlans?.find(p => p.id === planId) ?? defaultPlan;
+      const mPrice = Number(planToUse?.price ?? 0);
+      const admission = Number(organizationSettings?.admissionFee ?? 0);
+      const planAmt = resolveMembershipTotal(mPrice, 1);
+      const initPayment = resolveCollectedAmount(mode, planAmt, admission, false);
+
       reset({
         fullName: member.fullName ?? "",
         phone: member.phone ?? "",
         status: member.status ?? "ACTIVE",
         deactivationReason: member.deactivationReason ?? "",
         durationMonths: 1,
-        membershipPlanId: memberships?.[0]?.membershipPlanId ?? defaultPlan?.id,
-        planAmount: 0,
+        membershipPlanId: planId,
+        planAmount: planAmt,
         startDate: nextStartDate,
-        initialPaymentAmount: 0,
+        initialPaymentAmount: initPayment,
       });
     }
-  }, [defaultPlan?.id, member, isEdit, isRenew, reset, memberships]);
+  }, [defaultPlan, member, isEdit, isRenew, reset, memberships, membershipPlans, organizationSettings, mode]);
 
   useEffect(() => {
     if (!isEdit && defaultPlan?.id && !watchedMembershipPlanId) {

@@ -33,5 +33,17 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            "vendor-react": ["react", "react-dom", "react-router-dom"],
+            "vendor-query": ["@tanstack/react-query"],
+            "vendor-ui": ["framer-motion", "lucide-react"],
+          },
+        },
+      },
+      chunkSizeWarningLimit: 1000,
+    },
   };
 });
