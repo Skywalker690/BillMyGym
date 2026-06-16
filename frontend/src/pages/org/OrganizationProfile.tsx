@@ -237,7 +237,20 @@ export default function OrganizationProfile() {
           </div>
         </div>
 
-        <MembershipPlansSection organizationId={organization.id} isDemoWorkspace={isDemoWorkspace} />
+        <div className="flex justify-end pt-1 sm:pt-2">
+          {isDemoWorkspace ? (
+            <Button type="submit" disabled={isSubmitting} className="h-10 sm:h-12 rounded-full bg-slate-950 px-6 sm:px-8 text-sm sm:text-base font-bold text-white hover:bg-slate-800">
+              {isSubmitting ? "Saving..." : "Save Demo Contact"}
+            </Button>
+          ) : (
+            <div className="rounded-full border border-slate-200 bg-slate-50 px-4 sm:px-5 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-slate-500">
+              Contact details are managed by platform admin for regular workspaces.
+            </div>
+          )}
+        </div>
+      </form>
+
+      <MembershipPlansSection organizationId={organization.id} isDemoWorkspace={isDemoWorkspace} />
 
         <div className="glass-panel overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-[1.9rem]">
           <div className="border-b border-white/70 p-3 sm:p-5 lg:p-6">
@@ -318,21 +331,7 @@ export default function OrganizationProfile() {
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="flex justify-end pt-1 sm:pt-2">
-          {isDemoWorkspace ? (
-            <Button type="submit" disabled={isSubmitting} className="h-10 sm:h-12 rounded-full bg-slate-950 px-6 sm:px-8 text-sm sm:text-base font-bold text-white hover:bg-slate-800">
-              {isSubmitting ? "Saving..." : "Save Demo Contact"}
-            </Button>
-          ) : (
-            <div className="rounded-full border border-slate-200 bg-slate-50 px-4 sm:px-5 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-slate-500">
-              Contact details are managed by platform admin for regular workspaces.
-            </div>
-          )}
-        </div>
-      </form>
-    </div>
+        </div>    </div>
   );
 }
 

@@ -121,7 +121,7 @@ public class RevenueService {
             }
         }
 
-        BigDecimal expectedRevenue = currentRevenue.add(pendingRevenue).add(overdueRevenue);
+        BigDecimal expectedRevenue = currentRevenue.add(pendingRevenue);
         long activeMembers = memberMembershipRepository.countBillableActiveMembers(organization.getId());
         long activeMembersPendingCollection = pendingMemberIds.size();
         long activeMembersCollected = Math.max(activeMembers - activeMembersPendingCollection, 0);
