@@ -137,7 +137,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
     if (member && isEdit) {
       reset({
         fullName: member.fullName ?? "",
-        phone: member.phone ?? "",
+        phone: (member.phone ?? "").replace(/^\+?91/, ""),
         status: member.status ?? "ACTIVE",
         deactivationReason: member.deactivationReason ?? "",
         durationMonths: 1,
@@ -164,7 +164,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
 
       reset({
         fullName: member.fullName ?? "",
-        phone: member.phone ?? "",
+        phone: (member.phone ?? "").replace(/^\+?91/, ""),
         status: member.status ?? "ACTIVE",
         deactivationReason: member.deactivationReason ?? "",
         durationMonths: 1,
@@ -381,7 +381,27 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                   <Input {...register("fullName")} disabled={isRenew} placeholder="Full Name" className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" />
                 </Field>
                 <Field label="Phone" error={errors.phone?.message}>
-                  <Input {...register("phone")} disabled={isRenew} placeholder="Optional " className="h-12 rounded-2xl border-black/5 bg-white/70 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" />
+                  <div className="relative">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                      <span className="text-sm font-semibold text-slate-500">+91</span>
+                    </div>
+                    <Input 
+                      {...register("phone", {
+                        onChange: (e) => {
+                          let val = e.target.value.replace(/\D/g, '');
+                          if (val.startsWith('91') && val.length > 10) {
+                            val = val.substring(2);
+                          }
+                          e.target.value = val.substring(0, 10);
+                        }
+                      })} 
+                      disabled={isRenew} 
+                      type="tel"
+                      placeholder="Optional" 
+                      className="h-12 rounded-2xl border-black/5 bg-white/70 pl-12 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" 
+                      maxLength={10}
+                    />
+                  </div>
                 </Field>
                 {(isEdit || isRenew) && (
                   <Field label="Status">

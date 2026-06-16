@@ -86,7 +86,7 @@ public class AuthService {
             || organizationRepository.existsByAdminEmailAndDeletedFalse(request.adminEmail())) {
             throw new BadRequestException("Admin email already exists");
         }
-        if (organizationRepository.existsByAdminPhoneNumberAndDeletedFalse(request.adminPhoneNumber())) {
+        if (organizationRepository.existsByAdminPhoneNumberAndDeletedFalse(com.gymflow.util.PhoneUtils.normalizeToIndianPhone(request.adminPhoneNumber()))) {
             throw new BadRequestException("Admin phone number already exists");
         }
 
@@ -151,7 +151,7 @@ public class AuthService {
             || organizationRepository.existsByAdminEmailAndDeletedFalse(request.adminEmail())) {
             throw new BadRequestException("Admin email already exists");
         }
-        if (organizationRepository.existsByAdminPhoneNumberAndDeletedFalse(request.adminPhoneNumber())) {
+        if (organizationRepository.existsByAdminPhoneNumberAndDeletedFalse(com.gymflow.util.PhoneUtils.normalizeToIndianPhone(request.adminPhoneNumber()))) {
             throw new BadRequestException("Admin phone number already exists");
         }
 

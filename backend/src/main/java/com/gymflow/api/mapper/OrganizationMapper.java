@@ -48,7 +48,7 @@ public class OrganizationMapper {
         organization.setLogoUrl(request.logoUrl());
         organization.setMapLocationLink(request.mapLocationLink());
         organization.setAdminFullName(request.adminFullName());
-        organization.setAdminPhoneNumber(request.adminPhoneNumber());
+        organization.setAdminPhoneNumber(com.gymflow.util.PhoneUtils.normalizeToIndianPhone(request.adminPhoneNumber()));
         organization.setAdminEmail(request.adminEmail());
         if (request.admissionFee() != null) {
             organization.setAdmissionFee(request.admissionFee());
@@ -72,7 +72,7 @@ public class OrganizationMapper {
         organization.setLogoUrl(request.logoUrl());
         organization.setMapLocationLink(request.mapLocationLink());
         organization.setAdminFullName(request.adminFullName());
-        organization.setAdminPhoneNumber(request.adminPhoneNumber());
+        organization.setAdminPhoneNumber(com.gymflow.util.PhoneUtils.normalizeToIndianPhone(request.adminPhoneNumber()));
         organization.setAdminEmail(request.adminEmail());
         if (request.regularPlanPrice() != null) {
             organization.setMonthlyMembershipFee(request.regularPlanPrice());

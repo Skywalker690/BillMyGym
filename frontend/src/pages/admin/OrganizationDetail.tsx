@@ -248,7 +248,7 @@ export default function OrganizationDetail() {
       district: organization.district ?? "",
       mapLocationLink: organization.mapLocationLink ?? "",
       adminName: organization.adminFullName ?? "",
-      adminPhone: organization.adminPhoneNumber ?? "",
+      adminPhone: (organization.adminPhoneNumber ?? "").replace(/^\+?91/, ""),
       adminEmail: organization.adminEmail ?? "",
       admissionFee: Number(organization.admissionFee ?? 0),
     });
@@ -708,7 +708,26 @@ export default function OrganizationDetail() {
                 <Input {...register("adminName")} className="h-11 rounded-xl bg-white/70" />
               </Field>
               <Field label="Phone Number">
-                <Input {...register("adminPhone")} className="h-11 rounded-xl bg-white/70" />
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                    <span className="text-sm font-semibold text-slate-500">+91</span>
+                  </div>
+                  <Input 
+                    {...register("adminPhone", {
+                      onChange: (e) => {
+                        let val = e.target.value.replace(/\D/g, '');
+                        if (val.startsWith('91') && val.length > 10) {
+                          val = val.substring(2);
+                        }
+                        e.target.value = val.substring(0, 10);
+                      }
+                    })} 
+                    type="tel"
+                    className="h-11 rounded-xl bg-white/70 pl-12" 
+                    placeholder="98XXXXXXXX" 
+                    maxLength={10}
+                  />
+                </div>
               </Field>
               <div className="md:col-span-2">
                 <Field label="Email Address">

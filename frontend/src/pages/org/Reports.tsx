@@ -259,20 +259,21 @@ export default function Reports() {
             </h1>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 lg:min-w-[560px]">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:min-w-[560px]">
             <SummarySignal
               icon={Wallet}
               label="Total Revenue"
               value={money(summary.totalRevenue)}
               tone="emerald"
-              breakdown={[
-                { label: "Admission", value: money(summary.admissionRevenue) },
-                { label: "Membership", value: money(summary.membershipRevenue) },
-              ]}
               compact
             />
-            <SummarySignal icon={TrendingUp} label="Membership" value={money(summary.membershipRevenue)} tone="slate" compact />
-            <SummarySignal icon={Users} label="Admissions" value={compact.format(Number(summary.admissions ?? 0))} tone="sky" compact className="col-span-2 sm:col-span-1" />
+            <SummarySignal 
+              icon={Users} 
+              label="Total Admission" 
+              value={String(summary.admissions)} 
+              tone="sky" 
+              compact 
+            />
           </div>
         </div>
       </section>
@@ -423,14 +424,10 @@ export default function Reports() {
       ) : (
         <>
           <section className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
-            <MetricTile label="Admission" value={money(summary.admissionRevenue)} />
+            <MetricTile label="Total Admissions" value={String(summary.admissions)} />
             <MetricTile 
               label="Total Revenue" 
               value={money(summary.totalRevenue)} 
-              breakdown={[
-                { label: "Admission", value: money(summary.admissionRevenue) },
-                { label: "Membership", value: money(summary.membershipRevenue) },
-              ]}
             />
             <MetricTile label="Overdue" value={compact.format(Number(summary.overdueMembers ?? 0))} />
             <MetricTile label="Deactivated" value={compact.format(Number(summary.deactivatedMembers ?? 0))} />
@@ -515,9 +512,8 @@ export default function Reports() {
                         </div>
 
                         {/* Middle: Pills */}
-                        <div className={cn("grid grid-cols-2 gap-1.5 sm:gap-2", isCurrentMonth ? "sm:grid-cols-5" : "sm:grid-cols-4")}>
-                          <MonthDetailPill label="Admission" value={money(row.admissionRevenue)} tone="sky" compact />
-                          <MonthDetailPill label="Membership" value={money(row.membershipRevenue)} tone="emerald" compact />
+                        <div className={cn("grid grid-cols-2 gap-1.5 sm:gap-2", isCurrentMonth ? "sm:grid-cols-4" : "sm:grid-cols-3")}>
+                          <MonthDetailPill label="Admissions" value={String(row.admissions)} tone="sky" compact />
                           {isCurrentMonth && <MonthDetailPill label="Overdue" value={money(row.duePayments)} tone="rose" compact />}
                           <MonthDetailPill label="Active" value={String(row.activeMembers)} tone="slate" compact />
                           <MonthDetailPill label="Deactivated" value={String(row.deactivatedMembers)} tone="amber" compact />
@@ -599,6 +595,10 @@ function RevenueInfoButton({
       <DropdownMenuTrigger 
         onMouseEnter={() => setIsOpen(true)}
         onMouseLeave={() => setIsOpen(false)}
+        onClick={(e) => {
+          e.preventDefault();
+          setIsOpen(!isOpen);
+        }}
         className={cn(
           "inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/85 text-slate-600 shadow-sm transition-colors hover:bg-white hover:text-slate-950 outline-none cursor-pointer",
           compact ? "h-5 w-5" : "h-7 w-7",
@@ -665,3 +665,5 @@ function MonthDetailPill({
     </div>
   );
 }
+
+

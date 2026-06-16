@@ -39,10 +39,6 @@ public class MemberMapper {
     }
 
     private String normalizePhone(String phone) {
-        if (phone == null) {
-            return null;
-        }
-        String normalized = phone.trim();
-        return normalized.isEmpty() ? null : normalized;
+        return com.gymflow.util.PhoneUtils.normalizeToIndianPhone(phone);
     }
 }

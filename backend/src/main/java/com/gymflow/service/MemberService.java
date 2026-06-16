@@ -653,11 +653,7 @@ public class MemberService {
     }
 
     private String normalizePhone(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim().replaceAll("\\s+", "");
-        return trimmed.isBlank() ? null : trimmed;
+        return com.gymflow.util.PhoneUtils.normalizeToIndianPhone(value);
     }
 
     private String normalizeDateText(String value) {

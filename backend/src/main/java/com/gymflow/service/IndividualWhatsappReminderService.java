@@ -175,13 +175,11 @@ public class IndividualWhatsappReminderService {
     }
 
     private PhoneCheck normalizePhone(String phone) {
-        if (phone == null || phone.isBlank()) {
+        String normalized = com.gymflow.util.PhoneUtils.normalizeToIndianPhone(phone);
+        if (normalized == null) {
             return new PhoneCheck(false, "", "No WhatsApp number found");
         }
-        String digits = whatsAppTemplateService.normalizeRecipient(phone);
-        if (digits.length() == 10) {
-            digits = "91" + digits;
-        }
+        String digits = normalized.replace("+", "");
         if (digits.length() < 10 || digits.length() > 15) {
             return new PhoneCheck(false, digits, "Invalid WhatsApp number");
         }
