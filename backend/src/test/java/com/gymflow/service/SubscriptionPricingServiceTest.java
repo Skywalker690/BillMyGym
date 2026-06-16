@@ -28,7 +28,7 @@ class SubscriptionPricingServiceTest {
     @Test
     void usesBasePriceUntilIncludedActiveMembersAreExceeded() {
         Organization organization = regularOrganization(11L);
-        when(memberMembershipRepository.countBillableActiveMembers(eq(11L), any())).thenReturn(100L);
+        when(memberMembershipRepository.countBillableActiveMembers(11L)).thenReturn(100L);
         SubscriptionPricingService service = new SubscriptionPricingService(memberMembershipRepository, planAccessService);
 
         var price = service.priceFor(organization, SubscriptionPlan.BILLMYGYM);
@@ -46,7 +46,7 @@ class SubscriptionPricingServiceTest {
     @Test
     void chargesTwoRupeesForEachActiveMemberAboveOneHundred() {
         Organization organization = regularOrganization(12L);
-        when(memberMembershipRepository.countBillableActiveMembers(eq(12L), any())).thenReturn(150L);
+        when(memberMembershipRepository.countBillableActiveMembers(12L)).thenReturn(150L);
         SubscriptionPricingService service = new SubscriptionPricingService(memberMembershipRepository, planAccessService);
 
         var price = service.priceFor(organization, SubscriptionPlan.BILLMYGYM);

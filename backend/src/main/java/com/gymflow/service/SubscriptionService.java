@@ -279,6 +279,15 @@ public class SubscriptionService {
         int customReminderUsage = individualWhatsappReminderService.currentMonthCustomReminderUsage(organization);
         Integer customReminderLimit = individualWhatsappReminderService.monthlyCustomReminderLimit(organization);
 
+        LocalDate currentPeriodStart = latestPaidPayment == null ? null : latestPaidPayment.getSubscriptionStart();
+        LocalDate currentPeriodEnd = latestPaidPayment == null ? null : latestPaidPayment.getSubscriptionEnd();
+        
+        if (organization.getStatus() == com.gymflow.domain.enums.OrganizationStatus.PAUSED || 
+            organization.getStatus() == com.gymflow.domain.enums.OrganizationStatus.DEACTIVATED) {
+            currentPeriodStart = LocalDate.now(APP_ZONE);
+            currentPeriodEnd = billingLifecycleService.billingPeriodEnd(currentPeriodStart);
+        }
+
         return new SubscriptionStatusResponse(
             organization.getId(),
             organization.getName(),
@@ -292,8 +301,8 @@ public class SubscriptionService {
             organization.getCreatedAt() == null ? null : organization.getCreatedAt().toInstant(),
             organization.getTrialEndDate(),
             organization.getSubscriptionDueDate(),
-            latestPaidPayment == null ? null : latestPaidPayment.getSubscriptionStart(),
-            latestPaidPayment == null ? null : latestPaidPayment.getSubscriptionEnd(),
+            currentPeriodStart,
+            currentPeriodEnd,
             usage.getMonthlyWhatsappCount(),
             usage.getMonthlyEmailCount(),
             customReminderUsage,
@@ -304,7 +313,8 @@ public class SubscriptionService {
             toPlanAccessResponse(planAccessService.summary(organization)),
             paymentHistoryPage.items(),
             paymentHistoryPage,
-            organization.getGymCoinBalance()
+            organization.getGymCoinBalance(),
+            resolvedPlan.supportAutomation()
         );
     }
 

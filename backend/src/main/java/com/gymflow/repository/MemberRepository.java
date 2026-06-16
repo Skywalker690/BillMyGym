@@ -68,6 +68,13 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Query("""
     select member
     from Member member
+    left join MemberMembership latestMembership on latestMembership.member = member
+      and latestMembership.deleted = false
+      and not exists (
+          select newer.id from MemberMembership newer
+          where newer.member = member and newer.deleted = false
+            and (newer.endDate > latestMembership.endDate or (newer.endDate = latestMembership.endDate and newer.createdAt > latestMembership.createdAt))
+      )
     where member.organization.id = :organizationId
       and member.deleted = false
       and (
@@ -80,36 +87,27 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
           :membershipStatus is null
           or (
               :membershipStatus = 'ACTIVE'
-              and exists (
-                  select membership.id
-                  from MemberMembership membership
-                  where membership.member = member
-                    and membership.deleted = false
-                    and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
-              )
+              and latestMembership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
+              and latestMembership.endDate > :today
           )
           or (
               :membershipStatus = 'EXPIRING_SOON'
-              and exists (
-                  select membership.id
-                  from MemberMembership membership
-                  where membership.member = member
-                    and membership.deleted = false
-                    and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
-                      and membership.endDate = :today
-              )
+              and latestMembership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
+              and latestMembership.endDate = :today
           )
           or (
               :membershipStatus = 'OVERDUE'
-              and exists (
-                  select membership.id
-                  from MemberMembership membership
-                  where membership.member = member
-                    and membership.deleted = false
-                    and membership.status = com.gymflow.domain.enums.MembershipStatus.OVERDUE
-              )
+              and latestMembership.status = com.gymflow.domain.enums.MembershipStatus.OVERDUE
           )
       )
+    order by 
+      case 
+        when latestMembership.status = com.gymflow.domain.enums.MembershipStatus.OVERDUE then 1
+        when latestMembership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE and latestMembership.endDate = :today then 2
+        when latestMembership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE then 3
+        else 4
+      end asc,
+      member.createdAt desc
     """)
     Page<Member> searchDirectory(
         @Param("organizationId") Long organizationId,
@@ -124,6 +122,13 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Query("""
     select member
     from Member member
+    left join MemberMembership latestMembership on latestMembership.member = member
+      and latestMembership.deleted = false
+      and not exists (
+          select newer.id from MemberMembership newer
+          where newer.member = member and newer.deleted = false
+            and (newer.endDate > latestMembership.endDate or (newer.endDate = latestMembership.endDate and newer.createdAt > latestMembership.createdAt))
+      )
     where member.organization.id = :organizationId
       and member.deleted = false
       and (
@@ -136,36 +141,27 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
           :membershipStatus is null
           or (
               :membershipStatus = 'ACTIVE'
-              and exists (
-                  select membership.id
-                  from MemberMembership membership
-                  where membership.member = member
-                    and membership.deleted = false
-                    and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
-              )
+              and latestMembership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
+              and latestMembership.endDate > :today
           )
           or (
               :membershipStatus = 'EXPIRING_SOON'
-              and exists (
-                  select membership.id
-                  from MemberMembership membership
-                  where membership.member = member
-                    and membership.deleted = false
-                    and membership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
-                      and membership.endDate = :today
-              )
+              and latestMembership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE
+              and latestMembership.endDate = :today
           )
           or (
               :membershipStatus = 'OVERDUE'
-              and exists (
-                  select membership.id
-                  from MemberMembership membership
-                  where membership.member = member
-                    and membership.deleted = false
-                    and membership.status = com.gymflow.domain.enums.MembershipStatus.OVERDUE
-              )
+              and latestMembership.status = com.gymflow.domain.enums.MembershipStatus.OVERDUE
           )
       )
+    order by 
+      case 
+        when latestMembership.status = com.gymflow.domain.enums.MembershipStatus.OVERDUE then 1
+        when latestMembership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE and latestMembership.endDate = :today then 2
+        when latestMembership.status = com.gymflow.domain.enums.MembershipStatus.ACTIVE then 3
+        else 4
+      end asc,
+      member.createdAt desc
     """)
     Page<Member> searchDirectoryByStatuses(
         @Param("organizationId") Long organizationId,

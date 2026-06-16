@@ -79,6 +79,9 @@ public class PlanAccessService {
     }
 
     public SubscriptionPlan resolvePlan(Organization organization) {
+        if (organization != null && organization.getSubscriptionPlan() != null) {
+            return organization.getSubscriptionPlan();
+        }
         return SubscriptionPlan.BILLMYGYM;
     }
 

@@ -78,8 +78,28 @@ public class MemberMembershipService {
         return new MembershipHistoryResponse(responses);
     }
 
+    /**
+     * Lightweight membership status refresh used during dashboard reads.
+     * Only transitions memberships from ACTIVE to OVERDUE based on end date.
+     * Does NOT trigger member auto-deactivation, to avoid unintended side-effects
+     * during cached reads (auto-deactivation is handled by the scheduled reconcile job).
+     */
     @Transactional
     public void refreshMembershipStatuses(Long organizationId) {
+        int reminderDays = DUE_TODAY_WINDOW_DAYS;
+        List<MemberMembership> memberships = memberMembershipRepository.findByOrganizationIdAndDeletedFalse(organizationId);
+        for (MemberMembership membership : memberships) {
+            membershipLifecycleService.refreshMembership(membership, reminderDays);
+        }
+    }
+
+    /**
+     * Full membership status refresh including member auto-deactivation for members whose
+     * memberships have been OVERDUE for 30+ days. This is intended for the scheduled
+     * maintenance job only, not for dashboard reads.
+     */
+    @Transactional
+    public void refreshMembershipStatusesWithReconcile(Long organizationId) {
         int reminderDays = DUE_TODAY_WINDOW_DAYS;
         List<MemberMembership> memberships = memberMembershipRepository.findByOrganizationIdAndDeletedFalse(organizationId);
         for (MemberMembership membership : memberships) {

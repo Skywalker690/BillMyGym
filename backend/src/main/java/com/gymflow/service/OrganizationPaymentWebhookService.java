@@ -174,6 +174,8 @@ public class OrganizationPaymentWebhookService {
             organization.setSubscriptionPlan(SubscriptionPlan.BILLMYGYM);
         }
 
+        organization.setSubscriptionPlan(payment.getSubscriptionPlan());
+
         if (payment.getGymCoinsUsed() != null && payment.getGymCoinsUsed().compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal currentBalance = organization.getGymCoinBalance() != null ? organization.getGymCoinBalance() : BigDecimal.ZERO;
             BigDecimal usedBalance = organization.getTotalCoinsUsed() != null ? organization.getTotalCoinsUsed() : BigDecimal.ZERO;

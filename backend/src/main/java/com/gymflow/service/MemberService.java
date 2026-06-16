@@ -105,8 +105,7 @@ public class MemberService {
             : null;
         PageRequest pageRequest = PageRequest.of(
             Math.max(page, 0),
-            normalizedSize,
-            Sort.by(Sort.Direction.ASC, "status").and(Sort.by(Sort.Direction.DESC, "createdAt"))
+            normalizedSize
         );
         Page<Member> memberPage = memberStatus == MemberStatus.DEACTIVATED
             ? memberRepository.searchDirectoryByStatuses(
@@ -428,7 +427,7 @@ public class MemberService {
             memberMembershipRepository.countByOrganizationIdAndDeletedFalseAndStatus(orgId, MembershipStatus.ACTIVE),
             memberMembershipRepository.countExpiringSoon(orgId, today),
             memberMembershipRepository.countExpiredOn(orgId, today),
-            memberMembershipRepository.countOverdueBefore(orgId, today),
+            memberMembershipRepository.countOverdueBefore(orgId),
             toMemberLimitResponse(memberLimitService.usage(
                 organizationRepository.findByIdAndDeletedFalse(orgId)
                     .orElseThrow(() -> new NotFoundException("Organization not found"))

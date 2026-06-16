@@ -140,8 +140,8 @@ SELECT
     FALSE,
     NULL,
     CASE
-        WHEN slot_id % 10 = 4 THEN TIMESTAMPTZ '2026-05-22 18:00:00+05:30'
-        WHEN slot_id % 10 = 5 THEN TIMESTAMPTZ '2026-04-19 18:00:00+05:30'
+        WHEN slot_id % 10 = 4 THEN (CURRENT_DATE - INTERVAL '2 days') + TIME '18:00:00' + INTERVAL '5.5 hours'
+        WHEN slot_id % 10 = 5 THEN (CURRENT_DATE - INTERVAL '29 days') + TIME '18:00:00' + INTERVAL '5.5 hours'
         ELSE NULL
     END,
     CASE
@@ -149,8 +149,8 @@ SELECT
         WHEN slot_id % 10 = 5 THEN 'Manual deactivation after member stopped attending'
         ELSE NULL
     END,
-    TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - (((org_id * 4) + (slot_id % 20) + 20) || ' days')::interval,
-    TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((slot_id % 5 + 1) || ' days')::interval,
+    (CURRENT_DATE - (((org_id * 4) + (slot_id % 20) + 20) || ' days')::interval)::date + TIME '09:00:00' + INTERVAL '5.5 hours',
+    (CURRENT_DATE - ((slot_id % 5 + 1) || ' days')::interval)::date + TIME '09:00:00' + INTERVAL '5.5 hours',
     0
 FROM generate_series(1, 10) AS org_id
 CROSS JOIN LATERAL generate_series(1, 100 + (org_id * 10)) AS slot_id;
@@ -171,18 +171,18 @@ SELECT
     seeded.start_date,
     seeded.end_date,
     CASE
-        WHEN seeded.end_date < DATE '2026-05-24' THEN 'OVERDUE'
+        WHEN seeded.end_date < CURRENT_DATE THEN 'OVERDUE'
         ELSE 'ACTIVE'
     END,
     CASE
-        WHEN seeded.end_date < DATE '2026-05-24' AND seeded.slot_id IN (3, 8) THEN TIMESTAMPTZ '2026-05-23 09:00:00+05:30'
+        WHEN seeded.end_date < CURRENT_DATE AND seeded.slot_id IN (3, 8) THEN (CURRENT_DATE - INTERVAL '1 day') + TIME '09:00:00' + INTERVAL '5.5 hours'
         ELSE NULL
     END,
     FALSE,
     NULL,
     0,
-    TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - (((seeded.organization_id * 3) + seeded.slot_id + 10) || ' days')::interval,
-    TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((seeded.slot_id % 5 + 1) || ' days')::interval
+    (CURRENT_DATE - (((seeded.organization_id * 3) + seeded.slot_id + 10) || ' days')::interval)::date + TIME '09:00:00' + INTERVAL '5.5 hours',
+    (CURRENT_DATE - ((seeded.slot_id % 5 + 1) || ' days')::interval)::date + TIME '09:00:00' + INTERVAL '5.5 hours'
 FROM (
     SELECT
         member.id,
@@ -199,28 +199,28 @@ FROM (
             ELSE membership_plan.price
         END AS plan_amount,
         CASE
-            WHEN slot.slot_id = 1 THEN DATE '2026-05-01'
-            WHEN slot.slot_id = 2 THEN DATE '2026-04-28'
-            WHEN slot.slot_id = 3 THEN DATE '2026-04-21'
-            WHEN slot.slot_id = 4 THEN DATE '2026-03-19'
-            WHEN slot.slot_id = 5 THEN DATE '2026-02-28'
-            WHEN slot.slot_id = 6 THEN DATE '2026-04-15'
-            WHEN slot.slot_id = 7 THEN DATE '2026-01-01'
-            WHEN slot.slot_id = 8 THEN DATE '2026-04-11'
-            WHEN slot.slot_id = 9 THEN DATE '2026-04-25'
-            ELSE DATE '2026-05-16'
+            WHEN slot.slot_id = 1 THEN date_trunc('month', CURRENT_DATE)::date
+            WHEN slot.slot_id = 2 THEN (CURRENT_DATE - 25)::date
+            WHEN slot.slot_id = 3 THEN (CURRENT_DATE - 32)::date
+            WHEN slot.slot_id = 4 THEN (CURRENT_DATE - 84)::date
+            WHEN slot.slot_id = 5 THEN (CURRENT_DATE - 105)::date
+            WHEN slot.slot_id = 6 THEN (CURRENT_DATE - 45)::date
+            WHEN slot.slot_id = 7 THEN (CURRENT_DATE - 165)::date
+            WHEN slot.slot_id = 8 THEN (CURRENT_DATE - 50)::date
+            WHEN slot.slot_id = 9 THEN (CURRENT_DATE - 20)::date
+            ELSE (CURRENT_DATE - 8)::date
         END AS start_date,
         CASE
-            WHEN slot.slot_id = 1 THEN DATE '2026-05-31'
-            WHEN slot.slot_id = 2 THEN DATE '2026-05-27'
-            WHEN slot.slot_id = 3 THEN DATE '2026-05-20'
-            WHEN slot.slot_id = 4 THEN DATE '2026-04-18'
-            WHEN slot.slot_id = 5 THEN DATE '2026-03-27'
-            WHEN slot.slot_id = 6 THEN DATE '2026-07-14'
-            WHEN slot.slot_id = 7 THEN DATE '2026-12-31'
-            WHEN slot.slot_id = 8 THEN DATE '2026-05-10'
-            WHEN slot.slot_id = 9 THEN DATE '2026-05-24'
-            ELSE DATE '2026-06-15'
+            WHEN slot.slot_id = 1 THEN (date_trunc('month', CURRENT_DATE) + INTERVAL '1 month' - INTERVAL '1 day')::date
+            WHEN slot.slot_id = 2 THEN (CURRENT_DATE + 5)::date
+            WHEN slot.slot_id = 3 THEN (CURRENT_DATE - 2)::date
+            WHEN slot.slot_id = 4 THEN (CURRENT_DATE - 54)::date
+            WHEN slot.slot_id = 5 THEN (CURRENT_DATE - 75)::date
+            WHEN slot.slot_id = 6 THEN (CURRENT_DATE + 45)::date
+            WHEN slot.slot_id = 7 THEN (CURRENT_DATE + 195)::date
+            WHEN slot.slot_id = 8 THEN (CURRENT_DATE - 20)::date
+            WHEN slot.slot_id = 9 THEN (CURRENT_DATE + 10)::date
+            ELSE (CURRENT_DATE + 22)::date
         END AS end_date
     FROM members member
     JOIN organizations organization ON organization.id = member.organization_id
@@ -239,16 +239,16 @@ SELECT
     membership.organization_id,
     membership.plan_amount,
     CASE
-        WHEN slot.slot_id IN (1, 2, 9, 10) THEN DATE '2026-05-24' - ((slot.slot_id % 4) || ' days')::interval
-        WHEN slot.slot_id = 6 THEN DATE '2026-05-05'
-        WHEN slot.slot_id = 7 THEN DATE '2026-01-01'
+        WHEN slot.slot_id IN (1, 2, 9, 10) THEN (CURRENT_DATE - ((slot.slot_id % 4) || ' days')::interval)::date
+        WHEN slot.slot_id = 6 THEN (date_trunc('month', CURRENT_DATE) + INTERVAL '4 days')::date
+        WHEN slot.slot_id = 7 THEN (CURRENT_DATE - 165)::date
         ELSE membership.start_date
     END::date,
     TO_CHAR(
         CASE
-            WHEN slot.slot_id IN (1, 2, 9, 10) THEN DATE '2026-05-24' - ((slot.slot_id % 4) || ' days')::interval
-            WHEN slot.slot_id = 6 THEN DATE '2026-05-05'
-            WHEN slot.slot_id = 7 THEN DATE '2026-01-01'
+            WHEN slot.slot_id IN (1, 2, 9, 10) THEN (CURRENT_DATE - ((slot.slot_id % 4) || ' days')::interval)::date
+            WHEN slot.slot_id = 6 THEN (date_trunc('month', CURRENT_DATE) + INTERVAL '4 days')::date
+            WHEN slot.slot_id = 7 THEN (CURRENT_DATE - 165)::date
             ELSE membership.start_date
         END::date,
         'YYYY-MM'
@@ -263,8 +263,8 @@ SELECT
     'Full membership payment; no partial payments in seed data',
     FALSE,
     NULL,
-    TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((slot.slot_id + 2) || ' days')::interval,
-    TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((slot.slot_id % 4 + 1) || ' days')::interval,
+    (CURRENT_DATE - ((slot.slot_id + 2) || ' days')::interval)::date + TIME '09:00:00' + INTERVAL '5.5 hours',
+    (CURRENT_DATE - ((slot.slot_id % 4 + 1) || ' days')::interval)::date + TIME '09:00:00' + INTERVAL '5.5 hours',
     0
 FROM member_memberships membership
 CROSS JOIN LATERAL (SELECT ((membership.member_id - 1) % 10) + 1 AS slot_id) slot;
@@ -279,8 +279,8 @@ SELECT
     membership.id,
     membership.organization_id,
     organization.admission_fee,
-    (DATE '2026-05-24' - ((membership.organization_id % 4) || ' days')::interval)::date,
-    TO_CHAR((DATE '2026-05-24' - ((membership.organization_id % 4) || ' days')::interval)::date, 'YYYY-MM'),
+    (CURRENT_DATE - ((membership.organization_id % 4) || ' days')::interval)::date,
+    TO_CHAR((CURRENT_DATE - ((membership.organization_id % 4) || ' days')::interval)::date, 'YYYY-MM'),
     'PAID',
     'ADMISSION',
     'adm_pay_' || LPAD(membership.organization_id::text, 2, '0') || '_' || slot.slot_id,

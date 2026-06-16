@@ -133,9 +133,15 @@ public class ReminderService {
         int processedMemberships = 0;
         int organizationsGrouped = 0;
         int digestsSent = 0;
-        for (Organization organization : organizationRepository.findAllByDeletedFalseAndStatusIn(
+        List<Organization> activeOrgs = organizationRepository.findAllByDeletedFalseAndStatusIn(
             List.of(OrganizationStatus.ACTIVE, OrganizationStatus.TRIAL)
-        )) {
+        );
+        // Run member auto-deactivation reconcile for members who are 30+ days overdue.
+        // This is done in the scheduled path only, not during on-demand dashboard or reminder reads.
+        for (Organization organization : activeOrgs) {
+            memberMembershipService.refreshMembershipStatusesWithReconcile(organization.getId());
+        }
+        for (Organization organization : activeOrgs) {
             ReminderRunResponse response = runReminders(organization.getId(), false);
             processedMemberships += response.processedMembers();
             organizationsGrouped += response.organizationsGrouped();

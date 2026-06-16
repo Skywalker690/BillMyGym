@@ -289,9 +289,21 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
         select count(membership)
         from MemberMembership membership
         where membership.deleted = false
+          and membership.member.deleted = false
+          and membership.member.status = 'ACTIVE'
           and membership.organization.id = :organizationId
           and membership.status = 'ACTIVE'
           and membership.endDate = :today
+          and not exists (
+              select newer.id
+              from MemberMembership newer
+              where newer.deleted = false
+                and newer.member = membership.member
+                and (
+                    newer.endDate > membership.endDate
+                    or (newer.endDate = membership.endDate and newer.createdAt > membership.createdAt)
+                )
+          )
         """)
     long countExpiringSoon(
         @Param("organizationId") Long organizationId,
@@ -306,6 +318,16 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
           and membership.member.status = 'ACTIVE'
           and membership.organization.id = :organizationId
           and membership.endDate = :today
+          and not exists (
+              select newer.id
+              from MemberMembership newer
+              where newer.deleted = false
+                and newer.member = membership.member
+                and (
+                    newer.endDate > membership.endDate
+                    or (newer.endDate = membership.endDate and newer.createdAt > membership.createdAt)
+                )
+          )
         """)
     long countExpiredOn(
         @Param("organizationId") Long organizationId,
@@ -319,12 +341,20 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
           and membership.member.deleted = false
           and membership.member.status = 'ACTIVE'
           and membership.organization.id = :organizationId
-          and membership.endDate < :today
           and membership.status = 'OVERDUE'
+          and not exists (
+              select newer.id
+              from MemberMembership newer
+              where newer.deleted = false
+                and newer.member = membership.member
+                and (
+                    newer.endDate > membership.endDate
+                    or (newer.endDate = membership.endDate and newer.createdAt > membership.createdAt)
+                )
+          )
         """)
     long countOverdueBefore(
-        @Param("organizationId") Long organizationId,
-        @Param("today") java.time.LocalDate today
+        @Param("organizationId") Long organizationId
     );
 
     /**

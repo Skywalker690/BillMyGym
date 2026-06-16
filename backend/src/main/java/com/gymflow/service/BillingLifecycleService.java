@@ -18,7 +18,9 @@ public class BillingLifecycleService {
     public void startRegularTrial(Organization organization, LocalDate startDate) {
         LocalDate trialEndDate = trialEndDate(startDate);
         organization.setOrganizationType(OrganizationType.REGULAR);
-        organization.setSubscriptionPlan(SubscriptionPlan.BILLMYGYM);
+        if (organization.getSubscriptionPlan() == null) {
+            organization.setSubscriptionPlan(SubscriptionPlan.BILLMYGYM);
+        }
         organization.setStatus(OrganizationStatus.TRIAL);
         organization.setTrialStartDate(startDate);
         organization.setTrialEndDate(trialEndDate);
@@ -29,7 +31,9 @@ public class BillingLifecycleService {
 
     public void startDemoAccess(Organization organization, LocalDate startDate) {
         organization.setOrganizationType(OrganizationType.DEMO);
-        organization.setSubscriptionPlan(SubscriptionPlan.BILLMYGYM);
+        if (organization.getSubscriptionPlan() == null) {
+            organization.setSubscriptionPlan(SubscriptionPlan.BILLMYGYM);
+        }
         organization.setStatus(OrganizationStatus.ACTIVE);
         organization.setTrialStartDate(null);
         organization.setTrialEndDate(null);
@@ -44,7 +48,9 @@ public class BillingLifecycleService {
             return;
         }
         organization.setOrganizationType(OrganizationType.REGULAR);
-        organization.setSubscriptionPlan(SubscriptionPlan.BILLMYGYM);
+        if (organization.getSubscriptionPlan() == null) {
+            organization.setSubscriptionPlan(SubscriptionPlan.BILLMYGYM);
+        }
         organization.setStatus(OrganizationStatus.ACTIVE);
         organization.setTrialStartDate(null);
         organization.setTrialEndDate(null);
@@ -55,7 +61,9 @@ public class BillingLifecycleService {
 
     public void expireRegularTrial(Organization organization, LocalDate today) {
         organization.setOrganizationType(OrganizationType.REGULAR);
-        organization.setSubscriptionPlan(SubscriptionPlan.BILLMYGYM);
+        if (organization.getSubscriptionPlan() == null) {
+            organization.setSubscriptionPlan(SubscriptionPlan.BILLMYGYM);
+        }
         organization.setStatus(OrganizationStatus.PAUSED);
         organization.setSubscriptionDueDate(today);
         if (organization.getPausedAt() == null) {

@@ -66,7 +66,8 @@ public class SubscriptionDtos {
         PlanAccessResponse planAccess,
         List<SubscriptionPaymentResponse> paymentHistory,
         PaymentHistoryPageResponse paymentHistoryPage,
-        BigDecimal gymCoinBalance
+        BigDecimal gymCoinBalance,
+        boolean canUseSupportAutomation
     ) {
     }
 
