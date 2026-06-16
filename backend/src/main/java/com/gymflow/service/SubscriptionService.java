@@ -347,7 +347,8 @@ public class SubscriptionService {
             summary.canViewAdvancedAnalytics(),
             summary.canReceiveMonthlyReports(),
             summary.canExportReports(),
-            summary.canUsePremiumFeatures()
+            summary.canUsePremiumFeatures(),
+            summary.canUseSupportAutomation()
         );
     }
 
@@ -380,7 +381,10 @@ public class SubscriptionService {
     }
 
     private SubscriptionPlan resolveCheckoutPlan(CreateSubscriptionOrderRequest request, Organization organization) {
-        return SubscriptionPlan.BILLMYGYM;
+        if (request.subscriptionPlan() != null) {
+            return request.subscriptionPlan();
+        }
+        return organization.getSubscriptionPlan() != null ? organization.getSubscriptionPlan() : SubscriptionPlan.BILLMYGYM;
     }
 
     private SubscriptionPlan resolvePaymentPlan(OrganizationSubscriptionPayment payment, Organization organization) {
@@ -400,14 +404,15 @@ public class SubscriptionService {
     }
 
     private SubscriptionInvoiceResponse toInvoiceResponse(OrganizationSubscriptionPayment payment) {
+        SubscriptionPlan plan = payment.getSubscriptionPlan() != null ? payment.getSubscriptionPlan() : SubscriptionPlan.BILLMYGYM;
         BigDecimal baseAmount = payment.getBaseAmount() == null
-            ? SubscriptionPricingService.BASE_MONTHLY_AMOUNT
+            ? plan.monthlyAmount()
             : payment.getBaseAmount();
         Integer includedMembers = payment.getIncludedActiveMembers() == null
-            ? SubscriptionPricingService.INCLUDED_ACTIVE_MEMBERS
+            ? (plan.memberLimit() == null ? Integer.MAX_VALUE : plan.memberLimit())
             : payment.getIncludedActiveMembers();
         BigDecimal overageRate = payment.getOverageRate() == null
-            ? SubscriptionPricingService.OVERAGE_PER_ACTIVE_MEMBER
+            ? plan.overageRate()
             : payment.getOverageRate();
         BigDecimal overageAmount = payment.getOverageAmount() == null
             ? payment.getAmount().subtract(baseAmount).max(BigDecimal.ZERO)

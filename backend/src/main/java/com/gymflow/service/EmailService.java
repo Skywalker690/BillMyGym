@@ -210,10 +210,13 @@ public class EmailService {
 
     @Async("emailTaskExecutor")
     public void sendSuperAdminSubscriptionPaymentEmail(OrganizationSubscriptionPayment payment) {
+        String planName = payment.getSubscriptionPlan() != null ? 
+            (payment.getSubscriptionPlan() == com.gymflow.domain.enums.SubscriptionPlan.BILLMYGYM ? "Automation Plan" : "Blaze Plan") : "Subscription";
+        String amountText = payment.getAmount() != null ? payment.getAmount().toPlainString() : "0.00";
         appUserRepository.findByRoleAndStatusAndDeletedFalse(Role.SUPER_ADMIN, UserStatus.ACTIVE)
             .forEach(superAdmin -> sendHtmlEmail(
                 superAdmin.getEmail(),
-                "BillMyGym subscription " + payment.getPaymentStatus().name().toLowerCase(Locale.ENGLISH)
+                planName + " payment of INR " + amountText + " " + payment.getPaymentStatus().name().toLowerCase(Locale.ENGLISH)
                     + " - " + payment.getOrganization().getName(),
                 buildSuperAdminSubscriptionPaymentEmail(payment),
                 true
@@ -588,9 +591,12 @@ public class EmailService {
     private String buildSuperAdminSubscriptionPaymentEmail(OrganizationSubscriptionPayment payment) {
         Organization organization = payment.getOrganization();
         String status = payment.getPaymentStatus() == null ? "-" : payment.getPaymentStatus().name();
-        String title = "Subscription " + status.toLowerCase(Locale.ENGLISH);
+        String planName = payment.getSubscriptionPlan() != null ? 
+            (payment.getSubscriptionPlan() == com.gymflow.domain.enums.SubscriptionPlan.BILLMYGYM ? "Automation Plan" : "Blaze Plan") : "Subscription";
+        String amountText = payment.getAmount() != null ? currency(payment.getAmount()) : "-";
+        String title = planName + " " + status.toLowerCase(Locale.ENGLISH);
         String content = """
-            <p style="margin:0 0 16px 0;">A BillMyGym organization subscription payment changed state.</p>
+            <p style="margin:0 0 16px 0;">An organization payment of <strong>%s</strong> for the <strong>%s</strong> was processed.</p>
             <table width="100%%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #d7e3dc;border-radius:16px;overflow:hidden;background:#f8fcfa;margin:24px 0;">
               <tr>
                 <td colspan="2" style="padding:14px 18px;background:#e7f6ee;color:#166534;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">Subscription Event</td>
@@ -605,10 +611,12 @@ public class EmailService {
               %s
             </table>
             """.formatted(
+            amountText,
+            planName,
             detailRow("Organization", organization == null ? "-" : organization.getName()),
-            detailRow("Plan", payment.getSubscriptionPlan() == null ? "-" : payment.getSubscriptionPlan().name()),
+            detailRow("Plan", planName),
             detailRow("Status", status),
-            detailRow("Amount", currency(payment.getAmount())),
+            detailRow("Amount", amountText),
             detailRow("Payment Date", payment.getPaymentDate() == null ? "-" : payment.getPaymentDate().toString()),
             detailRow("Period", "%s to %s".formatted(payment.getSubscriptionStart(), payment.getSubscriptionEnd())),
             detailRow("Gateway Payment", payment.getRazorpayPaymentId() == null ? "-" : payment.getRazorpayPaymentId()),

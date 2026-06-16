@@ -90,6 +90,23 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPayment, Lo
         @Param("paymentTypes") Collection<PaymentType> paymentTypes
     );
 
+    @Query("""
+        select payment.membership.id as membershipId,
+               coalesce(sum(payment.amount), 0) as amount
+        from MemberPayment payment
+        where payment.deleted = false
+          and payment.organization.id = :organizationId
+          and payment.paymentStatus = com.gymflow.domain.enums.PaymentStatus.PAID
+          and payment.paymentType in :paymentTypes
+          and payment.paymentDate <= :snapshotDate
+        group by payment.membership.id
+        """)
+    List<MembershipAmountProjection> sumSuccessfulAmountsByMembershipForOrganizationBeforeDate(
+        @Param("organizationId") Long organizationId,
+        @Param("paymentTypes") Collection<PaymentType> paymentTypes,
+        @Param("snapshotDate") LocalDate snapshotDate
+    );
+
     interface MembershipAmountProjection {
         Long getMembershipId();
 

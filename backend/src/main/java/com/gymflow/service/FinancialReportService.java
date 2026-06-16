@@ -149,12 +149,26 @@ public class FinancialReportService {
             monthStart.atStartOfDay(APP_ZONE).toInstant(),
             month.plusMonths(1).atDay(1).atStartOfDay(APP_ZONE).toInstant()
         );
-        BigDecimal duePayments = month.equals(YearMonth.from(today))
-            ? latestByMember.values().stream()
-                .filter(membership -> membership.getEndDate().isBefore(snapshotDate))
-                .map(MemberMembership::getPlanAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-            : BigDecimal.ZERO;
+        // BUG-20: Subtract paid amounts instead of summing planAmounts directly. Also compute for past months.
+        Map<Long, BigDecimal> paidByMembership = memberPaymentRepository
+            .sumSuccessfulAmountsByMembershipForOrganizationBeforeDate(
+                organization.getId(),
+                List.of(PaymentType.MEMBERSHIP, PaymentType.NEW_MEMBERSHIP, PaymentType.RENEWAL),
+                snapshotDate
+            )
+            .stream()
+            .collect(Collectors.toMap(
+                com.gymflow.repository.MemberPaymentRepository.MembershipAmountProjection::getMembershipId,
+                com.gymflow.repository.MemberPaymentRepository.MembershipAmountProjection::getAmount
+            ));
+
+        BigDecimal duePayments = latestByMember.values().stream()
+            .filter(membership -> membership.getEndDate().isBefore(snapshotDate))
+            .map(membership -> {
+                BigDecimal paid = paidByMembership.getOrDefault(membership.getId(), BigDecimal.ZERO);
+                return membership.getPlanAmount().subtract(paid).max(BigDecimal.ZERO);
+            })
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal expenses = BigDecimal.ZERO;
 
         return new FinancialReportMonthResponse(
@@ -583,7 +597,8 @@ public class FinancialReportService {
             summary.canViewAdvancedAnalytics(),
             summary.canReceiveMonthlyReports(),
             summary.canExportReports(),
-            summary.canUsePremiumFeatures()
+            summary.canUsePremiumFeatures(),
+            summary.canUseSupportAutomation()
         );
     }
 

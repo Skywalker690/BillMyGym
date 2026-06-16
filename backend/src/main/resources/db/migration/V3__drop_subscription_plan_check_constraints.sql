@@ -1,0 +1,2 @@
+ALTER TABLE organization_subscription_payments DROP CONSTRAINT IF EXISTS organization_subscription_payments_subscription_plan_check;
+ALTER TABLE organizations DROP CONSTRAINT IF EXISTS organizations_subscription_plan_check;

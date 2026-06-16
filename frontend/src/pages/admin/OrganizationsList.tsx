@@ -35,7 +35,7 @@ type Organization = {
   adminPhoneNumber?: string | null;
   status: "TRIAL" | "ACTIVE" | "PAUSED" | "DEACTIVATED";
   organizationType?: "REGULAR" | "DEMO";
-  subscriptionPlan?: "BILLMYGYM";
+  subscriptionPlan?: "BILLMYGYM" | "BASE";
   subscriptionDueDate?: string | null;
   trialEndDate?: string | null;
   activeMembers?: number | null;
@@ -84,6 +84,7 @@ const badgeClasses: Record<string, string> = {
   DEACTIVATED: "border-slate-300 bg-slate-200 text-slate-800",
   DEMO: "border-cyan-200 bg-cyan-100 text-cyan-800",
   BILLMYGYM: "border-emerald-200 bg-emerald-100 text-emerald-800",
+  BASE: "border-sky-200 bg-sky-100 text-sky-800",
 };
 
 const money = new Intl.NumberFormat("en-IN", {
@@ -98,7 +99,8 @@ function formatDate(value?: string | null) {
 }
 
 function organizationPlanLabel(plan?: Organization["subscriptionPlan"]) {
-  return plan === "BILLMYGYM" ? "BillMyGym" : "BillMyGym";
+  if (plan === "BASE") return "Blaze Plan";
+  return "Automation Plan";
 }
 
 function isRenewalAttention(org: Organization) {

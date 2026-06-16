@@ -348,7 +348,8 @@ public class AnalyticsService {
 
     private String label(String value) {
         return switch (value) {
-            case "BILLMYGYM" -> "BillMyGym Plan";
+            case "BILLMYGYM" -> "Automation Plan";
+            case "BASE" -> "Base Plan";
             case "DEMO" -> "Demo Workspace";
             case "TRIAL" -> "Free Trial Access";
             case "ACTIVE" -> "Active Subscription";
@@ -367,7 +368,7 @@ public class AnalyticsService {
             throw new BadRequestException("Organization context is required");
         }
         return new OrganizationAnalyticsResponse(
-            memberMembershipRepository.countBillableActiveMembers(organizationId, LocalDate.now(APP_ZONE)),
+            memberMembershipRepository.countBillableActiveMembers(organizationId),
             notificationLogRepository.countByOrganizationIdAndTypeAndDeletedFalse(
                 organizationId,
                 NotificationType.ORGANIZATION_RENEWAL_DIGEST

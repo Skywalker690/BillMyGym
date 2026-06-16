@@ -14,6 +14,7 @@ import {
   MessageCircle,
   ShieldCheck,
   Users,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +37,7 @@ declare global {
   }
 }
 
-type SubscriptionPlanKey = "BILLMYGYM";
+type SubscriptionPlanKey = "BILLMYGYM" | "BASE";
 
 type SubscriptionPricing = {
   baseAmount: number;
@@ -150,12 +151,12 @@ const statusStyles: Record<string, string> = {
 };
 
 const includedFeatures = [
-  { icon: Users, label: "Member and membership management" },
-  { icon: CalendarDays, label: "Membership renewals and expiry tracking" },
-  { icon: BarChart3, label: "Revenue dashboards, reports, analytics" },
-  { icon: FileDown, label: "Custom date ranges and report exports" },
-  { icon: MessageCircle, label: "WhatsApp reminders and renewal digests" },
-  { icon: Mail, label: "Account emails and monthly reports" },
+  { icon: Users, label: "Member and membership management", automationOnly: false },
+  { icon: CalendarDays, label: "Membership renewals and expiry tracking", automationOnly: false },
+  { icon: BarChart3, label: "Revenue dashboards, reports, analytics", automationOnly: false },
+  { icon: FileDown, label: "Custom date ranges and report exports", automationOnly: false },
+  { icon: MessageCircle, label: "WhatsApp reminders and renewal digests", automationOnly: true },
+  { icon: Mail, label: "Account emails and monthly reports", automationOnly: false },
 ];
 
 const dateText = (value?: string | null) => {
@@ -178,17 +179,18 @@ function loadRazorpayScript() {
   });
 }
 
-function fallbackPricing(subscription: SubscriptionStatus): SubscriptionPricing {
+function fallbackPricing(subscription: SubscriptionStatus, plan: "BASE" | "BILLMYGYM" = "BILLMYGYM"): SubscriptionPricing {
   const activeMembers = Number(subscription.activeMembers ?? 0);
-  const includedMembers = 100;
-  const overageRate = 2;
-  const overageMembers = Math.max(activeMembers - includedMembers, 0);
+  const includedMembers = plan === "BASE" ? 999999999 : 100;
+  const overageRate = plan === "BASE" ? 0 : 2;
+  const baseAmount = plan === "BASE" ? 249 : 299;
+  const overageMembers = plan === "BASE" ? 0 : Math.max(activeMembers - includedMembers, 0);
   const overageAmount = overageMembers * overageRate;
   return {
-    baseAmount: 299,
-    totalAmount: 299 + overageAmount,
+    baseAmount,
+    totalAmount: baseAmount + overageAmount,
     activeMembers,
-    includedMembers,
+    includedMembers: plan === "BASE" ? null : includedMembers,
     overageMembers,
     overageRate,
     overageAmount,
@@ -198,7 +200,7 @@ function fallbackPricing(subscription: SubscriptionStatus): SubscriptionPricing 
 function invoiceFromPricing(pricing: SubscriptionPricing): SubscriptionInvoice {
   return {
     baseAmount: pricing.baseAmount,
-    includedActiveMembers: pricing.includedMembers ?? 100,
+    includedActiveMembers: pricing.includedMembers,
     currentActiveMembers: pricing.activeMembers,
     additionalActiveMembers: pricing.overageMembers,
     overageRate: pricing.overageRate,
@@ -214,6 +216,7 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
   const [manualOrder, setManualOrder] = useState<CreateOrderResponse | null>(null);
   const [manualPaymentId, setManualPaymentId] = useState("");
   const [manualSignature, setManualSignature] = useState("");
+  const [selectedCheckoutPlan, setSelectedCheckoutPlan] = useState<"BASE" | "BILLMYGYM">("BILLMYGYM");
   const [purchaseSuccess, setPurchaseSuccess] = useState<PurchaseSuccessState | null>(null);
   const [paymentHistory, setPaymentHistory] = useState<SubscriptionPayment[]>([]);
   const [paymentHistoryPage, setPaymentHistoryPage] = useState<PaymentHistoryPage | null>(null);
@@ -221,7 +224,7 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
   const { data: subscription, isLoading } = useQuery<SubscriptionStatus | null>({
     queryKey: ["subscriptionStatus"],
     queryFn: async () => await fetchAndCacheSubscriptionStatus() as SubscriptionStatus,
-    initialData: () => readCachedSubscriptionStatus() as SubscriptionStatus | undefined,
+    initialData: () => (readCachedSubscriptionStatus() as SubscriptionStatus) || undefined,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
@@ -282,7 +285,7 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
     mutationFn: async () => {
       const res = await api.post(
         "/subscription/create",
-        { subscriptionPlan: "BILLMYGYM" },
+        { subscriptionPlan: selectedCheckoutPlan },
         {
           headers: {
             "X-Idempotency-Key": crypto.randomUUID(),
@@ -371,26 +374,29 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
     return <div className="min-h-screen overflow-x-hidden p-8">Subscription status is unavailable.</div>;
   }
 
-  const pricing = subscription.pricing ?? fallbackPricing(subscription);
-  const invoice = invoiceFromPricing(pricing);
   const isDemo = subscription.organizationType === "DEMO";
   const isActive = subscription.organizationStatus === "ACTIVE" && !isDemo;
   const isTrial = subscription.organizationStatus === "TRIAL";
   const hasInactiveSubscription = subscription.organizationStatus === "PAUSED" || subscription.organizationStatus === "DEACTIVATED";
   const canCheckout = !isDemo && !isActive && !isTrial;
+  const pricing = canCheckout ? fallbackPricing(subscription, selectedCheckoutPlan) : (subscription.pricing ?? fallbackPricing(subscription));
+  const invoice = invoiceFromPricing(pricing);
   const latestPayment = paymentHistory[0];
   const paymentStatus = latestPayment?.paymentStatus ?? (isDemo ? "DEMO" : isTrial ? "TRIAL" : subscription.organizationStatus);
-  const includedActiveMembers = invoice.includedActiveMembers ?? 100;
-  const includedUsagePercent = includedActiveMembers > 0
-    ? Math.min(Math.round((Math.min(invoice.currentActiveMembers, includedActiveMembers) / includedActiveMembers) * 100), 100)
-    : 0;
+  const isUnlimited = invoice.includedActiveMembers == null;
+  const displayIncludedMembers = isUnlimited ? "Unlimited" : invoice.includedActiveMembers;
+  const includedUsagePercent = isUnlimited
+    ? 100
+    : Math.min(Math.round((Math.min(invoice.currentActiveMembers, invoice.includedActiveMembers as number) / (invoice.includedActiveMembers as number)) * 100), 100);
   const gymCoins = Number(subscription.gymCoinBalance ?? 0);
   const estimatedCheckoutAmount = pricing.totalAmount;
-  const currentPeriod = subscription.currentPeriodStart && subscription.currentPeriodEnd
-    ? `${dateText(subscription.currentPeriodStart)} - ${dateText(subscription.currentPeriodEnd)}`
-    : isTrial
-      ? `Trial through ${dateText(subscription.trialEndsAt ?? subscription.subscriptionDueDate)}`
-      : `Renews on ${dateText(subscription.subscriptionDueDate)}`;
+  const currentPeriod = canCheckout
+    ? `Starts on ${dateText(new Date().toISOString())}`
+    : subscription.currentPeriodStart && subscription.currentPeriodEnd
+      ? `${dateText(subscription.currentPeriodStart)} - ${dateText(subscription.currentPeriodEnd)}`
+      : isTrial
+        ? `Trial through ${dateText(subscription.trialEndsAt ?? subscription.subscriptionDueDate)}`
+        : `Renews on ${dateText(subscription.subscriptionDueDate)}`;
 
   if (purchaseSuccess) {
     return (
@@ -439,11 +445,34 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
                 <Badge className={statusStyles.BILLMYGYM}>{subscriptionPlanLabel(subscription.subscriptionPlan)}</Badge>
               </div>
               <h1 className={immersive ? "mt-5 max-w-3xl text-4xl font-black tracking-tight text-white sm:text-5xl" : "mt-5 max-w-3xl text-4xl font-black tracking-tight text-slate-950 sm:text-5xl"}>
-                One plan. Full product access. Pricing follows active members.
+                {canCheckout ? "Choose your plan to start using BillMyGym." : "One plan. Full product access. Pricing follows active members."}
               </h1>
               <p className={immersive ? "mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-300" : "mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-600"}>
-                {organizationStatusDescription(subscription.organizationStatus)} BillMyGym includes every feature for every organization. Expired, inactive, frozen, cancelled, and deactivated members do not add to the subscription bill.
+                {canCheckout ? "Select the plan that best fits your organization's needs." : `${organizationStatusDescription(subscription.organizationStatus)} BillMyGym includes every feature for every organization. Expired, inactive, frozen, cancelled, and deactivated members do not add to the subscription bill.`}
               </p>
+              
+              {canCheckout && (
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                  <div
+                    onClick={() => setSelectedCheckoutPlan("BASE")}
+                    className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${selectedCheckoutPlan === "BASE" ? "border-emerald-500 bg-emerald-50 text-emerald-900" : "border-slate-200 bg-white text-slate-600 hover:border-emerald-200"}`}
+                  >
+                    <div className="font-black">Base Plan</div>
+                    <div className="text-sm">₹249 / month</div>
+                    <div className="mt-1 text-xs opacity-80">Unlimited members</div>
+                    <div className="text-xs opacity-80">No support automation</div>
+                  </div>
+                  <div
+                    onClick={() => setSelectedCheckoutPlan("BILLMYGYM")}
+                    className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${selectedCheckoutPlan === "BILLMYGYM" ? "border-emerald-500 bg-emerald-50 text-emerald-900" : "border-slate-200 bg-white text-slate-600 hover:border-emerald-200"}`}
+                  >
+                    <div className="font-black">Automation Plan</div>
+                    <div className="text-sm">₹299 / month</div>
+                    <div className="mt-1 text-xs opacity-80">100 members included</div>
+                    <div className="text-xs opacity-80">Full support automation</div>
+                  </div>
+                </div>
+              )}
               <div className="mt-7 flex flex-wrap gap-3">
                 <Button
                   onClick={() => createOrderMutation.mutate()}
@@ -475,15 +504,41 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className={immersive ? "text-[10px] font-black uppercase tracking-[0.22em] text-emerald-200" : "text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700"}>Estimated next invoice</div>
-                  <div className={immersive ? "mt-2 text-5xl font-black tracking-tight text-white" : "mt-2 text-5xl font-black tracking-tight text-slate-950"}>{money.format(pricing.totalAmount)}</div>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className={immersive ? "text-5xl font-black tracking-tight text-white" : "text-5xl font-black tracking-tight text-slate-950"}>{money.format(pricing.totalAmount)}</div>
+                    {!isUnlimited && (
+                      <div className="relative group mt-1">
+                        <div className={immersive ? "flex items-center justify-center h-6 w-6 rounded-full bg-white/10 text-white/60 hover:text-white hover:bg-white/20 cursor-pointer transition-colors" : "flex items-center justify-center h-6 w-6 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200 cursor-pointer transition-colors"}>
+                          <Info className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-max max-w-[240px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all pointer-events-none z-10">
+                          <div className="bg-slate-900 text-white text-[11px] p-3.5 rounded-xl shadow-xl flex flex-col gap-2 border border-white/10">
+                            <div className="flex justify-between gap-6">
+                              <span className="text-slate-300 font-medium tracking-wide">Base subscription:</span>
+                              <span className="font-bold">{money.format(invoice.baseAmount)}</span>
+                            </div>
+                            <div className="flex justify-between gap-6">
+                              <span className="text-slate-300 font-medium tracking-wide">Additional members:</span>
+                              <span className="font-bold">{money.format(invoice.overageAmount)}</span>
+                            </div>
+                            <div className="border-t border-white/10 mt-1 pt-2 flex justify-between gap-6">
+                              <span className="text-white font-black tracking-wide">Total amount:</span>
+                              <span className="font-black text-emerald-400">{money.format(invoice.totalAmount)}</span>
+                            </div>
+                          </div>
+                          <div className="w-2.5 h-2.5 bg-slate-900 border-b border-r border-white/10 rotate-45 absolute -bottom-[5px] left-1/2 -translate-x-1/2"></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
                   <CreditCard className="h-7 w-7" />
                 </div>
               </div>
               <div className={immersive ? "mt-5 grid gap-3 text-sm font-semibold text-slate-200" : "mt-5 grid gap-3 text-sm font-semibold text-slate-600"}>
-                <InfoLine label="Active member usage" value={`${invoice.currentActiveMembers} / ${includedActiveMembers}`} />
-                <InfoLine label="Additional member rate" value={`${money.format(invoice.overageRate)} / member`} />
+                {!isUnlimited && <InfoLine label="Active member usage" value={`${invoice.currentActiveMembers} / ${displayIncludedMembers}`} />}
+                {!isUnlimited && <InfoLine label="Additional member rate" value={`${money.format(invoice.overageRate)} / member`} />}
                 <InfoLine label="Current billing period" value={currentPeriod} />
                 <InfoLine label="Payment status" value={String(paymentStatus).replaceAll("_", " ")} />
               </div>
@@ -496,16 +551,16 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
           <div className={immersive ? "rounded-[1.8rem] border border-white/10 bg-white/[0.06] p-6" : "glass-panel rounded-[1.8rem] p-6"}>
             <div className={immersive ? "text-[10px] font-black uppercase tracking-[0.24em] text-emerald-200" : "text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700"}>Active member billing</div>
             <h2 className={immersive ? "mt-2 text-2xl font-black text-white" : "mt-2 text-2xl font-black text-slate-950"}>Usage snapshot</h2>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <Metric label="Active / included" value={`${invoice.currentActiveMembers} / ${includedActiveMembers}`} immersive={immersive} />
-              <Metric label="Additional" value={invoice.additionalActiveMembers} immersive={immersive} />
+            <div className={`mt-6 grid gap-3 ${isUnlimited ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
+              <Metric label={isUnlimited ? "Active members" : "Active / included"} value={isUnlimited ? "Unlimited" : `${invoice.currentActiveMembers} / ${displayIncludedMembers}`} immersive={immersive} />
+              {!isUnlimited && <Metric label="Additional" value={invoice.additionalActiveMembers} immersive={immersive} />}
             </div>
             <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-200/70">
               <div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: `${Math.max(includedUsagePercent, invoice.currentActiveMembers > 0 ? 6 : 0)}%` }} />
             </div>
             <div className={immersive ? "mt-3 flex flex-wrap justify-between gap-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-300" : "mt-3 flex flex-wrap justify-between gap-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500"}>
-              <span>{Math.min(invoice.currentActiveMembers, includedActiveMembers)} included members used</span>
-              <span>{invoice.additionalActiveMembers} extra members billed</span>
+              <span>{isUnlimited ? invoice.currentActiveMembers : Math.min(invoice.currentActiveMembers, invoice.includedActiveMembers as number)} {isUnlimited ? "active members" : "included members used"}</span>
+              {!isUnlimited && <span>{invoice.additionalActiveMembers} extra members billed</span>}
             </div>
           </div>
 
@@ -514,16 +569,16 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
             <h2 className={immersive ? "mt-2 text-2xl font-black text-white" : "mt-2 text-2xl font-black text-slate-950"}>Estimated invoice line items</h2>
             <div className="mt-5 space-y-3">
               <InvoiceRow label="Base subscription fee" value={money.format(invoice.baseAmount)} immersive={immersive} />
-              <InvoiceRow label="Active member usage" value={`${invoice.currentActiveMembers} / ${includedActiveMembers}`} immersive={immersive} />
-              <InvoiceRow label="Additional members" value={String(invoice.additionalActiveMembers)} immersive={immersive} />
-              <InvoiceRow label="Additional charges" value={money.format(invoice.overageAmount)} immersive={immersive} />
+              <InvoiceRow label="Active member usage" value={isUnlimited ? "Unlimited" : `${invoice.currentActiveMembers} / ${displayIncludedMembers}`} immersive={immersive} />
+              {!isUnlimited && <InvoiceRow label="Additional members" value={String(invoice.additionalActiveMembers)} immersive={immersive} />}
+              {!isUnlimited && <InvoiceRow label="Additional charges" value={money.format(invoice.overageAmount)} immersive={immersive} />}
               <InvoiceRow label="Total amount" value={money.format(invoice.totalAmount)} strong immersive={immersive} />
             </div>
           </div>
         </section>
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {includedFeatures.map((feature) => {
+          {includedFeatures.filter(f => !f.automationOnly || !isUnlimited).map((feature) => {
             const Icon = feature.icon;
             return (
               <div key={feature.label} className={immersive ? "rounded-[1.4rem] border border-white/10 bg-white/[0.06] p-5" : "rounded-[1.4rem] border border-white/80 bg-white/80 p-5 shadow-sm"}>

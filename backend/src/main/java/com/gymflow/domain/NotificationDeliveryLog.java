@@ -57,7 +57,7 @@ public class NotificationDeliveryLog extends BaseEntity {
 
     private String providerMessageId;
 
-    @Column(length = 1000)
+    @Column(columnDefinition = "text")
     private String errorMessage;
 
     private Instant nextRetryAt;

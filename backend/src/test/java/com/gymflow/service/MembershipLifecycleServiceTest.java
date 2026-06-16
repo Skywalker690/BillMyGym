@@ -36,7 +36,7 @@ class MembershipLifecycleServiceTest {
         );
 
         assertEquals(MembershipStatus.ACTIVE, status);
-        assertEquals(false, membershipLifecycleService.isExpiringSoon(
+        assertEquals(true, membershipLifecycleService.isExpiringSoon(
             LocalDate.of(2026, 5, 16),
             LocalDate.of(2026, 5, 17),
             1
@@ -98,7 +98,7 @@ class MembershipLifecycleServiceTest {
         assertEquals(new BigDecimal("12000.00"), summary.paidAmount());
         assertEquals(0, BigDecimal.ZERO.compareTo(summary.pendingAmount()));
         assertEquals(PaymentStatus.PAID, summary.paymentStatus());
-        assertEquals(false, summary.expiringSoon());
+        assertEquals(true, summary.expiringSoon());
     }
 
     @Test

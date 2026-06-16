@@ -52,7 +52,9 @@ public class MembershipLifecycleService {
             return false;
         }
         long daysUntilExpiry = java.time.temporal.ChronoUnit.DAYS.between(today, membershipEndDate);
-        return daysUntilExpiry <= DUE_TODAY_WINDOW_DAYS;
+        // BUG-28: Use the passed-in reminderDaysBeforeExpiry instead of the hardcoded DUE_TODAY_WINDOW_DAYS=0
+        // so that "expiring soon" covers the configured look-ahead window, not just the exact expiry day.
+        return daysUntilExpiry <= reminderDaysBeforeExpiry;
     }
 
     public PaymentCoverageSummary buildCoverageSummary(

@@ -35,14 +35,19 @@ public class SubscriptionPricingService {
             return priceFor(organization, plan, 0L);
         }
         long activeMembers = memberMembershipRepository.countBillableActiveMembers(
-            organization.getId(),
-            LocalDate.now(APP_ZONE)
+            organization.getId()
         );
         return priceFor(organization, plan, activeMembers);
     }
 
     public SubscriptionPriceBreakdown priceFor(Organization organization, SubscriptionPlan selectedPlan) {
-        return currentPrice(organization);
+        if (organization.getOrganizationType() == OrganizationType.DEMO) {
+            return priceFor(organization, selectedPlan, 0L);
+        }
+        long activeMembers = memberMembershipRepository.countBillableActiveMembers(
+            organization.getId()
+        );
+        return priceFor(organization, selectedPlan, activeMembers);
     }
 
     public Map<Long, SubscriptionPriceBreakdown> currentPrices(List<Organization> organizations) {
@@ -56,7 +61,7 @@ public class SubscriptionPricingService {
             .toList();
         Map<Long, Long> activeMembersByOrganizationId = billableOrganizationIds.isEmpty()
             ? Map.of()
-            : memberMembershipRepository.countBillableActiveMembersByOrganizationIds(billableOrganizationIds, today)
+            : memberMembershipRepository.countBillableActiveMembersByOrganizationIds(billableOrganizationIds)
                 .stream()
                 .collect(Collectors.toMap(
                     MemberMembershipRepository.OrganizationActiveMemberCountProjection::getOrganizationId,
@@ -98,20 +103,20 @@ public class SubscriptionPricingService {
     }
 
     public SubscriptionPriceBreakdown priceFor(Organization organization, SubscriptionPlan selectedPlan, long activeMembers) {
-        BigDecimal baseAmount = BASE_MONTHLY_AMOUNT;
-        Integer includedMembers = INCLUDED_ACTIVE_MEMBERS;
         SubscriptionPlan plan = selectedPlan == null ? BILLMYGYM_PLAN : selectedPlan;
+        BigDecimal baseAmount = plan.monthlyAmount();
+        Integer includedMembers = plan.memberLimit() == null ? Integer.MAX_VALUE : plan.memberLimit();
         if (organization.getOrganizationType() == OrganizationType.DEMO) {
             return new SubscriptionPriceBreakdown(plan, BigDecimal.ZERO, 0L, null, 0L, BigDecimal.ZERO, BigDecimal.ZERO);
         }
-        long overageMembers = Math.max(activeMembers - includedMembers, 0);
-        BigDecimal overageRate = OVERAGE_PER_ACTIVE_MEMBER;
+        long overageMembers = includedMembers == Integer.MAX_VALUE ? 0 : Math.max(activeMembers - includedMembers, 0);
+        BigDecimal overageRate = plan.overageRate();
         BigDecimal overageAmount = overageRate.multiply(BigDecimal.valueOf(overageMembers));
         return new SubscriptionPriceBreakdown(
             plan,
             baseAmount.add(overageAmount),
             activeMembers,
-            includedMembers,
+            includedMembers == Integer.MAX_VALUE ? null : includedMembers,
             overageMembers,
             overageRate,
             overageAmount
@@ -128,7 +133,7 @@ public class SubscriptionPricingService {
         BigDecimal overageAmount
     ) {
         public BigDecimal baseAmount() {
-            return BASE_MONTHLY_AMOUNT;
+            return plan != null ? plan.monthlyAmount() : BASE_MONTHLY_AMOUNT;
         }
     }
 }

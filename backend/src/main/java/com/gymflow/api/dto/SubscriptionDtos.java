@@ -108,7 +108,8 @@ public class SubscriptionDtos {
         boolean canViewAdvancedAnalytics,
         boolean canReceiveMonthlyReports,
         boolean canExportReports,
-        boolean canUsePremiumFeatures
+        boolean canUsePremiumFeatures,
+        boolean canUseSupportAutomation
     ) {
     }
 

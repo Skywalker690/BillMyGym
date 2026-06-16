@@ -59,7 +59,7 @@ public class NotificationLog extends BaseEntity {
     @Column(nullable = false)
     private int attemptCount;
 
-    @Column(length = 1000)
+    @Column(columnDefinition = "text")
     private String failureReason;
 
     @Column(name = "notification_date")
@@ -67,7 +67,7 @@ public class NotificationLog extends BaseEntity {
 
     private OffsetDateTime sentAt;
 
-    @Column(length = 1000)
+    @Column(columnDefinition = "text")
     private String message;
 
 }

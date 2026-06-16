@@ -46,11 +46,19 @@ public class PlanAccessService {
     }
 
     public boolean canUsePremiumFeatures(Organization organization) {
-        return true;
+        return organization != null && organization.getSubscriptionPlan() != null && organization.getSubscriptionPlan().premiumFeatures();
     }
 
     public boolean canUsePremiumFeatures() {
         return canUsePremiumFeatures(currentOrganization());
+    }
+
+    public boolean canUseSupportAutomation(Organization organization) {
+        return organization != null && organization.getSubscriptionPlan() != null && organization.getSubscriptionPlan().supportAutomation();
+    }
+
+    public boolean canUseSupportAutomation() {
+        return canUseSupportAutomation(currentOrganization());
     }
 
     public PlanAccessSummary summary(Organization organization) {
@@ -59,7 +67,8 @@ public class PlanAccessService {
             canViewAdvancedAnalytics(organization),
             canReceiveMonthlyReports(organization),
             canExportReports(organization),
-            canUsePremiumFeatures(organization)
+            canUsePremiumFeatures(organization),
+            canUseSupportAutomation(organization)
         );
     }
 
@@ -86,7 +95,8 @@ public class PlanAccessService {
         boolean canViewAdvancedAnalytics,
         boolean canReceiveMonthlyReports,
         boolean canExportReports,
-        boolean canUsePremiumFeatures
+        boolean canUsePremiumFeatures,
+        boolean canUseSupportAutomation
     ) {
     }
 }

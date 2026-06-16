@@ -247,37 +247,27 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
     int deleteAllByOrganizationId(@Param("organizationId") Long organizationId);
 
     @Query("""
-        select count(distinct membership.member.id)
-        from MemberMembership membership
-        where membership.deleted = false
-          and membership.member.deleted = false
-          and membership.member.status = 'ACTIVE'
-          and membership.organization.id = :organizationId
-          and membership.status = 'ACTIVE'
-          and membership.startDate <= :today
-          and membership.endDate >= :today
+        select count(member.id)
+        from Member member
+        where member.deleted = false
+          and member.status = 'ACTIVE'
+          and member.organization.id = :organizationId
         """)
     long countBillableActiveMembers(
-        @Param("organizationId") Long organizationId,
-        @Param("today") java.time.LocalDate today
+        @Param("organizationId") Long organizationId
     );
 
     @Query("""
-        select membership.organization.id as organizationId,
-               count(distinct membership.member.id) as activeMembers
-        from MemberMembership membership
-        where membership.deleted = false
-          and membership.member.deleted = false
-          and membership.member.status = 'ACTIVE'
-          and membership.organization.id in :organizationIds
-          and membership.status = 'ACTIVE'
-          and membership.startDate <= :today
-          and membership.endDate >= :today
-        group by membership.organization.id
+        select member.organization.id as organizationId,
+               count(member.id) as activeMembers
+        from Member member
+        where member.deleted = false
+          and member.status = 'ACTIVE'
+          and member.organization.id in :organizationIds
+        group by member.organization.id
         """)
     List<OrganizationActiveMemberCountProjection> countBillableActiveMembersByOrganizationIds(
-        @Param("organizationIds") Collection<Long> organizationIds,
-        @Param("today") java.time.LocalDate today
+        @Param("organizationIds") Collection<Long> organizationIds
     );
 
     @Query("""
@@ -335,5 +325,31 @@ public interface MemberMembershipRepository extends JpaRepository<MemberMembersh
     long countOverdueBefore(
         @Param("organizationId") Long organizationId,
         @Param("today") java.time.LocalDate today
+    );
+
+    /**
+     * BUG-21: Count members whose very FIRST membership started within the given date range.
+     * This gives a semantically correct "new members joined" count, unlike using Member.createdAt
+     * which is inflated during bulk imports (all imported members get createdAt = import timestamp).
+     */
+    @Query("""
+        select count(distinct membership.member.id)
+        from MemberMembership membership
+        where membership.deleted = false
+          and membership.member.deleted = false
+          and membership.organization.id = :organizationId
+          and membership.startDate between :startDate and :endDate
+          and not exists (
+            select 1 from MemberMembership earlier
+            where earlier.deleted = false
+              and earlier.member.id = membership.member.id
+              and earlier.organization.id = :organizationId
+              and earlier.startDate < membership.startDate
+          )
+        """)
+    long countFirstMembershipsStartedBetween(
+        @Param("organizationId") Long organizationId,
+        @Param("startDate") java.time.LocalDate startDate,
+        @Param("endDate") java.time.LocalDate endDate
     );
 }

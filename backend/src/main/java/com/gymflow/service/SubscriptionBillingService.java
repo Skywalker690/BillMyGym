@@ -34,6 +34,7 @@ public class SubscriptionBillingService {
     private final BillingLifecycleService billingLifecycleService;
     private final WhatsAppDeliveryService whatsAppDeliveryService;
     private final SubscriptionPricingService subscriptionPricingService;
+    private final OrganizationPaymentWebhookService organizationPaymentWebhookService;
 
     @Transactional
     public void processDailyBilling() {
@@ -99,14 +100,14 @@ public class SubscriptionBillingService {
         for (Organization organization : organizationRepository.findAllByDeletedFalseAndOrganizationTypeInAndStatusAndSubscriptionDueDateBefore(
             BILLABLE_TYPES,
             OrganizationStatus.ACTIVE,
-            today.plusDays(1)
+            today   // BUG-01: was today.plusDays(1) — orgs were being paused ON their due date, not after it
         )) {
             pauseOrganization(organization, today);
         }
         for (Organization organization : organizationRepository.findAllByDeletedFalseAndOrganizationTypeInAndStatusAndSubscriptionDueDateBefore(
             BILLABLE_TYPES,
             OrganizationStatus.TRIAL,
-            today.plusDays(1)
+            today   // BUG-01: same fix for trial orgs
         )) {
             pauseOrganization(organization, today);
         }
@@ -150,21 +151,20 @@ public class SubscriptionBillingService {
             if (organization.getPausedAt() == null || !organization.getPausedAt().isBefore(cutoff)) {
                 continue;
             }
+            // BUG-03: Deactivate first (idempotent), then check notification dedup before sending email
+            organization.setStatus(OrganizationStatus.DEACTIVATED);
+            organization.setDeactivatedAt(OffsetDateTime.now(APP_ZONE));
             if (notificationDeliveryLogService.hasSuccessfulDeliveryForDay(
                 organization.getId(),
                 NotificationType.SUBSCRIPTION_DEACTIVATED,
                 today
             )) {
-                organization.setStatus(OrganizationStatus.DEACTIVATED);
-                organization.setDeactivatedAt(OffsetDateTime.now(APP_ZONE));
                 continue;
             }
-            organization.setStatus(OrganizationStatus.DEACTIVATED);
-            organization.setDeactivatedAt(OffsetDateTime.now(APP_ZONE));
             UsageMetric usage = usageMetricService.refreshMonthlySnapshot(organization);
             BigDecimal monthlyAmount = subscriptionPricingService.currentPrice(organization).totalAmount();
             LocalDate dueDate = organization.getSubscriptionDueDate() == null ? today : organization.getSubscriptionDueDate();
-            
+
             emailService.sendDeactivatedNotificationEmail(
                 organization,
                 monthlyAmount,
@@ -191,8 +191,10 @@ public class SubscriptionBillingService {
             today
         ).forEach(payment -> {
             payment.setRetryCount(payment.getRetryCount() + 1);
-            payment.setPaymentStatus(SubscriptionPaymentStatus.PENDING);
-            payment.setNextRetryDate(today.plusDays(Math.min(payment.getRetryCount() + 1L, 7L)));
+            organizationPaymentWebhookService.syncPendingPayment(payment);
+            if (payment.getPaymentStatus() == SubscriptionPaymentStatus.PENDING) {
+                payment.setNextRetryDate(today.plusDays(Math.min(payment.getRetryCount() + 1L, 7L)));
+            }
         });
     }
 

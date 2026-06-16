@@ -5,6 +5,7 @@ import com.gymflow.domain.MemberPayment;
 import com.gymflow.domain.Organization;
 import com.gymflow.domain.UsageMetric;
 import com.gymflow.domain.enums.PaymentStatus;
+import com.gymflow.domain.enums.PaymentType;
 import com.gymflow.repository.AuditLogRepository;
 import com.gymflow.repository.MemberMembershipRepository;
 import com.gymflow.repository.MemberPaymentRepository;
@@ -19,6 +20,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -41,10 +44,10 @@ public class MonthlyOrganizationReportService {
         OffsetDateTime start = monthStart.atStartOfDay(REPORT_ZONE).toOffsetDateTime();
         OffsetDateTime end = monthEnd.plusDays(1).atStartOfDay(REPORT_ZONE).toOffsetDateTime();
 
-        long membersJoined = memberRepository.countByOrganizationIdAndDeletedFalseAndCreatedAtBetween(
+        long membersJoined = memberMembershipRepository.countFirstMembershipsStartedBetween(
             organization.getId(),
-            start,
-            end
+            monthStart,
+            monthEnd
         );
         long expiredMembers = memberMembershipRepository.countExpiredBetween(
             organization.getId(),
@@ -75,10 +78,25 @@ public class MonthlyOrganizationReportService {
         long overdueMembers = latestMemberships.values().stream()
             .filter(membership -> membership.getEndDate().isBefore(snapshotDate))
             .count();
+
+        Map<Long, BigDecimal> paidByMembership = memberPaymentRepository
+            .sumSuccessfulAmountsByMembershipForOrganization(
+                organization.getId(),
+                List.of(PaymentType.MEMBERSHIP, PaymentType.NEW_MEMBERSHIP, PaymentType.RENEWAL)
+            )
+            .stream()
+            .collect(Collectors.toMap(
+                MemberPaymentRepository.MembershipAmountProjection::getMembershipId,
+                MemberPaymentRepository.MembershipAmountProjection::getAmount
+            ));
         BigDecimal pendingRevenue = latestMemberships.values().stream()
             .filter(membership -> membership.getEndDate().isBefore(snapshotDate))
-            .map(MemberMembership::getPlanAmount)
+            .map(membership -> {
+                BigDecimal paid = paidByMembership.getOrDefault(membership.getId(), BigDecimal.ZERO);
+                return membership.getPlanAmount().subtract(paid).max(BigDecimal.ZERO);
+            })
             .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         long deactivatedMembers = auditLogRepository.countByOrganizationIdAndEventBetween(
             organization.getId(),
             "MEMBER_DEACTIVATED",

@@ -68,7 +68,8 @@ public class BillingLifecycleService {
         return organization.getStatus() == OrganizationStatus.ACTIVE
             && organization.getOrganizationType() != OrganizationType.DEMO
             && organization.getSubscriptionDueDate() != null
-            && organization.getSubscriptionDueDate().isAfter(today);
+            // BUG-05: Use !isBefore (>=) so the org retains access on the exact due date
+            && !organization.getSubscriptionDueDate().isBefore(today);
     }
 
     public boolean hasCurrentAccessWindow(Organization organization, LocalDate today) {
@@ -110,7 +111,9 @@ public class BillingLifecycleService {
 
     public void markPaused(Organization organization) {
         if (organization.getSubscriptionDueDate() == null) {
-            organization.setSubscriptionDueDate(LocalDate.now(APP_ZONE));
+            // BUG-07: Set to yesterday so hasCurrentAccessWindow never returns true for this org.
+            // Setting to today would leave today's access window ambiguous.
+            organization.setSubscriptionDueDate(LocalDate.now(APP_ZONE).minusDays(1));
         }
         organization.setStatus(OrganizationStatus.PAUSED);
         if (organization.getPausedAt() == null) {

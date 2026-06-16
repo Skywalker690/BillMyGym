@@ -62,6 +62,13 @@ public class ReminderService {
         if (manualTrigger && !quota.canRun()) {
             throw new BadRequestException("Monthly manual reminder run limit reached");
         }
+        Organization organizationCheck = organizationRepository.findByIdAndDeletedFalse(organizationId).orElse(null);
+        if (organizationCheck != null && organizationCheck.getSubscriptionPlan() != null && !organizationCheck.getSubscriptionPlan().supportAutomation()) {
+            if (manualTrigger) {
+                throw new BadRequestException("Your current plan does not support automated reminders.");
+            }
+            return new ReminderRunResponse(0, 0, 0, quota);
+        }
         memberMembershipService.refreshMembershipStatuses(organizationId);
 
         OffsetDateTime dayStart = LocalDate.now(APP_ZONE)

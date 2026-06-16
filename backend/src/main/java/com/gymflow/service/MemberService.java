@@ -548,7 +548,12 @@ public class MemberService {
         membership.setDurationMonths(BULK_IMPORT_MEMBERSHIP_DURATION_MONTHS);
         membership.setPlanAmount(MoneyUtils.normalize(defaultPlan.getPrice()));
         membership.setStartDate(row.lastSubscriptionDate());
-        membership.setEndDate(row.lastSubscriptionDate().plusMonths(BULK_IMPORT_MEMBERSHIP_DURATION_MONTHS));
+        // BUG-10: Use calculateMembershipEndDate which includes the correct minusDays(1) logic,
+        // so that memberships imported from CSV aren't 1 day too long compared to regular flow.
+        membership.setEndDate(membershipLifecycleService.calculateMembershipEndDate(
+            row.lastSubscriptionDate(),
+            BULK_IMPORT_MEMBERSHIP_DURATION_MONTHS
+        ));
         membershipLifecycleService.refreshMembership(membership, DUE_TODAY_WINDOW_DAYS);
         return membership;
     }

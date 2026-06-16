@@ -134,8 +134,10 @@ public class MemberMembershipService {
             return;
         }
         MemberMembership latestMembership = findLatestMembership(member.getId(), member.getOrganization().getId());
-        if (latestMembership != null && latestMembership.getStatus() != MembershipStatus.OVERDUE) {
+        if (latestMembership != null) {
             latestMembership.setStatus(MembershipStatus.OVERDUE);
+            // BUG-14: Always clear lastSentAt so reminders can be resent after manual deactivation,
+            // even when the membership was already OVERDUE before the admin deactivated the member.
             latestMembership.setLastSentAt(null);
         }
     }

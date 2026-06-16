@@ -66,7 +66,6 @@ public class MembershipWorkflowService {
         if (latestMembership != null) {
             membershipLifecycleService.refreshMembership(latestMembership, reminderDays);
         }
-        boolean renewalFlow = latestMembership != null;
         MembershipPlan selectedPlan = resolveCreatePlan(organizationId, request, latestMembership);
 
         MemberMembership membership = new MemberMembership();
@@ -76,6 +75,18 @@ public class MembershipWorkflowService {
         membership.setDurationMonths(request.durationMonths());
 
         LocalDate startDate = resolveCreateStartDate(request, latestMembership);
+        // BUG-17: Prevent creating a membership that overlaps an existing ACTIVE one
+        if (latestMembership != null
+            && latestMembership.getStatus() == MembershipStatus.ACTIVE
+            && !startDate.isAfter(latestMembership.getEndDate())) {
+            throw new BadRequestException(
+                "A new membership cannot start on " + startDate
+                + " because the current active membership runs until " + latestMembership.getEndDate()
+                + ". Please choose a start date after " + latestMembership.getEndDate().plusDays(1) + "."
+            );
+        }
+        // BUG-08: Only label as renewal when it directly continues from the previous end date
+        boolean renewalFlow = latestMembership != null && startDate.equals(latestMembership.getEndDate().plusDays(1));
         membership.setStartDate(startDate);
         membership.setEndDate(membershipLifecycleService.calculateMembershipEndDate(startDate, request.durationMonths()));
         membershipLifecycleService.refreshMembership(membership, reminderDays);
@@ -225,16 +236,25 @@ public class MembershipWorkflowService {
         if (latestMembership == null) {
             return request.startDate() == null ? LocalDate.now(APP_ZONE) : request.startDate();
         }
-        
+
         LocalDate nextContinuationDate = latestMembership.getEndDate().plusDays(1);
-        
+
         if (request.startDate() != null) {
-            if (latestMembership.getStatus() == com.gymflow.domain.enums.MembershipStatus.ACTIVE && request.startDate().isBefore(nextContinuationDate)) {
+            if (latestMembership.getStatus() == com.gymflow.domain.enums.MembershipStatus.ACTIVE
+                && request.startDate().isBefore(nextContinuationDate)) {
                 return nextContinuationDate;
             }
             return request.startDate();
         }
-        
+
+        // BUG-09/16: When the latest membership is OVERDUE and no startDate given,
+        // default to today — NOT endDate+1 (which could be months in the past, causing an
+        // immediately-expired membership the moment it is saved).
+        if (latestMembership.getStatus() == com.gymflow.domain.enums.MembershipStatus.OVERDUE) {
+            return LocalDate.now(APP_ZONE);
+        }
+
+        // For an ACTIVE latest membership, continue seamlessly from the day after it ends
         return nextContinuationDate;
     }
 

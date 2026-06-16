@@ -49,7 +49,7 @@ public class MemberLimitService {
         SubscriptionPlan plan = planAccessService.resolvePlan(organization);
         long usedMembers = organization.getOrganizationType() == OrganizationType.DEMO
             ? memberRepository.countByOrganizationIdAndDeletedFalse(organization.getId())
-            : memberMembershipRepository.countBillableActiveMembers(organization.getId(), LocalDate.now(APP_ZONE));
+            : memberMembershipRepository.countBillableActiveMembers(organization.getId());
         Integer limit;
         if (organization.getOrganizationType() == OrganizationType.DEMO) {
             limit = Integer.valueOf(50);

@@ -83,40 +83,47 @@ public class RevenueService {
         BigDecimal pendingRevenue = BigDecimal.ZERO;
         BigDecimal overdueRevenue = BigDecimal.ZERO;
         long prepaidMembers = 0L;
-        long activeMembersPendingCollection = 0L;
+        // BUG-22: Track pending members uniquely by ID to avoid double-counting if a member
+        // has multiple unpaid memberships (e.g. an old overdue and a current active).
+        java.util.Set<Long> pendingMemberIds = new java.util.HashSet<>();
+        
         for (MemberMembership membership : memberships) {
-            if (membership.getMember().getStatus() != MemberStatus.ACTIVE) {
-                continue;
-            }
             PaymentCoverageSummary coverage = membershipLifecycleService.buildCoverageSummary(
                 membership,
                 paidAmountByMembershipId.getOrDefault(membership.getId(), BigDecimal.ZERO),
                 BigDecimal.ZERO,
                 reminderDays
             );
+
+            boolean isMemberActive = membership.getMember().getStatus() == com.gymflow.domain.enums.MemberStatus.ACTIVE;
+
             boolean isCurrentObligation = membership.getStatus() == MembershipStatus.ACTIVE
                 && !membership.getStartDate().isAfter(monthEnd)
                 && !membership.getEndDate().isBefore(monthStart);
-            if (isCurrentObligation && membership.getStatus() == MembershipStatus.ACTIVE) {
+
+            if (isCurrentObligation && membership.getStatus() == MembershipStatus.ACTIVE && isMemberActive) {
                 if (coverage.pendingAmount().compareTo(BigDecimal.ZERO) > 0) {
                     pendingRevenue = pendingRevenue.add(coverage.pendingAmount());
-                    activeMembersPendingCollection++;
+                    pendingMemberIds.add(membership.getMember().getId());
                 }
             }
             if (membership.getStatus() == MembershipStatus.OVERDUE) {
                 if (coverage.pendingAmount().compareTo(BigDecimal.ZERO) > 0) {
                     overdueRevenue = overdueRevenue.add(coverage.pendingAmount());
-                    activeMembersPendingCollection++;
+                    if (isMemberActive) {
+                        pendingMemberIds.add(membership.getMember().getId());
+                    }
                 }
             }
             if (membership.getDurationMonths() > 1 && coverage.pendingAmount().compareTo(BigDecimal.ZERO) == 0
-                && membership.getStatus() == MembershipStatus.ACTIVE) {
+                && membership.getStatus() == MembershipStatus.ACTIVE && isMemberActive) {
                 prepaidMembers++;
             }
         }
 
-        BigDecimal expectedRevenue = currentRevenue.add(overdueRevenue);
-        long activeMembers = memberMembershipRepository.countBillableActiveMembers(organization.getId(), LocalDate.now(APP_ZONE));
+        BigDecimal expectedRevenue = currentRevenue.add(pendingRevenue).add(overdueRevenue);
+        long activeMembers = memberMembershipRepository.countBillableActiveMembers(organization.getId());
+        long activeMembersPendingCollection = pendingMemberIds.size();
         long activeMembersCollected = Math.max(activeMembers - activeMembersPendingCollection, 0);
 
         return new RevenueSummaryResponse(

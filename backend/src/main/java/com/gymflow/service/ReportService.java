@@ -135,7 +135,8 @@ public class ReportService {
             summary.canViewAdvancedAnalytics(),
             summary.canReceiveMonthlyReports(),
             summary.canExportReports(),
-            summary.canUsePremiumFeatures()
+            summary.canUsePremiumFeatures(),
+            summary.canUseSupportAutomation()
         );
     }
 

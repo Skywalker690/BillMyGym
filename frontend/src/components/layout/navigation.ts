@@ -26,6 +26,7 @@ export interface NavItemConfig {
 export const getSidebarNavItems = (
   role: AppRole | null | undefined,
   referralsEnabled: boolean = true,
+  canUseSupportAutomation: boolean = true,
 ): NavItemConfig[] => {
   if (role === "SUPER_ADMIN") {
     return [
@@ -76,12 +77,6 @@ export const getSidebarNavItems = (
       section: "Operations",
     },
     {
-      label: "Reminders",
-      href: "/app/reminders",
-      icon: Clock3,
-      section: "Operations",
-    },
-    {
       label: "Billing",
       href: "/app/subscription",
       icon: CreditCard,
@@ -89,12 +84,22 @@ export const getSidebarNavItems = (
     },
   ];
 
+  if (canUseSupportAutomation) {
+    orgAdminItems.splice(3, 0, {
+      label: "Reminders",
+      href: "/app/reminders",
+      icon: Clock3,
+      section: "Operations",
+    });
+  }
+
   return orgAdminItems;
 };
 
 export const getProfileNavItems = (
   role: AppRole | null | undefined,
   referralsEnabled: boolean = true,
+  canUseSupportAutomation: boolean = true,
 ): NavItemConfig[] => {
   if (role === "SUPER_ADMIN") {
     return [
@@ -132,13 +137,16 @@ export const getProfileNavItems = (
       icon: Building2,
       section: "Account",
     },
-    {
+  ];
+
+  if (canUseSupportAutomation) {
+    items.push({
       label: "Settings",
       href: "/app/settings",
       icon: Settings,
       section: "Account",
-    },
-  ];
+    });
+  }
 
   return items;
 };

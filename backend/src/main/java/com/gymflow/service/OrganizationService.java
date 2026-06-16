@@ -304,7 +304,8 @@ public class OrganizationService {
             .map(plan -> {
                 long count = regularPlanCounts.getOrDefault(plan, 0L);
                 int percentage = totalOrganizations <= 0 ? 0 : (int) Math.round((count * 100.0) / totalOrganizations);
-                return new OrganizationPlanSummary(plan.name(), "BillMyGym Plan", count, percentage);
+                String label = plan == com.gymflow.domain.enums.SubscriptionPlan.BASE ? "Blaze Plan" : "Automation Plan";
+                return new OrganizationPlanSummary(plan.name(), label, count, percentage);
             })
             .toList());
         subscriptionDistribution.add(new OrganizationPlanSummary(

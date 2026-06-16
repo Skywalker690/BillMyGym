@@ -50,6 +50,7 @@ export default function AppLayout() {
     organizationType: subscriptionStatus?.organizationType,
   });
 
+
   return (
     <DemoPlanPreviewProvider isDemoWorkspace={isDemoWorkspace}>
       <AppLayoutShell
@@ -60,6 +61,7 @@ export default function AppLayout() {
         sidebarCollapsed={sidebarCollapsed}
         mobileSidebarOpen={mobileSidebarOpen}
         isDemoWorkspace={isDemoWorkspace}
+        canUseSupportAutomation={(subscriptionStatus?.canUseSupportAutomation as boolean | undefined) ?? true}
         onCloseMobile={() => setMobileSidebarOpen(false)}
         onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
         onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
@@ -77,6 +79,7 @@ function AppLayoutShell({
   sidebarCollapsed,
   mobileSidebarOpen,
   isDemoWorkspace,
+  canUseSupportAutomation,
   onCloseMobile,
   onToggleSidebar,
   onOpenMobileSidebar,
@@ -89,16 +92,17 @@ function AppLayoutShell({
   sidebarCollapsed: boolean;
   mobileSidebarOpen: boolean;
   isDemoWorkspace: boolean;
+  canUseSupportAutomation: boolean;
   onCloseMobile: () => void;
   onToggleSidebar: () => void;
   onOpenMobileSidebar: () => void;
   onLogout: () => void;
 }) {
   const sidebarItems = useMemo(
-    () => getSidebarNavItems(role, referralsEnabled),
-    [referralsEnabled, role]
+    () => getSidebarNavItems(role, referralsEnabled, canUseSupportAutomation),
+    [referralsEnabled, role, canUseSupportAutomation]
   );
-  const profileItems = useMemo(() => getProfileNavItems(role, referralsEnabled), [role, referralsEnabled]);
+  const profileItems = useMemo(() => getProfileNavItems(role, referralsEnabled, canUseSupportAutomation), [role, referralsEnabled, canUseSupportAutomation]);
   const pageContext = useMemo(() => getPageContext(locationPath, role), [locationPath, role]);
   const showScrollToTopButton = role === "ORG_ADMIN";
 

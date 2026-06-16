@@ -86,8 +86,7 @@ public class UsageMetricService {
     private void refreshSnapshot(UsageMetric metric) {
         Organization organization = metric.getOrganization();
         metric.setActiveMembers((int) memberMembershipRepository.countBillableActiveMembers(
-            organization.getId(),
-            LocalDate.now(APP_ZONE)
+            organization.getId()
         ));
         metric.setActiveAdmins((int) appUserRepository.countByOrganizationIdAndRoleAndDeletedFalse(
             organization.getId(),

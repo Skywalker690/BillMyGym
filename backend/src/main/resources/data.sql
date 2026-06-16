@@ -44,8 +44,8 @@ SELECT
     (ARRAY[1500.00, 1300.00, 1200.00, 1800.00, 900.00, 1100.00, 1000.00, 1400.00, 800.00, 2200.00])[org_id]::numeric(12, 2),
     (ARRAY[500.00, 400.00, 300.00, 700.00, 0.00, 350.00, 0.00, 450.00, 250.00, 900.00])[org_id]::numeric(12, 2),
     (ARRAY['REGULAR', 'REGULAR', 'REGULAR', 'REGULAR', 'REGULAR', 'REGULAR', 'DEMO', 'REGULAR', 'REGULAR', 'REGULAR'])[org_id],
-    (ARRAY['BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM'])[org_id],
-    (ARRAY['ACTIVE', 'PAUSED', 'TRIAL', 'PAUSED', 'ACTIVE', 'PAUSED', 'ACTIVE', 'PAUSED', 'ACTIVE', 'ACTIVE'])[org_id],
+    (ARRAY['BILLMYGYM', 'BASE', 'BILLMYGYM', 'BASE', 'BILLMYGYM', 'BASE', 'BILLMYGYM', 'BASE', 'BILLMYGYM', 'BASE'])[org_id],
+    (ARRAY['ACTIVE', 'PAUSED', 'TRIAL', 'PAUSED', 'ACTIVE', 'DEACTIVATED', 'TRIAL', 'PAUSED', 'ACTIVE', 'ACTIVE'])[org_id],
     CASE WHEN org_id = 3 THEN DATE '2026-05-18' WHEN org_id = 7 THEN NULL ELSE DATE '2026-03-01' END,
     CASE WHEN org_id = 3 THEN DATE '2026-07-16' WHEN org_id = 7 THEN NULL ELSE DATE '2026-04-29' END,
     (ARRAY[DATE '2026-06-22', DATE '2026-05-20', DATE '2026-07-16', DATE '2026-05-23', DATE '2026-07-08', DATE '2026-05-10', NULL, DATE '2026-05-19', DATE '2026-06-05', DATE '2026-05-27'])[org_id],
@@ -130,30 +130,30 @@ INSERT INTO members (
     created_at, updated_at, version
 )
 SELECT
-    ((org_id - 1) * 10) + slot_id,
+    ((org_id - 1) * 300) + slot_id,
     org_id,
-    (ARRAY['Aarav', 'Diya', 'Rahul', 'Sneha', 'Vivek', 'Nisha', 'Karthik', 'Amina', 'Joel', 'Meera'])[slot_id]
+    (ARRAY['Aarav', 'Diya', 'Rahul', 'Sneha', 'Vivek', 'Nisha', 'Karthik', 'Amina', 'Joel', 'Meera'])[((slot_id - 1) % 10) + 1]
         || ' ' ||
     (ARRAY['Nair', 'Menon', 'Pillai', 'Das', 'Joseph', 'Thomas', 'Khan', 'Varghese', 'Mathew', 'Rajan'])[org_id],
-    '+9198' || LPAD((((org_id - 1) * 10) + slot_id)::text, 8, '0'),
-    CASE WHEN slot_id IN (4, 5) THEN 'DEACTIVATED' ELSE 'ACTIVE' END,
+    '+9198' || LPAD((((org_id - 1) * 300) + slot_id)::text, 8, '0'),
+    CASE WHEN slot_id % 10 IN (4, 5) THEN 'DEACTIVATED' ELSE 'ACTIVE' END,
     FALSE,
     NULL,
     CASE
-        WHEN slot_id = 4 THEN TIMESTAMPTZ '2026-05-22 18:00:00+05:30'
-        WHEN slot_id = 5 THEN TIMESTAMPTZ '2026-04-19 18:00:00+05:30'
+        WHEN slot_id % 10 = 4 THEN TIMESTAMPTZ '2026-05-22 18:00:00+05:30'
+        WHEN slot_id % 10 = 5 THEN TIMESTAMPTZ '2026-04-19 18:00:00+05:30'
         ELSE NULL
     END,
     CASE
-        WHEN slot_id = 4 THEN 'Automatically deactivated after membership stayed overdue for 30 days'
-        WHEN slot_id = 5 THEN 'Manual deactivation after member stopped attending'
+        WHEN slot_id % 10 = 4 THEN 'Automatically deactivated after membership stayed overdue for 30 days'
+        WHEN slot_id % 10 = 5 THEN 'Manual deactivation after member stopped attending'
         ELSE NULL
     END,
-    TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - (((org_id * 4) + slot_id + 20) || ' days')::interval,
+    TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - (((org_id * 4) + (slot_id % 20) + 20) || ' days')::interval,
     TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((slot_id % 5 + 1) || ' days')::interval,
     0
 FROM generate_series(1, 10) AS org_id
-CROSS JOIN generate_series(1, 10) AS slot_id;
+CROSS JOIN LATERAL generate_series(1, 100 + (org_id * 10)) AS slot_id;
 
 INSERT INTO member_memberships (
     id, member_id, organization_id, membership_plan_id, plan_name, monthly_plan_price, duration_months, plan_amount, start_date, end_date, status,
@@ -225,7 +225,7 @@ FROM (
     FROM members member
     JOIN organizations organization ON organization.id = member.organization_id
     JOIN membership_plans membership_plan ON membership_plan.organization_id = organization.id AND membership_plan.default_plan = TRUE AND membership_plan.deleted = FALSE
-    CROSS JOIN LATERAL (SELECT ((member.id - 1) % 10) + 1 AS slot_id) slot
+    CROSS JOIN LATERAL (SELECT ((member.id - 1) % 300) + 1 AS slot_id) slot
 ) seeded;
 
 INSERT INTO member_payments (
@@ -274,7 +274,7 @@ INSERT INTO member_payments (
     gateway_transaction_id, notes, deleted, deleted_at, created_at, updated_at, version
 )
 SELECT
-    100 + ((membership.organization_id - 1) * 2) + CASE WHEN slot.slot_id = 1 THEN 1 ELSE 2 END,
+    5000 + ((membership.organization_id - 1) * 600) + slot.slot_id,
     membership.member_id,
     membership.id,
     membership.organization_id,
@@ -293,7 +293,7 @@ SELECT
 FROM member_memberships membership
 JOIN organizations organization ON organization.id = membership.organization_id
 CROSS JOIN LATERAL (SELECT ((membership.member_id - 1) % 10) + 1 AS slot_id) slot
-WHERE slot.slot_id IN (1, 9);
+WHERE slot.slot_id % 10 IN (1, 9);
 
 INSERT INTO member_credit_ledger (
     id, member_id, organization_id, reference_membership_id, amount, transaction_type, reason,
@@ -319,7 +319,7 @@ SELECT
     org_id,
     org_id,
     (ARRAY[1499.00, 699.00, 299.00, 1499.00, 0.00, 299.00, 0.00, 699.00, 299.00, 1499.00])[org_id]::numeric(12, 2),
-    (ARRAY['BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM', 'BILLMYGYM'])[org_id],
+    (ARRAY['BILLMYGYM', 'BASE', 'BILLMYGYM', 'BASE', 'BILLMYGYM', 'BASE', 'BILLMYGYM', 'BASE', 'BILLMYGYM', 'BASE'])[org_id],
     CASE WHEN org_id IN (1, 5, 7, 9, 10) THEN (ARRAY[DATE '2026-05-23', DATE '2026-04-21', DATE '2026-05-18', DATE '2026-04-24', DATE '2026-05-12', DATE '2026-04-01', DATE '2026-05-01', DATE '2026-04-20', DATE '2026-05-07', DATE '2026-04-28'])[org_id] ELSE NULL END,
     (ARRAY[DATE '2026-05-23', DATE '2026-04-21', DATE '2026-05-18', DATE '2026-04-24', DATE '2026-05-12', DATE '2026-04-01', DATE '2026-05-01', DATE '2026-04-20', DATE '2026-05-07', DATE '2026-04-28'])[org_id],
     (ARRAY[DATE '2026-06-22', DATE '2026-05-20', DATE '2026-05-31', DATE '2026-05-23', DATE '2026-07-08', DATE '2026-05-10', DATE '2027-05-24', DATE '2026-05-19', DATE '2026-06-05', DATE '2026-05-27'])[org_id],
@@ -359,7 +359,7 @@ INSERT INTO notifications (
 SELECT
     org_id,
     org_id,
-    ((org_id - 1) * 10) + 3,
+    ((org_id - 1) * 300) + 3,
     2,
     (ARRAY['ORGANIZATION_RENEWAL_DIGEST', 'SUBSCRIPTION_PAYMENT_FAILED', 'TRIAL_ENDING', 'SUBSCRIPTION_PAUSED', 'MONTHLY_ORGANIZATION_REPORT', 'SUBSCRIPTION_DEACTIVATED', 'INDIVIDUAL_WHATSAPP_REMINDER', 'SUBSCRIPTION_REMINDER', 'ORGANIZATION_WELCOME', 'SUBSCRIPTION_PAYMENT_SUCCESS'])[org_id],
     CASE WHEN org_id IN (5, 7, 10) THEN 'WHATSAPP' ELSE 'EMAIL' END,
@@ -405,7 +405,7 @@ INSERT INTO whatsapp_reminder_logs (
 SELECT
     org_id,
     org_id,
-    ((org_id - 1) * 10) + CASE WHEN org_id % 2 = 0 THEN 8 ELSE 3 END,
+    ((org_id - 1) * 300) + CASE WHEN org_id % 2 = 0 THEN 8 ELSE 3 END,
     'Hello, your gym membership is overdue. Due Amount: INR ' || (
         SELECT member_memberships.plan_amount::int
         FROM member_memberships
@@ -434,7 +434,7 @@ SELECT
     1 + (org_id % 3),
     8,
     1,
-    (ARRAY['ACTIVE', 'PAUSED', 'TRIAL', 'PAUSED', 'ACTIVE', 'PAUSED', 'ACTIVE', 'PAUSED', 'ACTIVE', 'ACTIVE'])[org_id],
+    (ARRAY['ACTIVE', 'PAUSED', 'TRIAL', 'PAUSED', 'ACTIVE', 'DEACTIVATED', 'TRIAL', 'PAUSED', 'ACTIVE', 'ACTIVE'])[org_id],
     FALSE,
     TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((org_id + 5) || ' days')::interval,
     TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - INTERVAL '1 day'
@@ -448,11 +448,11 @@ INSERT INTO membership_operation_idempotency (
 SELECT
     org_id,
     org_id,
-    ((org_id - 1) * 10) + 1,
+    ((org_id - 1) * 300) + 1,
     'seed-operation-' || LPAD(org_id::text, 2, '0'),
     (ARRAY['MEMBERSHIP_CREATE', 'PAYMENT_RECORD', 'SUBSCRIPTION_CREATE', 'SUBSCRIPTION_VERIFY', 'MEMBERSHIP_SWITCH', 'CREDIT_ADJUSTMENT', 'DEBIT_ADJUSTMENT', 'PAYMENT_RECORD', 'MEMBERSHIP_CREATE', 'SUBSCRIPTION_VERIFY'])[org_id],
     (ARRAY['MEMBERSHIP', 'PAYMENT', 'SUBSCRIPTION_PAYMENT', 'SUBSCRIPTION_PAYMENT', 'MEMBERSHIP', 'CREDIT_LEDGER_ENTRY', 'CREDIT_LEDGER_ENTRY', 'PAYMENT', 'MEMBERSHIP', 'SUBSCRIPTION_PAYMENT'])[org_id],
-    CASE WHEN org_id IN (6, 7) THEN org_id ELSE ((org_id - 1) * 10) + 1 END,
+    CASE WHEN org_id IN (6, 7) THEN org_id ELSE ((org_id - 1) * 300) + 1 END,
     FALSE,
     TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((org_id + 1) || ' hours')::interval,
     TIMESTAMPTZ '2026-05-24 09:00:00+05:30' - ((org_id + 1) || ' hours')::interval
@@ -499,7 +499,7 @@ SELECT
     CASE WHEN org_id <= 9 THEN 'MEMBER' ELSE 'SYSTEM' END,
     CASE WHEN org_id <= 9 THEN 'MEMBER_STATUS_ACTIVITY' ELSE 'ADMIN_ACTIVITY' END,
     'INFO',
-    CASE WHEN org_id <= 8 THEN (SELECT full_name FROM members WHERE id = ((org_id - 1) * 10) + 4) ELSE (SELECT name FROM organizations WHERE id = org_id) END,
+    CASE WHEN org_id <= 8 THEN (SELECT full_name FROM members WHERE id = ((org_id - 1) * 300) + 4) ELSE (SELECT name FROM organizations WHERE id = org_id) END,
     'IST',
     '10.10.10.' || org_id,
     (ARRAY['Windows Laptop', 'MacBook Pro', 'Office Desktop', 'Android Phone', 'iPad', 'Backend Worker', 'ChromeBook', 'Windows Laptop', 'Android Phone', 'Backend Worker'])[org_id],

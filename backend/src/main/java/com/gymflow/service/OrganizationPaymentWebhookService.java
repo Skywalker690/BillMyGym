@@ -46,6 +46,9 @@ public class OrganizationPaymentWebhookService {
     private final ApplicationEventPublisher applicationEventPublisher;
     private final ReferralService referralService;
 
+    @Value("${razorpay.key-id:}")
+    private String razorpayKeyId;
+
     @Value("${razorpay.key-secret:}")
     private String razorpayKeySecret;
 
@@ -411,5 +414,47 @@ public class OrganizationPaymentWebhookService {
         processedEvent.setEventType(eventType == null || eventType.isBlank() ? "UNKNOWN" : eventType);
         processedEvent.setProcessedAt(Instant.now());
         processedWebhookEventRepository.save(processedEvent);
+    }
+
+    @Transactional
+    public void syncPendingPayment(OrganizationSubscriptionPayment payment) {
+        if (payment.getRazorpayOrderId() == null || !payment.getRazorpayOrderId().startsWith("order_")) {
+            return;
+        }
+        if (razorpayKeyId == null || razorpayKeySecret == null || razorpayKeyId.isBlank()) {
+            return;
+        }
+        try {
+            String credentials = java.util.Base64.getEncoder().encodeToString((razorpayKeyId + ":" + razorpayKeySecret).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                .uri(java.net.URI.create("https://api.razorpay.com/v1/orders/" + payment.getRazorpayOrderId() + "/payments"))
+                .header("Authorization", "Basic " + credentials)
+                .GET()
+                .build();
+            java.net.http.HttpResponse<String> response = java.net.http.HttpClient.newHttpClient().send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                JsonNode root = objectMapper.readTree(response.body());
+                JsonNode items = root.path("items");
+                if (items.isArray()) {
+                    for (JsonNode item : items) {
+                        if ("captured".equals(item.path("status").asText())) {
+                            String paymentId = item.path("id").asText();
+                            ensureUniqueGatewayTransaction(paymentId, payment);
+                            payment.setRazorpayPaymentId(paymentId);
+                            payment.setGatewayTransactionId(paymentId);
+                            markPaymentPaid(payment, LocalDate.now(APP_ZONE));
+                            return;
+                        }
+                    }
+                }
+            }
+            
+            // If not paid and we hit the retry limit
+            if (payment.getRetryCount() >= 7) {
+                payment.setPaymentStatus(SubscriptionPaymentStatus.FAILED);
+            }
+        } catch (Exception ex) {
+            // Ignore temporary API failures during scheduled sync
+        }
     }
 }

@@ -3,6 +3,7 @@ package com.gymflow.domain.enums;
 import java.math.BigDecimal;
 
 public enum SubscriptionPlan {
+    BASE(new BigDecimal("249.00"), Integer.MAX_VALUE, BigDecimal.ZERO),
     BILLMYGYM(new BigDecimal("299.00"), 100, new BigDecimal("2.00"));
 
     private final BigDecimal monthlyAmount;
@@ -52,6 +53,10 @@ public enum SubscriptionPlan {
     }
 
     public boolean premiumFeatures() {
-        return true;
+        return this == BILLMYGYM;
+    }
+
+    public boolean supportAutomation() {
+        return this == BILLMYGYM;
     }
 }
