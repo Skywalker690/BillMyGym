@@ -342,15 +342,11 @@ export function demoMonthlyReportDigestMessage(date = new Date(), recipientPhone
     memberName: DEMO_ORGANIZATION.name,
     memberCount: latestMonth.activeMembers,
     message: [
-      "BillMyGym Monthly Report",
-      "",
-      `${DEMO_ORGANIZATION.name} | ${reportMonth}`,
+      `BillMyGym Monthly Report | ${reportMonth}`,
       "",
       `New members: ${latestMonth.admissions}`,
       `Active members: ${latestMonth.activeMembers}`,
-      `Expired members: ${latestMonth.overdueMembers}`,
-      `Collected revenue: ${money.format(latestMonth.totalRevenue)}`,
-      `Pending revenue: ${money.format(latestMonth.duePayments)}`,
+      `Collected revenue: ${money.format(latestMonth.totalRevenue)}`
     ].join("\n"),
   }];
 }

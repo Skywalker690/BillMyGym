@@ -19,7 +19,7 @@ public class WhatsAppTemplateService {
     public static final String TEMPLATE_ORGANIZATION_WELCOME = "organization_welcome_v1";
     public static final String TEMPLATE_SUBSCRIPTION_DUE = "subscription_due_v1";
     public static final String TEMPLATE_PAYMENT_SUCCESS = "payment_success_v1";
-    public static final String TEMPLATE_MONTHLY_REPORT = "monthly_gym_report_v1";
+    public static final String TEMPLATE_MONTHLY_REPORT = "monthly_gym_report_v2";
 
     private static final String LANGUAGE_CODE = "en_US";
 
@@ -104,16 +104,10 @@ public class WhatsAppTemplateService {
         MonthlyOrganizationReportService.MonthlyOrganizationReport report
     ) {
         return Map.of(
-            "adminName", organization.getAdminFullName(),
             "reportMonth", report.label(),
             "newMembers", String.valueOf(report.membersJoined()),
             "activeMembers", String.valueOf(report.activeMembers()),
-            "expiredMembers", String.valueOf(report.deactivatedMembers()),
-            "overdueMembers", String.valueOf(report.overdueMembers()),
-            "collectedRevenue", report.collectedRevenue().toPlainString(),
-            "pendingRevenue", report.pendingRevenue().toPlainString(),
-            "whatsappSent", String.valueOf(report.whatsappSentCount()),
-            "emailsSent", String.valueOf(report.emailSentCount())
+            "collectedRevenue", report.collectedRevenue().toPlainString()
         );
     }
 
@@ -131,15 +125,10 @@ public class WhatsAppTemplateService {
             case TEMPLATE_SUBSCRIPTION_DUE -> List.of("organizationName", "amount", "dueDate", "paymentLink");
             case TEMPLATE_PAYMENT_SUCCESS -> List.of("organizationName", "period");
             case TEMPLATE_MONTHLY_REPORT -> List.of(
-                "adminName",
                 "reportMonth",
                 "newMembers",
                 "activeMembers",
-                "expiredMembers",
-                "collectedRevenue",
-                "pendingRevenue",
-                "whatsappSent",
-                "emailsSent"
+                "collectedRevenue"
             );
             default -> throw new BadRequestException("Unsupported WhatsApp template: " + templateName);
         };

@@ -122,15 +122,24 @@ public class SubscriptionBillingService {
             return;
         }
         UsageMetric usage = usageMetricService.refreshMonthlySnapshot(organization);
+        BigDecimal monthlyAmount = subscriptionPricingService.currentPrice(organization).totalAmount();
+        LocalDate dueDate = organization.getSubscriptionDueDate() == null ? today : organization.getSubscriptionDueDate();
+        
         emailService.sendPausedNotificationEmail(
             organization,
-            subscriptionPricingService.currentPrice(organization).totalAmount(),
-            organization.getSubscriptionDueDate() == null ? today : organization.getSubscriptionDueDate(),
+            monthlyAmount,
+            dueDate,
             PAYMENT_LINK,
             usage.getMonthlyWhatsappCount(),
             usage.getMonthlyEmailCount(),
             usage.getActiveMembers(),
             billingSummary(usage)
+        );
+        whatsAppDeliveryService.sendSubscriptionDue(
+            organization,
+            monthlyAmount,
+            dueDate,
+            PAYMENT_LINK
         );
         notificationDeliveryLogService.recordSuccessfulDelivery(organization, NotificationType.SUBSCRIPTION_PAUSED);
     }
@@ -153,15 +162,24 @@ public class SubscriptionBillingService {
             organization.setStatus(OrganizationStatus.DEACTIVATED);
             organization.setDeactivatedAt(OffsetDateTime.now(APP_ZONE));
             UsageMetric usage = usageMetricService.refreshMonthlySnapshot(organization);
+            BigDecimal monthlyAmount = subscriptionPricingService.currentPrice(organization).totalAmount();
+            LocalDate dueDate = organization.getSubscriptionDueDate() == null ? today : organization.getSubscriptionDueDate();
+            
             emailService.sendDeactivatedNotificationEmail(
                 organization,
-                subscriptionPricingService.currentPrice(organization).totalAmount(),
-                organization.getSubscriptionDueDate() == null ? today : organization.getSubscriptionDueDate(),
+                monthlyAmount,
+                dueDate,
                 PAYMENT_LINK,
                 usage.getMonthlyWhatsappCount(),
                 usage.getMonthlyEmailCount(),
                 usage.getActiveMembers(),
                 billingSummary(usage)
+            );
+            whatsAppDeliveryService.sendSubscriptionDue(
+                organization,
+                monthlyAmount,
+                dueDate,
+                PAYMENT_LINK
             );
             notificationDeliveryLogService.recordSuccessfulDelivery(organization, NotificationType.SUBSCRIPTION_DEACTIVATED);
         }

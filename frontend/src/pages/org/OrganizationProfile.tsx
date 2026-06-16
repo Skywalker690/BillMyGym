@@ -191,11 +191,6 @@ export default function OrganizationProfile() {
           <div className="flex-1">
             <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.26em] text-emerald-700">Workspace Identity</div>
             <h1 className="mt-1 sm:mt-2 text-xl sm:text-2xl lg:text-4xl font-black tracking-tight text-slate-950">{organization.name}</h1>
-            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-medium text-slate-600">
-              {isDemoWorkspace
-                ? "Update the demo workspace contact number used during live walkthroughs."
-                : "Maintain your public gym identity, primary admin contact, and billing-facing organization details."}
-            </p>
           </div>
           <div className="grid grid-cols-3 gap-1.5 sm:gap-3 lg:min-w-[420px]">
             <IdentityCard label="Organization ID" value={`ORG-${organization.id}`} tone="slate" />

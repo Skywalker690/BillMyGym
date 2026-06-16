@@ -37,6 +37,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +52,7 @@ public class OrganizationService {
     private final PasswordEncoder passwordEncoder;
     private final BillingLifecycleService billingLifecycleService;
     private final SubscriptionPricingService subscriptionPricingService;
+    private final JdbcTemplate jdbcTemplate;
 
     public List<OrganizationResponse> listOrganizations() {
         AuthenticatedUser user = SecurityUtils.currentUser();
@@ -116,29 +118,48 @@ public class OrganizationService {
     }
 
     @Transactional
-    public void softDeleteOrganization(Long id) {
+    public void hardDeleteOrganization(Long id) {
         SecurityUtils.requireRole(Role.SUPER_ADMIN);
         Organization organization = organizationRepository.findByIdAndDeletedFalse(id)
             .orElseThrow(() -> new NotFoundException("Organization not found"));
-        organization.setDeleted(true);
-        organization.setDeletedAt(OffsetDateTime.now(APP_ZONE));
-        organization.setStatus(OrganizationStatus.DEACTIVATED);
 
         auditLogService.log(
-            "ORGANIZATION_SOFT_DELETED",
-            "Soft deleted organization " + organization.getName() + " (id=" + organization.getId() + ")",
+            "ORGANIZATION_HARD_DELETED",
+            "Hard deleted organization " + organization.getName() + " (id=" + organization.getId() + ")",
             AuditCategory.ORGANIZATION,
             "ORGANIZATION"
         );
         auditLogService.logOrganizationActivity(
-            "ORGANIZATION_SOFT_DELETED",
-            "Soft deleted organization " + organization.getName() + " (id=" + organization.getId() + ")",
+            "ORGANIZATION_HARD_DELETED",
+            "Hard deleted organization " + organization.getName() + " (id=" + organization.getId() + ")",
             AuditActivityScope.ADMIN_ACTIVITY,
             AuditEventStatus.INFO,
             "ORGANIZATION",
             organization.getId(),
             organization.getName()
         );
+
+        List<String> tables = List.of(
+            "member_payments",
+            "member_memberships",
+            "member_credit_ledger",
+            "whatsapp_reminder_logs",
+            "members",
+            "membership_plans",
+            "notification_delivery_logs",
+            "notifications",
+            "organization_settings",
+            "organization_subscription_payments",
+            "referral_rewards",
+            "usage_metrics",
+            "audit_logs",
+            "users"
+        );
+        for (String table : tables) {
+            jdbcTemplate.update("DELETE FROM " + table + " WHERE organization_id = ?", id);
+        }
+        jdbcTemplate.update("DELETE FROM referrals WHERE referrer_org_id = ? OR referred_org_id = ?", id, id);
+        jdbcTemplate.update("DELETE FROM organizations WHERE id = ?", id);
     }
 
     public OrganizationDirectoryResponse directory(

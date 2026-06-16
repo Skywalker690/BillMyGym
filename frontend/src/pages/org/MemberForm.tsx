@@ -124,7 +124,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
     ? watchedDurationMonths
     : 1;
   const isBrandNewMember = isCreate && !existingMember;
-  const shouldCollectPayment = !isCreate || !existingMember;
+  const shouldCollectPayment = isCreate || isRenew;
   const calculatedPlanAmount = resolveMembershipTotal(selectedMonthlyPrice, normalizedDurationMonths);
   const calculatedCollectedAmount = shouldCollectPayment
     ? resolveCollectedAmount(mode, calculatedPlanAmount, organizationAdmissionFee, existingMember)
@@ -334,7 +334,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                   value={`INR ${selectedMonthlyPrice.toLocaleString("en-IN")}`}
                 tone={isBrandNewMember ? "amber" : "emerald"}
               />
-              {(!isCreate || !existingMember) && (
+              {isBrandNewMember && organizationAdmissionFee > 0 && (
                 <HeroChip
                   label="Admission Fee"
                   value={`INR ${organizationAdmissionFee.toLocaleString("en-IN")}`}
@@ -487,17 +487,15 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                     )}
 
                     <div className="mt-5 flex flex-wrap items-center gap-3">
-                      {(!isCreate || !existingMember) && (
-                        <div className={`inline-flex items-center gap-2 rounded-full border bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] ${
-                          isBrandNewMember
-                            ? "border-amber-200/70 text-amber-700 lg:border-white/80 lg:text-emerald-700"
-                            : "border-white/80 text-emerald-700"
-                        }`}>
-                          <Sparkles className="h-3.5 w-3.5" />
-                          {selectedPlan?.name ?? "Plan"} INR {selectedMonthlyPrice.toLocaleString("en-IN")}
-                        </div>
-                      )}
-                      {(!isCreate || !existingMember) && (
+                      <div className={`inline-flex items-center gap-2 rounded-full border bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] ${
+                        isBrandNewMember
+                          ? "border-amber-200/70 text-amber-700 lg:border-white/80 lg:text-emerald-700"
+                          : "border-white/80 text-emerald-700"
+                      }`}>
+                        <Sparkles className="h-3.5 w-3.5" />
+                        {selectedPlan?.name ?? "Plan"} INR {selectedMonthlyPrice.toLocaleString("en-IN")}
+                      </div>
+                      {isBrandNewMember && organizationAdmissionFee > 0 && (
                         <div className={`inline-flex items-center gap-2 rounded-full border bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] ${
                           isBrandNewMember
                             ? "border-amber-200/70 text-amber-700"
@@ -528,7 +526,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
 
               <div className="p-6">
                 <div className="grid grid-cols-[0.88fr_1.12fr] gap-3 lg:grid-cols-2 lg:gap-6">
-                  {membershipPlans && membershipPlans.length > 1 && (
+                  {membershipPlans && membershipPlans.length > 1 ? (
                   <div className={`rounded-[1.45rem] border p-3 shadow-sm lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none md:col-span-2 ${
                     isBrandNewMember
                       ? "border-amber-200/80 bg-white/85 lg:border-0 lg:bg-transparent"
@@ -547,6 +545,8 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                       </select>
                     </Field>
                   </div>
+                  ) : (
+                    <input type="hidden" {...register("membershipPlanId", { valueAsNumber: true })} />
                   )}
                   <div className={`rounded-[1.45rem] border p-3 shadow-sm lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none ${
                     isBrandNewMember

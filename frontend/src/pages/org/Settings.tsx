@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -86,8 +86,8 @@ export default function Settings() {
           </div>
           <div className="p-6">
             {watchConfig.whatsappEnabled ? (
-              <div className="grid gap-5">
-                <WhatsAppDigestPreview />
+              <div className="grid gap-5 min-w-0">
+                <WhatsAppDigestCarousel />
               </div>
             ) : (
               <div className="flex min-h-[280px] flex-col items-center justify-center rounded-[1.6rem] border border-dashed border-slate-200 bg-white/50 text-center text-slate-400">
@@ -102,7 +102,7 @@ export default function Settings() {
   );
 }
 
-function WhatsAppDigestPreview() {
+function WhatsAppExpiryPreview() {
   const members = [
     { name: "Rahul", meta: "overdue by 2 days" },
     { name: "Akhil", meta: "ends today" },
@@ -110,21 +110,21 @@ function WhatsAppDigestPreview() {
   ];
 
   return (
-    <div className="overflow-hidden rounded-[1.6rem] border border-emerald-100 bg-[#e8fff3] shadow-sm">
+    <div className="w-full shrink-0 snap-center overflow-hidden rounded-[1.6rem] border border-emerald-100 bg-[#e8fff3] shadow-sm">
       <div className="bg-[#075e54] px-5 py-4 text-white">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15">
             <MessageSquare className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-sm font-black">BillMyGym Digest</div>
-            <div className="text-[11px] font-semibold text-white/75">WhatsApp preview</div>
+            <div className="text-sm font-black">BillMyGym Alert</div>
+            <div className="text-[11px] font-semibold text-white/75">Expiry Digest Preview</div>
           </div>
         </div>
       </div>
       <div className="space-y-3 p-5">
         <div className="ml-auto max-w-[88%] rounded-2xl rounded-tr-sm bg-white px-4 py-3 text-sm font-semibold leading-6 text-slate-700 shadow-sm">
-          <div className="font-black text-slate-950">BillMyGym Alert</div>
+          <div className="font-black text-slate-950">Expiry Alert</div>
           <div className="mt-2">Overdue memberships:</div>
           <div className="mt-3 space-y-2">
             {members.map((member, index) => (
@@ -136,6 +136,81 @@ function WhatsAppDigestPreview() {
           <div className="mt-3 font-black text-emerald-800">Total needing follow-up: {members.length}</div>
         </div>
         <div className="text-right text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-800/70">Delivered to admin WhatsApp</div>
+      </div>
+    </div>
+  );
+}
+
+function WhatsAppMonthlyReportPreview() {
+  return (
+    <div className="w-full shrink-0 snap-center overflow-hidden rounded-[1.6rem] border border-sky-100 bg-[#e8f4ff] shadow-sm">
+      <div className="bg-[#075e54] px-5 py-4 text-white">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15">
+            <MessageSquare className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="text-sm font-black">BillMyGym Report</div>
+            <div className="text-[11px] font-semibold text-white/75">Monthly Digest Preview</div>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-3 p-5">
+        <div className="ml-auto max-w-[88%] rounded-2xl rounded-tr-sm bg-white px-4 py-3 text-sm font-semibold leading-6 text-slate-700 shadow-sm">
+          <div className="font-black text-slate-950">BillMyGym Monthly Report | October 2023</div>
+          <div className="mt-3 space-y-2">
+            <div className="rounded-xl bg-sky-50 px-3 py-2">New members: <span className="font-bold">12</span></div>
+            <div className="rounded-xl bg-sky-50 px-3 py-2">Active members: <span className="font-bold">45</span></div>
+            <div className="rounded-xl bg-sky-50 px-3 py-2">Collected revenue: <span className="font-bold">₹ 1,84,000</span></div>
+          </div>
+        </div>
+        <div className="text-right text-[10px] font-bold uppercase tracking-[0.18em] text-sky-800/70">Delivered to admin WhatsApp</div>
+      </div>
+    </div>
+  );
+}
+
+function WhatsAppDigestCarousel() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const scrollTo = (index: number) => {
+    if (!containerRef.current) return;
+    const container = containerRef.current;
+    const scrollAmount = index * container.clientWidth;
+    container.scrollTo({ left: scrollAmount, behavior: "smooth" });
+    setActiveIndex(index);
+  };
+
+  return (
+    <div className="relative w-full">
+      <div 
+        ref={containerRef}
+        className="flex w-full snap-x snap-mandatory overflow-x-auto pb-4 [&::-webkit-scrollbar]:hidden"
+        onScroll={(e) => {
+          const container = e.currentTarget;
+          const slideIndex = Math.round(container.scrollLeft / container.clientWidth);
+          if (slideIndex !== activeIndex) setActiveIndex(slideIndex);
+        }}
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        <WhatsAppExpiryPreview />
+        <WhatsAppMonthlyReportPreview />
+      </div>
+      
+      <div className="mt-2 flex items-center justify-center gap-2">
+        <button 
+          type="button"
+          onClick={() => scrollTo(0)} 
+          className={`h-2 w-2 rounded-full transition-all ${activeIndex === 0 ? "bg-emerald-600 w-4" : "bg-slate-300"}`} 
+          aria-label="View Expiry Digest"
+        />
+        <button 
+          type="button"
+          onClick={() => scrollTo(1)} 
+          className={`h-2 w-2 rounded-full transition-all ${activeIndex === 1 ? "bg-emerald-600 w-4" : "bg-slate-300"}`}
+          aria-label="View Monthly Report Digest"
+        />
       </div>
     </div>
   );

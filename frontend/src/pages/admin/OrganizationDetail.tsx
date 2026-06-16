@@ -189,6 +189,7 @@ export default function OrganizationDetail() {
   const [planDraft, setPlanDraft] = useState<MembershipPlanFormValues>({ name: "", price: 0 });
   const [newPlanDraft, setNewPlanDraft] = useState<MembershipPlanFormValues>({ name: "", price: 0 });
   const bulkImportInputRef = useRef<HTMLInputElement | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const { data: organization, isLoading } = useQuery<Organization>({
     queryKey: ["organization", id],
@@ -447,11 +448,7 @@ export default function OrganizationDetail() {
           </div>
           <Button
             variant="destructive"
-            onClick={() => {
-              if (confirm("Soft delete this organization? History, members, and payments will be preserved.")) {
-                deleteMutation.mutate();
-              }
-            }}
+            onClick={() => setIsDeleteModalOpen(true)}
             disabled={deleteMutation.isPending}
             className="rounded-full px-6 font-black"
           >
@@ -985,6 +982,17 @@ export default function OrganizationDetail() {
           </section>
         </div>
       </form>
+      {isDeleteModalOpen && (
+        <DeleteOrganizationModal
+          organizationName={organization.name}
+          isDeleting={deleteMutation.isPending}
+          onCancel={() => setIsDeleteModalOpen(false)}
+          onConfirm={() => {
+            setIsDeleteModalOpen(false);
+            deleteMutation.mutate();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1145,6 +1153,77 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
     <div className="rounded-[1.3rem] border border-white/80 bg-white/75 p-4 shadow-sm">
       <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{label}</div>
       <div className="mt-2 text-lg font-black text-slate-950">{value}</div>
+    </div>
+  );
+}
+
+function DeleteOrganizationModal({
+  organizationName,
+  isDeleting,
+  onCancel,
+  onConfirm,
+}: {
+  organizationName: string;
+  isDeleting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const [confirmText, setConfirmText] = useState("");
+  const isValid = confirmText.trim().toLowerCase() === "confirm";
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-950/55 backdrop-blur-md"
+        aria-label="Close delete organization dialog"
+        onClick={onCancel}
+      />
+      <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(255,241,242,0.94))] shadow-[0_30px_90px_-30px_rgba(15,23,42,0.45)]">
+        <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-rose-300/35 blur-3xl" />
+        <div className="absolute bottom-0 left-8 h-36 w-36 rounded-full bg-amber-200/35 blur-3xl" />
+        <div className="relative z-10 p-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-rose-700">
+            <AlertCircle className="h-3.5 w-3.5" />
+            Hard Cascade Deletion
+          </div>
+          <h2 className="mt-5 text-3xl font-black tracking-tight text-slate-950">Delete {organizationName}?</h2>
+          <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
+            This action will permanently wipe out all records connected to this organization. Members, payments, logs, settings, and users will be irreversibly removed.
+          </p>
+
+          <div className="mt-6">
+            <Label className="text-sm font-bold text-slate-700">Type "confirm" to verify</Label>
+            <Input
+              type="text"
+              placeholder="confirm"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              className="mt-2 h-14 rounded-2xl border-slate-200 bg-white/60 px-4 font-semibold shadow-inner focus-visible:ring-rose-500"
+            />
+          </div>
+
+          <div className="mt-8 flex flex-col-reverse justify-end gap-3 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              className="h-14 rounded-full border-slate-200 bg-white px-8 font-black hover:bg-slate-50"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!isValid || isDeleting}
+              onClick={onConfirm}
+              className="h-14 rounded-full px-8 font-black shadow-lg shadow-rose-500/25 transition-all focus-visible:ring-rose-500 disabled:opacity-50"
+            >
+              {isDeleting ? "Deleting..." : "Permanently Delete"}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

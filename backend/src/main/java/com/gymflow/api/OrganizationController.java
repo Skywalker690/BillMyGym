@@ -97,9 +97,9 @@ public class OrganizationController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> softDeleteOrganization(@PathVariable Long id) {
-        organizationService.softDeleteOrganization(id);
-        return ResponseEntity.ok(ApiResponse.success("Organization deleted successfully"));
+    public ResponseEntity<?> hardDeleteOrganization(@PathVariable Long id) {
+        organizationService.hardDeleteOrganization(id);
+        return ResponseEntity.ok(ApiResponse.success("Organization permanently deleted successfully"));
     }
 
     private ApiFieldError toFieldError(BulkMemberImportIssue issue) {

@@ -293,9 +293,9 @@ export default function Dashboard() {
                   Add Member
                 </Button>
               </Link>
-              <Link to="/app/reminders" className="min-w-0">
+              <Link to="/app/reports" className="min-w-0">
                 <Button variant="outline" className="h-10 w-full rounded-full border-white/80 bg-white/75 px-3 text-xs font-bold text-slate-800 hover:bg-white sm:h-12 sm:px-6 sm:text-sm">
-                  Open Reminders
+                  Open Reports
                   <ArrowRight className="ml-1.5 h-3.5 w-3.5 sm:ml-2 sm:h-4 sm:w-4" />
                 </Button>
               </Link>
