@@ -37,7 +37,9 @@ public class MembershipLifecycleService {
         if (durationMonths <= 0) {
             throw new BadRequestException("Membership duration months must be greater than zero");
         }
-        return startDate.plusMonths(durationMonths).minusDays(1);
+        // BUG-fix: Use 30-day periods instead of calendar months so membership
+        // duration is always deterministic: 1 month = 30 days, 2 months = 60 days, etc.
+        return startDate.plusDays((long) durationMonths * 30).minusDays(1);
     }
 
     public MembershipStatus resolveMembershipStatus(LocalDate today, LocalDate membershipEndDate, int reminderDaysBeforeExpiry) {

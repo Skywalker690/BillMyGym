@@ -54,15 +54,18 @@ export default function MembersList() {
   const queryClient = useQueryClient();
   const isDemoDirectory = isDemoWorkspace || user?.organizationId === DEMO_ORGANIZATION_ID;
 
+  // When search is active, query across ALL statuses for universal search
+  const effectiveTabForQuery = appliedSearch ? "ALL" : memberTab;
+
   const { data, isLoading } = useQuery({
-    queryKey: ["members", page, appliedSearch, memberTab],
+    queryKey: ["members", page, appliedSearch, effectiveTabForQuery],
     queryFn: async () => {
       const res = await api.get("/members", {
         params: {
           page,
           size: PAGE_SIZE,
           search: appliedSearch || undefined,
-          memberStatus: memberTab === "ALL" ? undefined : memberTab,
+          memberStatus: effectiveTabForQuery === "ALL" ? undefined : effectiveTabForQuery,
         },
       });
       return res.data;
@@ -104,7 +107,7 @@ export default function MembersList() {
   });
 
   const quickRenewMutation = useMutation({
-    mutationFn: async ({ member, planId }: { member: any; planId: number }) => {
+    mutationFn: async ({ member, planId, forceToday }: { member: any; planId: number; forceToday?: boolean }) => {
       if (isDemoDirectory) {
         return { data: { success: true } };
       }
@@ -112,7 +115,8 @@ export default function MembersList() {
       if (!planId) {
         throw new Error("A membership plan must be selected for quick renew");
       }
-      const startDate = resolveQuickRenewStartDate(membership?.endDate);
+      // For deactivated members (QR Renew), always start from today in IST
+      const startDate = forceToday ? todayInIndiaIso() : resolveQuickRenewStartDate(membership?.endDate);
       const membershipResponse = await api.post(
         `/members/${member.id}/memberships`,
         {
@@ -133,8 +137,8 @@ export default function MembersList() {
         {
           membershipId: membershipResponse.data.id,
           amount: renewalAmount,
-          paymentDate: new Date().toISOString().slice(0, 10),
-          paymentType: membership ? "RENEWAL" : "NEW_MEMBERSHIP",
+          paymentDate: todayInIndiaIso(),
+          paymentType: member.status === "DEACTIVATED" ? "NEW_MEMBERSHIP" : (membership ? "RENEWAL" : "NEW_MEMBERSHIP"),
           paymentStatus: "PAID",
         },
         {
@@ -144,11 +148,11 @@ export default function MembersList() {
         }
       );
     },
-    onSuccess: (_, member) => {
+    onSuccess: (_, { member, forceToday }) => {
       queryClient.invalidateQueries({ queryKey: ["members"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardReport"] });
       setQuickRenewMember(null);
-      toast.success(`${member.fullName} renewed for 1 month`);
+      toast.success(forceToday ? `${member.fullName} reactivated and renewed from today` : `${member.fullName} renewed for 1 month`);
     },
     onError: (error: any) => {
       toast.error(error?.message || "Failed to renew member");
@@ -195,11 +199,12 @@ export default function MembersList() {
     },
   });
 
+  // Universal search: when searching, show all statuses in demo too
   const demoData = useMemo(() => demoMembersPage({
     page,
     size: PAGE_SIZE,
     search: appliedSearch,
-    memberStatus: memberTab,
+    memberStatus: appliedSearch ? "ALL" : memberTab,
   }), [appliedSearch, memberTab, page]);
   const dataForView = isDemoDirectory ? demoData : data;
   const reminderPreview = isDemoDirectory && reminderMember ? demoReminderPreview(reminderMember) : reminderPreviewQuery.data;
@@ -404,7 +409,8 @@ export default function MembersList() {
                       </td>
                       <td className="px-2 sm:px-6 py-2 sm:py-4">
                         <div className="flex flex-wrap justify-end gap-1 sm:gap-2">
-                          {canRenewMember(member) && (
+                          {member.status === "DEACTIVATED" ? (
+                            // Deactivated members: only show QR Renew (starts from today, reactivates member)
                             <Button
                               type="button"
                               variant="outline"
@@ -413,48 +419,63 @@ export default function MembersList() {
                               disabled={quickRenewMutation.isPending}
                             >
                               <Zap className="mr-1 sm:mr-2 h-3 sm:h-4 w-3 sm:w-4" />
-                              <span className="hidden sm:inline">Quick Renew</span>
-                              <span className="sm:hidden">Renew</span>
+                              <span className="hidden sm:inline">Reactivate</span>
+                              <span className="sm:hidden">Reactivate</span>
                             </Button>
-                          )}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              render={
+                          ) : (
+                            // Active members: Quick Renew + Actions dropdown
+                            <>
+                              {canRenewMember(member) && (
                                 <Button
                                   type="button"
                                   variant="outline"
-                                  className="h-8 sm:h-10 rounded-full border-black/10 bg-white/80 px-2 sm:px-4 text-[10px] sm:text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-white hover:text-slate-950"
+                                  className="h-8 sm:h-10 rounded-full border-emerald-200 bg-emerald-50 px-2 sm:px-4 text-[10px] sm:text-sm font-bold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100 hover:text-emerald-800"
+                                  onClick={() => setQuickRenewMember(member)}
+                                  disabled={quickRenewMutation.isPending}
                                 >
-                                  <span className="hidden sm:inline">Actions</span>
-                                  <span className="sm:hidden">⋯</span>
-                                  <ChevronDown className="ml-1 sm:ml-2 h-3 sm:h-4 w-3 sm:w-4" />
+                                  <Zap className="mr-1 sm:mr-2 h-3 sm:h-4 w-3 sm:w-4" />
+                                  <span className="hidden sm:inline">Quick Renew</span>
+                                  <span className="sm:hidden">Renew</span>
                                 </Button>
-                              }
-                            />
-                            <DropdownMenuContent align="end" className="w-48 rounded-2xl border border-white/80 bg-white/95 p-2 shadow-[0_18px_40px_-24px_rgba(15,23,42,0.32)] backdrop-blur-xl">
-                              {canRenewMember(member) && (
-                                <DropdownMenuItem
-                                  className="rounded-xl px-3 py-2 font-semibold"
-                                  onClick={() => {
-                                    window.location.href = `/app/members/${member.id}/renew`;
-                                  }}
-                                >
-                                  <RefreshCw className="h-4 w-4" />
-                                  Renew
-                                </DropdownMenuItem>
                               )}
-                              {member.status !== "DEACTIVATED" && (
-                                <DropdownMenuItem
-                                  variant="destructive"
-                                  className="rounded-xl px-3 py-2 font-semibold"
-                                  onClick={() => setDeactivateMember(member)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  Deactivate
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  render={
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="h-8 sm:h-10 rounded-full border-black/10 bg-white/80 px-2 sm:px-4 text-[10px] sm:text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-white hover:text-slate-950"
+                                    >
+                                      <span className="hidden sm:inline">Actions</span>
+                                      <span className="sm:hidden">⋯</span>
+                                      <ChevronDown className="ml-1 sm:ml-2 h-3 sm:h-4 w-3 sm:w-4" />
+                                    </Button>
+                                  }
+                                />
+                                <DropdownMenuContent align="end" className="w-48 rounded-2xl border border-white/80 bg-white/95 p-2 shadow-[0_18px_40px_-24px_rgba(15,23,42,0.32)] backdrop-blur-xl">
+                                  {canRenewMember(member) && (
+                                    <DropdownMenuItem
+                                      className="rounded-xl px-3 py-2 font-semibold"
+                                      onClick={() => {
+                                        window.location.href = `/app/members/${member.id}/renew`;
+                                      }}
+                                    >
+                                      <RefreshCw className="h-4 w-4" />
+                                      Renew
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem
+                                    variant="destructive"
+                                    className="rounded-xl px-3 py-2 font-semibold"
+                                    onClick={() => setDeactivateMember(member)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    Deactivate
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -498,12 +519,13 @@ export default function MembersList() {
           member={quickRenewMember}
           membershipPlans={membershipPlans ?? []}
           isSubmitting={quickRenewMutation.isPending}
+          isDeactivatedRenew={quickRenewMember.status === "DEACTIVATED"}
           onCancel={() => {
             if (!quickRenewMutation.isPending) {
               setQuickRenewMember(null);
             }
           }}
-          onConfirm={(planId) => quickRenewMutation.mutate({ member: quickRenewMember, planId })}
+          onConfirm={(planId) => quickRenewMutation.mutate({ member: quickRenewMember, planId, forceToday: quickRenewMember.status === "DEACTIVATED" })}
         />
       )}
 
@@ -782,12 +804,14 @@ function QuickRenewModal({
   member,
   membershipPlans,
   isSubmitting,
+  isDeactivatedRenew,
   onCancel,
   onConfirm,
 }: {
   member: any;
   membershipPlans: any[];
   isSubmitting: boolean;
+  isDeactivatedRenew?: boolean;
   onCancel: () => void;
   onConfirm: (planId: number) => void;
 }) {
@@ -796,10 +820,11 @@ function QuickRenewModal({
   const selectedPlan = membershipPlans?.find((p) => p.id === selectedPlanId);
   const planName = selectedPlan?.name ?? membership?.planName ?? "Current plan";
   const monthlyPlanPrice = Number(selectedPlan?.price ?? membership?.monthlyPlanPrice ?? membership?.planAmount ?? 0);
-  const nextStartDate = resolveQuickRenewStartDate(membership?.endDate);
+  // Deactivated members always start from today in IST; active/overdue members continue from previous end date
+  const nextStartDate = isDeactivatedRenew ? todayInIndiaIso() : resolveQuickRenewStartDate(membership?.endDate);
+  // Use 30 days per month to match backend (deterministic, not calendar-month)
   const nextEndDate = new Date(`${nextStartDate}T00:00:00`);
-  nextEndDate.setMonth(nextEndDate.getMonth() + 1);
-  nextEndDate.setDate(nextEndDate.getDate() - 1);
+  nextEndDate.setDate(nextEndDate.getDate() + 30 - 1);
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
@@ -813,16 +838,24 @@ function QuickRenewModal({
         <div className="absolute -right-14 -top-16 h-44 w-44 rounded-full bg-emerald-300/35 blur-3xl" />
         <div className="absolute bottom-0 left-10 h-36 w-36 rounded-full bg-amber-200/40 blur-3xl" />
         <div className="relative z-10 p-8">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">
+          <div className={cn("inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em]", isDeactivatedRenew ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700")}>
             <Sparkles className="h-3.5 w-3.5" />
-            Quick Renew
+            {isDeactivatedRenew ? "Reactivate Member" : "Quick Renew"}
           </div>
-          <h2 className="mt-5 text-3xl font-black tracking-tight text-slate-950">Renew {member.fullName} instantly?</h2>
+          <h2 className="mt-5 text-3xl font-black tracking-tight text-slate-950">{isDeactivatedRenew ? `Reactivate ${member.fullName}?` : `Renew ${member.fullName} instantly?`}</h2>
+          {isDeactivatedRenew && (
+            <p className="mt-2 text-sm font-semibold text-slate-500">This member is deactivated. A new membership will be created from today and they will be set to Active.</p>
+          )}
 
           <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
             <RenewMetric label="Member" value={member.fullName} tone="slate" />
-            <RenewMetric label="Current Expiry" value={formatDate(membership?.endDate)} tone="amber" />
-            <RenewMetric label="Next Expiry" value={formatDate(nextEndDate.toISOString().slice(0, 10))} tone="emerald" className="col-span-2 md:col-span-1" />
+            <RenewMetric label={isDeactivatedRenew ? "Starts From" : "Current Expiry"} value={isDeactivatedRenew ? formatDate(nextStartDate) : formatDate(membership?.endDate)} tone="amber" />
+            <RenewMetric 
+              label="Expires On" 
+              value={formatDate(`${nextEndDate.getFullYear()}-${String(nextEndDate.getMonth() + 1).padStart(2, "0")}-${String(nextEndDate.getDate()).padStart(2, "0")}`)} 
+              tone="emerald" 
+              className="col-span-2 md:col-span-1" 
+            />
           </div>
 
           <div className="mt-5 rounded-[1.6rem] border border-white/80 bg-white/80 p-5 shadow-sm">
@@ -874,11 +907,11 @@ function QuickRenewModal({
             </Button>
             <Button
               type="button"
-              className="h-11 rounded-full bg-emerald-600 px-6 font-bold text-white hover:bg-emerald-700"
+              className={cn("h-11 rounded-full px-6 font-bold text-white", isDeactivatedRenew ? "bg-rose-600 hover:bg-rose-700" : "bg-emerald-600 hover:bg-emerald-700")}
               onClick={() => onConfirm(selectedPlanId)}
               disabled={isSubmitting || !selectedPlanId}
             >
-              {isSubmitting ? "Renewing..." : "Yes, Quick Renew"}
+              {isSubmitting ? (isDeactivatedRenew ? "Reactivating..." : "Renewing...") : (isDeactivatedRenew ? "Yes, Reactivate" : "Yes, Quick Renew")}
             </Button>
           </div>
         </div>

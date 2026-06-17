@@ -166,22 +166,33 @@ export function demoMemberSummary(date = new Date()) {
   };
 }
 
+// Month-profile seeds (non-current months): percentages relative to a base
+// so scaling is realistic and the current month is always dynamically computed.
+const PAST_MONTH_SEEDS = [
+  { activeMembersFraction: 0.60, admissions: 12, overdueMembers: 1, deactivatedMembers: 0 },
+  { activeMembersFraction: 0.67, admissions: 15, overdueMembers: 2, deactivatedMembers: 0 },
+  { activeMembersFraction: 0.73, admissions: 18, overdueMembers: 2, deactivatedMembers: 1 },
+  { activeMembersFraction: 0.77, admissions: 20, overdueMembers: 3, deactivatedMembers: 0 },
+  { activeMembersFraction: 0.80, admissions: 24, overdueMembers: 4, deactivatedMembers: 0 },
+];
+
 export function demoFinancialReport(date = new Date()) {
   const current = new Date(`${isoDateInIndia(date)}T00:00:00+05:30`);
   const summary = demoMemberSummary(date);
-  const monthProfiles = [
-    { admissionRevenue: 3600, membershipRevenue: 11200, admissions: 12, activeMembers: 18, overdueMembers: 1, deactivatedMembers: 0 },
-    { admissionRevenue: 4500, membershipRevenue: 12800, admissions: 15, activeMembers: 20, overdueMembers: 2, deactivatedMembers: 0 },
-    { admissionRevenue: 5400, membershipRevenue: 14400, admissions: 18, activeMembers: 22, overdueMembers: 2, deactivatedMembers: 1 },
-    { admissionRevenue: 6000, membershipRevenue: 15200, admissions: 20, activeMembers: 23, overdueMembers: 3, deactivatedMembers: 0 },
-    { admissionRevenue: 7200, membershipRevenue: 16800, admissions: 24, activeMembers: 24, overdueMembers: 4, deactivatedMembers: 0 },
-    { admissionRevenue: 9000, membershipRevenue: 16000, admissions: 30, activeMembers: summary.activeMemberships, overdueMembers: summary.overdueMemberships + summary.expiredMemberships, deactivatedMembers: 0 },
-  ];
-  const months = monthProfiles.map((profile, index) => {
-    const monthDate = new Date(current.getFullYear(), current.getMonth() - (monthProfiles.length - 1 - index), 1);
-    const isCurrentMonth = index === monthProfiles.length - 1;
-    const admissionRevenue = profile.admissionRevenue;
-    const membershipRevenue = profile.membershipRevenue;
+
+  // Current month — derived from real live demo state
+  const currentActiveMembers = summary.activeMemberships;
+  const currentOverdueMembers = summary.overdueMemberships + summary.expiredMemberships;
+  const currentAdmissions = 30;
+  const currentMembershipRevenue = (currentActiveMembers - currentOverdueMembers) * DEMO_ORGANIZATION.monthlyMembershipFee;
+  const currentAdmissionRevenue = currentAdmissions * DEMO_ORGANIZATION.admissionFee;
+  const currentDuePayments = currentOverdueMembers * DEMO_ORGANIZATION.monthlyMembershipFee;
+
+  const months = PAST_MONTH_SEEDS.map((seed, index) => {
+    const monthDate = new Date(current.getFullYear(), current.getMonth() - (PAST_MONTH_SEEDS.length - index), 1);
+    const activeMembers = Math.round(30 * seed.activeMembersFraction);
+    const membershipRevenue = (activeMembers - seed.overdueMembers) * DEMO_ORGANIZATION.monthlyMembershipFee;
+    const admissionRevenue = seed.admissions * DEMO_ORGANIZATION.admissionFee;
     return {
       year: monthDate.getFullYear(),
       month: monthDate.getMonth() + 1,
@@ -189,14 +200,31 @@ export function demoFinancialReport(date = new Date()) {
       totalRevenue: admissionRevenue + membershipRevenue,
       admissionRevenue,
       membershipRevenue,
-      duePayments: isCurrentMonth ? 4000 : 0,
+      duePayments: 0,
       expenses: 0,
-      admissions: profile.admissions,
-      activeMembers: profile.activeMembers,
-      overdueMembers: profile.overdueMembers,
-      deactivatedMembers: profile.deactivatedMembers,
+      admissions: seed.admissions,
+      activeMembers,
+      overdueMembers: seed.overdueMembers,
+      deactivatedMembers: seed.deactivatedMembers,
     };
   });
+
+  // Add current month
+  months.push({
+    year: current.getFullYear(),
+    month: current.getMonth() + 1,
+    label: new Intl.DateTimeFormat("en-IN", { month: "short", year: "numeric", timeZone: INDIAN_TIME_ZONE }).format(current),
+    totalRevenue: currentAdmissionRevenue + currentMembershipRevenue,
+    admissionRevenue: currentAdmissionRevenue,
+    membershipRevenue: currentMembershipRevenue,
+    duePayments: currentDuePayments,
+    expenses: 0,
+    admissions: currentAdmissions,
+    activeMembers: currentActiveMembers,
+    overdueMembers: currentOverdueMembers,
+    deactivatedMembers: 0,
+  });
+
   const firstMonth = months[0];
   const latestMonth = months[months.length - 1];
 
@@ -353,7 +381,8 @@ export function demoMonthlyReportDigestMessage(date = new Date(), recipientPhone
 
 export function demoDashboardReport(date = new Date()) {
   const monthOffsets = [-5, -4, -3, -2, -1, 0];
-  const joinedMembers = [2, 4, 5, 7, 6, 6];
+  // Joined members per month — scaled to match PAST_MONTH_SEEDS admissions
+  const joinedMembers = [...PAST_MONTH_SEEDS.map((s) => s.admissions), 30];
   const summary = demoMemberSummary(date);
   const members = demoMembers(date);
   const expiringSoon = members.filter((member) => member.currentMembership.expiringSoon).map(toDashboardMember);
@@ -361,23 +390,38 @@ export function demoDashboardReport(date = new Date()) {
     .filter((member) => member.currentMembership.status === "OVERDUE")
     .map(toDashboardMember);
 
+  // Derive current month revenue from live demo state
+  const activeMembers = summary.activeMemberships;
+  const overdueMembers = summary.overdueMemberships + summary.expiredMemberships;
+  const paidMembers = activeMembers - overdueMembers;
+  const admissionsThisMonth = 30;
+
+  const currentRevenue =
+    paidMembers * DEMO_ORGANIZATION.monthlyMembershipFee +
+    admissionsThisMonth * DEMO_ORGANIZATION.admissionFee;
+  const overdueRevenue = overdueMembers * DEMO_ORGANIZATION.monthlyMembershipFee;
+  const expectedRevenue = currentRevenue + overdueRevenue;
+
+  const activeMembersPendingCollection = overdueMembers;
+  const activeMembersCollected = Math.max(activeMembers - activeMembersPendingCollection, 0);
+
   return {
     planName: "BILLMYGYM",
     revenue: {
-      currentRevenue: 25000,
-      pendingRevenue: 4000,
-      expectedRevenue: 29000,
-      overdueRevenue: 4000,
-      activeMembers: summary.activeMemberships,
+      currentRevenue,
+      pendingRevenue: 0,
+      expectedRevenue,
+      overdueRevenue,
+      activeMembers,
       prepaidMembers: 0,
-      activeMembersCollected: 20,
-      activeMembersPendingCollection: 5,
+      activeMembersCollected,
+      activeMembersPendingCollection,
     },
     revenueSegmentation: {
-      admissionsThisMonth: 30,
-      admissionRevenue: 9000,
-      recurringRevenue: 16000,
-      totalRevenue: 25000,
+      admissionsThisMonth,
+      admissionRevenue: admissionsThisMonth * DEMO_ORGANIZATION.admissionFee,
+      recurringRevenue: paidMembers * DEMO_ORGANIZATION.monthlyMembershipFee,
+      totalRevenue: currentRevenue,
     },
     memberSummary: summary,
     monthlyMemberJoins: monthOffsets.map((offset, index) => {
@@ -389,7 +433,7 @@ export function demoDashboardReport(date = new Date()) {
       return {
         month: `${year}-${month}`,
         label,
-        joinedMembers: joinedMembers[index],
+        joinedMembers: joinedMembers[index] ?? 0,
       };
     }),
     planAccess: {

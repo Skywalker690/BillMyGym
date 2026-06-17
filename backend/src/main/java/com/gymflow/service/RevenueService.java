@@ -120,15 +120,39 @@ public class RevenueService {
                 prepaidMembers++;
             }
         }
+        LocalDate today = LocalDate.now(APP_ZONE);
+        java.util.Map<Long, MemberMembership> latestMembershipByMember = new java.util.HashMap<>();
+        for (MemberMembership membership : memberships) {
+            Long memberId = membership.getMember().getId();
+            if (!latestMembershipByMember.containsKey(memberId)) {
+                latestMembershipByMember.put(memberId, membership);
+            } else {
+                MemberMembership existing = latestMembershipByMember.get(memberId);
+                if (membership.getEndDate().isAfter(existing.getEndDate())) {
+                    latestMembershipByMember.put(memberId, membership);
+                }
+            }
+        }
 
-        BigDecimal expectedRevenue = currentRevenue.add(pendingRevenue);
+        for (MemberMembership latestMembership : latestMembershipByMember.values()) {
+            boolean isMemberActive = latestMembership.getMember().getStatus() == com.gymflow.domain.enums.MemberStatus.ACTIVE;
+            if (isMemberActive && latestMembership.getEndDate().isBefore(today)) {
+                overdueRevenue = overdueRevenue.add(latestMembership.getPlanAmount());
+                pendingMemberIds.add(latestMembership.getMember().getId());
+            }
+        }
+
+        // Merge active pending amounts into overdue revenue to match user's definition
+        overdueRevenue = overdueRevenue.add(pendingRevenue);
+        BigDecimal expectedRevenue = currentRevenue.add(overdueRevenue);
+        
         long activeMembers = memberMembershipRepository.countBillableActiveMembers(organization.getId());
         long activeMembersPendingCollection = pendingMemberIds.size();
         long activeMembersCollected = Math.max(activeMembers - activeMembersPendingCollection, 0);
 
         return new RevenueSummaryResponse(
             currentRevenue,
-            pendingRevenue,
+            BigDecimal.ZERO, // now merged into overdueRevenue
             expectedRevenue,
             overdueRevenue,
             activeMembers,
@@ -178,10 +202,8 @@ public class RevenueService {
             monthStart,
             monthEnd
         );
-        long admittedMembers = memberPaymentRepository.countDistinctMembersByOrganizationAndStatusAndTypeBetween(
+        long admittedMembers = memberMembershipRepository.countFirstMembershipsStartedBetween(
             organization.getId(),
-            PaymentStatus.PAID,
-            PaymentType.ADMISSION,
             monthStart,
             monthEnd
         );

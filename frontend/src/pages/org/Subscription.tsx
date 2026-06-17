@@ -437,7 +437,7 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
       )}
 
       <div className={immersive ? "mx-auto max-w-7xl space-y-6" : "space-y-8"}>
-        <section className={immersive ? "rounded-[2rem] border border-white/10 bg-white/[0.06] p-6 shadow-2xl sm:p-8" : "billmygym-shell overflow-hidden rounded-[2rem] p-6 sm:p-8"}>
+        <section className={immersive ? "rounded-[2rem] border border-white/10 bg-white/[0.06] p-6 shadow-2xl sm:p-8" : "billmygym-shell rounded-[2rem] p-6 sm:p-8"}>
           <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -501,7 +501,7 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
               </div>
             </div>
 
-            <div className={immersive ? "rounded-[1.7rem] border border-white/10 bg-slate-900/80 p-5" : "rounded-[1.7rem] border border-white/80 bg-white/80 p-5 shadow-sm"}>
+            <div className={immersive ? "relative z-50 rounded-[1.7rem] border border-white/10 bg-slate-900/80 p-5" : "relative z-50 rounded-[1.7rem] border border-white/80 bg-white/80 p-5 shadow-sm"}>
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className={immersive ? "text-[10px] font-black uppercase tracking-[0.22em] text-emerald-200" : "text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700"}>Estimated next invoice</div>
@@ -509,7 +509,7 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
                     <div className={immersive ? "text-5xl font-black tracking-tight text-white" : "text-5xl font-black tracking-tight text-slate-950"}>{money.format(pricing.totalAmount)}</div>
                     {!isUnlimited && (
                       <div 
-                        className="relative group mt-1"
+                        className="relative group mt-1 z-50"
                         onMouseEnter={() => setShowInvoiceTooltip(true)}
                         onMouseLeave={() => setShowInvoiceTooltip(false)}
                         onClick={() => setShowInvoiceTooltip(!showInvoiceTooltip)}
@@ -517,7 +517,7 @@ export default function Subscription({ immersive = false }: { immersive?: boolea
                         <div className={immersive ? "flex items-center justify-center h-6 w-6 rounded-full bg-white/10 text-white/60 hover:text-white hover:bg-white/20 cursor-pointer transition-colors" : "flex items-center justify-center h-6 w-6 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200 cursor-pointer transition-colors"}>
                           <Info className="h-3.5 w-3.5" />
                         </div>
-                        <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-max max-w-[240px] transition-all pointer-events-none z-10 ${showInvoiceTooltip ? "opacity-100 visible" : "opacity-0 invisible group-hover:opacity-100 group-hover:visible"}`}>
+                        <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-max max-w-[240px] transition-all pointer-events-none z-50 ${showInvoiceTooltip ? "opacity-100 visible" : "opacity-0 invisible group-hover:opacity-100 group-hover:visible"}`}>
                           <div className="bg-slate-900 text-white text-[11px] p-3.5 rounded-xl shadow-xl flex flex-col gap-2 border border-white/10">
                             <div className="flex justify-between gap-6">
                               <span className="text-slate-300 font-medium tracking-wide">Base subscription:</span>

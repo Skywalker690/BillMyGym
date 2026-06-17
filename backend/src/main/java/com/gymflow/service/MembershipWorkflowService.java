@@ -262,12 +262,11 @@ public class MembershipWorkflowService {
         if (switchDate.isBefore(activeMembership.getStartDate()) || switchDate.isAfter(activeMembership.getEndDate())) {
             throw new BadRequestException("Switch date must fall within the active membership period");
         }
-        long monthsBetween = ChronoUnit.MONTHS.between(activeMembership.getStartDate(), switchDate);
-        LocalDate expectedBoundary = activeMembership.getStartDate().plusMonths(monthsBetween);
-        if (!expectedBoundary.equals(switchDate)) {
-            throw new BadRequestException("Package switches are only allowed on month boundaries");
+        long daysBetween = ChronoUnit.DAYS.between(activeMembership.getStartDate(), switchDate);
+        if (daysBetween % 30 != 0) {
+            throw new BadRequestException("Package switches are only allowed on 30-day boundaries");
         }
-        return Math.toIntExact(monthsBetween);
+        return Math.toIntExact(daysBetween / 30);
     }
 
     private LocalDate maxDate(LocalDate base, LocalDate comparison, LocalDate requested) {

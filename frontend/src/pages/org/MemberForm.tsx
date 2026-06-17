@@ -149,7 +149,11 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
     }
     if (member && isRenew) {
       let nextStartDate = new Date().toISOString().slice(0, 10);
-      if (memberships && memberships.length > 0) {
+      if (member.status === "DEACTIVATED") {
+        const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+        const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+        nextStartDate = `${get("year")}-${get("month")}-${get("day")}`;
+      } else if (memberships && memberships.length > 0) {
         const baseDate = new Date(`${memberships[0].endDate}T00:00:00`);
         baseDate.setDate(baseDate.getDate() + 1);
         nextStartDate = baseDate.toISOString().slice(0, 10);
@@ -225,12 +229,14 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
         const membership = membershipResponse.data;
         if (shouldCollectPayment && data.initialPaymentAmount && data.initialPaymentAmount > 0) {
           const isAdmissionApplicable = isCreate && !existingMember && organizationAdmissionFee > 0;
+          let remainingPayment = data.initialPaymentAmount;
           
-          if (isAdmissionApplicable) {
+          if (isAdmissionApplicable && remainingPayment > 0) {
+            const admissionPayment = Math.min(organizationAdmissionFee, remainingPayment);
             // Record admission fee payment
             await api.post("/payments", {
               membershipId: membership.id,
-              amount: organizationAdmissionFee,
+              amount: admissionPayment,
               paymentDate: new Date().toISOString().slice(0, 10),
               paymentType: "ADMISSION",
               paymentStatus: "PAID",
@@ -239,15 +245,17 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
                 "X-Idempotency-Key": crypto.randomUUID(),
               },
             });
+            remainingPayment -= admissionPayment;
           }
           
           const membershipAmount = Number(membership.planAmount ?? 0);
             
-          if (membershipAmount > 0) {
+          if (membershipAmount > 0 && remainingPayment > 0) {
+            const membershipPayment = Math.min(membershipAmount, remainingPayment);
             // Record membership fee payment
             await api.post("/payments", {
               membershipId: membership.id,
-              amount: membershipAmount,
+              amount: membershipPayment,
               paymentDate: new Date().toISOString().slice(0, 10),
               paymentType: "MEMBERSHIP",
               paymentStatus: "PAID",
