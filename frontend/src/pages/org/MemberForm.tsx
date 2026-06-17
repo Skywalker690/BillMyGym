@@ -42,6 +42,17 @@ const resolveMembershipTotal = (monthlyFee: number, durationMonths: number) => s
 const resolveCollectedAmount = (mode: MemberFormMode, membershipTotal: number, admissionFee: number, existingMember: boolean) =>
   mode === "create" && !existingMember ? scaleCurrency(membershipTotal + admissionFee) : scaleCurrency(membershipTotal);
 
+function todayInIndiaIso() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
 export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -108,7 +119,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
       durationMonths: 1,
       membershipPlanId: undefined,
       planAmount: 0,
-      startDate: new Date().toISOString().slice(0, 10),
+      startDate: todayInIndiaIso(),
       initialPaymentAmount: 0,
     },
   });
@@ -143,12 +154,12 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
         durationMonths: 1,
         membershipPlanId: undefined,
         planAmount: 0,
-        startDate: new Date().toISOString().slice(0, 10),
+        startDate: todayInIndiaIso(),
         initialPaymentAmount: 0,
       });
     }
     if (member && isRenew) {
-      let nextStartDate = new Date().toISOString().slice(0, 10);
+      let nextStartDate = todayInIndiaIso();
       if (member.status === "DEACTIVATED") {
         const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
         const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
@@ -156,7 +167,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
       } else if (memberships && memberships.length > 0) {
         const baseDate = new Date(`${memberships[0].endDate}T00:00:00`);
         baseDate.setDate(baseDate.getDate() + 1);
-        nextStartDate = baseDate.toISOString().slice(0, 10);
+        nextStartDate = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, "0")}-${String(baseDate.getDate()).padStart(2, "0")}`;
       }
       
       const planId = memberships?.[0]?.membershipPlanId ?? defaultPlan?.id;
@@ -237,7 +248,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
             await api.post("/payments", {
               membershipId: membership.id,
               amount: admissionPayment,
-              paymentDate: new Date().toISOString().slice(0, 10),
+              paymentDate: todayInIndiaIso(),
               paymentType: "ADMISSION",
               paymentStatus: "PAID",
             }, {
@@ -256,7 +267,7 @@ export default function MemberForm({ mode = "create" }: { mode?: MemberFormMode 
             await api.post("/payments", {
               membershipId: membership.id,
               amount: membershipPayment,
-              paymentDate: new Date().toISOString().slice(0, 10),
+              paymentDate: todayInIndiaIso(),
               paymentType: "MEMBERSHIP",
               paymentStatus: "PAID",
             }, {

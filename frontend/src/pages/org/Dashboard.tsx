@@ -183,7 +183,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const now = dashboardNow();
   const isDemoDashboard = isDemoWorkspace || user?.organizationId === DEMO_ORGANIZATION_ID;
-  const { data: report, isLoading } = useQuery<DashboardReport>({
+  const { data: report, isLoading, isFetching } = useQuery<DashboardReport>({
     queryKey: ["dashboardReport"],
     queryFn: async () => {
       const res = await api.get("/reports/dashboard");
@@ -192,8 +192,8 @@ export default function Dashboard() {
     enabled: !isDemoDashboard,
   });
 
-  if (!isDemoDashboard && isLoading) {
-    return <div className="p-8">Loading dashboard...</div>;
+  if (!isDemoDashboard && (isLoading || isFetching)) {
+    return <DashboardSkeleton />;
   }
 
   const dashboardReport = isDemoDashboard ? demoDashboardReport(now) : report;
@@ -827,5 +827,84 @@ function StatusPill({ status }: { status: string }) {
       <Icon className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
       {status.replaceAll("_", " ")}
     </span>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="mx-auto max-w-7xl space-y-5 px-3 pb-8 pt-3 sm:space-y-6 sm:p-6 lg:space-y-8 lg:p-8 animate-pulse">
+      {/* Hero Section Skeleton */}
+      <section className="relative overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[2rem] sm:p-7 lg:p-10">
+        <div className="grid gap-5 sm:gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <div className="h-5 w-16 rounded bg-slate-200/70" />
+              <div className="h-5 w-24 rounded bg-slate-200/70" />
+            </div>
+            <div className="h-10 sm:h-14 w-3/4 rounded-xl bg-slate-200/70" />
+            <div className="h-4 sm:h-5 w-5/6 rounded-md bg-slate-200/70" />
+            <div className="h-4 sm:h-5 w-4/6 rounded-md bg-slate-200/70" />
+            <div className="mt-6 flex gap-3">
+              <div className="h-10 sm:h-12 w-32 rounded-full bg-slate-200/70" />
+              <div className="h-10 sm:h-12 w-32 rounded-full bg-slate-200/70" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-2xl border border-black/5 bg-slate-50 p-4">
+                <div className="h-3 w-20 rounded bg-slate-200/70 mb-2" />
+                <div className="h-8 w-16 rounded-md bg-slate-200/70 mb-2" />
+                <div className="h-2 w-24 rounded bg-slate-200/70" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Stat Cards Skeleton */}
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-[1.4rem] border border-black/5 bg-white p-4 sm:rounded-[1.8rem] sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="h-6 w-16 rounded-full bg-slate-200/70" />
+              <div className="h-10 w-10 rounded-full bg-slate-200/70" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-24 rounded bg-slate-200/70" />
+              <div className="h-8 w-32 rounded-md bg-slate-200/70" />
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* Charts & Lists Skeleton */}
+      <div className="grid gap-5 sm:gap-6 lg:grid-cols-2 xl:gap-8">
+        <div className="rounded-[2rem] border border-black/5 bg-white p-6">
+           <div className="flex justify-between items-center mb-6">
+             <div className="h-6 w-40 rounded-md bg-slate-200/70" />
+             <div className="h-6 w-24 rounded-full bg-slate-200/70" />
+           </div>
+           <div className="h-[250px] w-full rounded-xl bg-slate-100/50" />
+        </div>
+        <div className="rounded-[2rem] border border-black/5 bg-white p-6">
+           <div className="flex justify-between items-center mb-6">
+             <div className="h-6 w-40 rounded-md bg-slate-200/70" />
+             <div className="h-6 w-24 rounded-full bg-slate-200/70" />
+           </div>
+           <div className="space-y-4">
+             {Array.from({ length: 4 }).map((_, i) => (
+               <div key={i} className="flex items-center gap-4 border-b border-black/5 pb-4 last:border-0">
+                 <div className="h-10 w-10 rounded-full bg-slate-200/70" />
+                 <div className="space-y-2 flex-1">
+                   <div className="h-4 w-32 rounded bg-slate-200/70" />
+                   <div className="h-3 w-24 rounded bg-slate-200/70" />
+                 </div>
+                 <div className="h-6 w-16 rounded-full bg-slate-200/70" />
+               </div>
+             ))}
+           </div>
+        </div>
+      </div>
+    </div>
   );
 }

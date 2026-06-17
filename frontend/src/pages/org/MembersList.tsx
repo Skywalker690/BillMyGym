@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, Info, MessageCircleMore, Pencil, PhoneOff, Plus, RefreshCw, Search, Send, ShieldAlert, Sparkles, Trash2, XCircle, Zap } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, Info, MessageCircleMore, Pencil, PhoneOff, Plus, RefreshCw, Search, Send, ShieldAlert, Sparkles, Trash2, X, XCircle, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,7 +57,7 @@ export default function MembersList() {
   // When search is active, query across ALL statuses for universal search
   const effectiveTabForQuery = appliedSearch ? "ALL" : memberTab;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ["members", page, appliedSearch, effectiveTabForQuery],
     queryFn: async () => {
       const res = await api.get("/members", {
@@ -236,10 +236,7 @@ export default function MembersList() {
     { id: "DEACTIVATED" as const, label: "Deactivated", count: summary.deactivatedMembers ?? 0 },
   ];
 
-  if (isLoading && !isDemoDirectory) {
-    return <div className="p-8">Loading members...</div>;
-  }
-
+  // Removed the global isLoading early return so the skeleton table can be rendered instead
   return (
     <div className="mx-auto min-w-0 max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
       <section className="billmygym-shell rounded-[2rem] p-8">
@@ -261,10 +258,10 @@ export default function MembersList() {
       </section>
 
       <section className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-        <SummaryTile label="Total Members" value={summary.totalMembers} tone="slate" />
-        <SummaryTile label="Active Members" value={summary.activeMembers} tone="emerald" />
-        <SummaryTile label="Deactivated Members" value={summary.deactivatedMembers} tone="indigo" />
-        <SummaryTile label="Due Today" value={summary.expiringSoonMemberships} tone="amber" />
+        <SummaryTile label="Total Members" value={summary.totalMembers} tone="slate" loading={(isLoading || isFetching) && !isDemoDirectory} />
+        <SummaryTile label="Active Members" value={summary.activeMembers} tone="emerald" loading={(isLoading || isFetching) && !isDemoDirectory} />
+        <SummaryTile label="Deactivated Members" value={summary.deactivatedMembers} tone="indigo" loading={(isLoading || isFetching) && !isDemoDirectory} />
+        <SummaryTile label="Due Today" value={summary.expiringSoonMemberships} tone="amber" loading={(isLoading || isFetching) && !isDemoDirectory} />
       </section>
 
       <section className="glass-panel rounded-[1.8rem] p-4">
@@ -288,9 +285,13 @@ export default function MembersList() {
                   )}
                 >
                   <span>{tab.label}</span>
-                  <span className={cn("rounded-full px-2 py-0.5 text-xs", active ? "bg-white/85 text-emerald-700" : "bg-slate-100 text-slate-500")}>
-                    {tab.count}
-                  </span>
+                  {(isLoading || isFetching) && !isDemoDirectory ? (
+                    <span className="ml-1 inline-block h-4 w-6 animate-pulse rounded bg-slate-200/80" />
+                  ) : (
+                    <span className={cn("rounded-full px-2 py-0.5 text-xs", active ? "bg-white/85 text-emerald-700" : "bg-slate-100 text-slate-500")}>
+                      {tab.count}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -298,11 +299,11 @@ export default function MembersList() {
 
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex w-full flex-1 flex-col gap-3 md:max-w-2xl md:flex-row">
-              <div className="relative flex-1">
+              <div className="relative flex-1 group">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
                   placeholder="Search by name or phone..."
-                  className="h-11 rounded-xl border-black/5 bg-white/60 pl-11"
+                  className="h-11 rounded-xl border-black/5 bg-white/60 pl-11 pr-10"
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
                   onKeyDown={(event) => {
@@ -312,6 +313,19 @@ export default function MembersList() {
                     }
                   }}
                 />
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchInput("");
+                      setAppliedSearch("");
+                      setPage(0);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
               <Button
                 type="button"
@@ -344,10 +358,50 @@ export default function MembersList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5">
-                {members.map((member: any) => {
-                  const membership = member.currentMembership;
-                  const status = membership?.displayStatus ?? (membership?.expired ? "EXPIRED" : membership?.expiringSoon ? "EXPIRING_SOON" : membership?.status ?? "NO_MEMBERSHIP");
-                  return (
+                {(isLoading || isFetching) && !isDemoDirectory ? (
+                  // Premium Skeleton Loader Rows
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <tr key={`skeleton-${i}`} className="animate-pulse">
+                      <td className="min-w-[140px] sm:min-w-[200px] px-2 sm:px-6 py-4 sm:py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-full bg-slate-200/70" />
+                          <div className="space-y-2.5 flex-1 max-w-[160px]">
+                            <div className="h-4 w-full rounded-md bg-slate-200/70" />
+                            <div className="h-3 w-2/3 rounded-md bg-slate-200/70" />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="hidden lg:table-cell px-2 sm:px-6 py-4 sm:py-5">
+                        <div className="space-y-2.5">
+                          <div className="h-4 w-24 rounded-md bg-slate-200/70" />
+                          <div className="h-3 w-32 rounded-md bg-slate-200/70" />
+                        </div>
+                      </td>
+                      <td className="min-w-[140px] px-2 sm:px-6 py-4 sm:py-5">
+                        <div className="space-y-3">
+                          <div className="h-6 w-20 sm:w-24 rounded-full bg-slate-200/70" />
+                          <div className="h-3 w-24 sm:w-32 rounded-md bg-slate-200/70" />
+                        </div>
+                      </td>
+                      <td className="px-2 sm:px-6 py-4 sm:py-5 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="hidden sm:block h-9 w-24 rounded-full bg-slate-200/70" />
+                          <div className="h-9 w-9 rounded-xl bg-slate-200/70" />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : members.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="p-14 text-center text-sm font-semibold text-slate-500">
+                      No members found matching your filters.
+                    </td>
+                  </tr>
+                ) : (
+                  members.map((member: any) => {
+                    const membership = member.currentMembership;
+                    const status = membership?.displayStatus ?? (membership?.expired ? "EXPIRED" : membership?.expiringSoon ? "EXPIRING_SOON" : membership?.status ?? "NO_MEMBERSHIP");
+                    return (
                     <tr key={member.id} className="transition-colors hover:bg-white/50">
                       <td className="min-w-[140px] sm:min-w-[200px] px-2 sm:px-6 py-2 sm:py-4">
                         <div className="flex items-start justify-between gap-2 sm:gap-3">
@@ -480,7 +534,8 @@ export default function MembersList() {
                       </td>
                     </tr>
                   );
-                })}
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -1127,7 +1182,16 @@ function CustomReminderLimitCard({
     );
 }
 
-function SummaryTile({ label, value, tone }: { label: string; value?: number; tone: "slate" | "emerald" | "amber" | "indigo" }) {
+function SummaryTile({ label, value, tone, loading }: { label: string; value?: number; tone: "slate" | "emerald" | "amber" | "indigo"; loading?: boolean }) {
+  if (loading) {
+    return (
+      <div className="glass-panel relative overflow-hidden rounded-[1.4rem] p-3 sm:rounded-[1.7rem] sm:p-5 border border-black/5 animate-pulse bg-slate-100/50">
+        <div className="h-3 w-16 sm:w-20 rounded bg-slate-200/80 mb-2 sm:mb-3" />
+        <div className="h-8 sm:h-9 w-12 sm:w-16 rounded-md bg-slate-200/80" />
+      </div>
+    );
+  }
+
   const toneClasses = {
     slate: "from-slate-900/10 via-slate-400/5 to-transparent",
     emerald: "from-emerald-500/18 via-emerald-300/8 to-transparent",

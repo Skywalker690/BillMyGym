@@ -888,7 +888,7 @@ export default function OrganizationDetail() {
               <InfoRow icon={CalendarDays} label="Joined GymMax" value={formatDate(subscriptionStatus?.joinedAt)} />
               <InfoRow icon={MapPin} label="Place" value={organization.place || "Not set"} />
               <InfoRow icon={MapPin} label="District" value={organization.district || "Not set"} />
-              <InfoRow icon={IndianRupee} label="Default Plan" value={defaultMembershipPlan ? `${defaultMembershipPlan.name} - ${money.format(defaultMembershipPlan.price ?? 0)}` : "Not set"} />
+              <InfoRow icon={IndianRupee} label="Default Plan" value={defaultMembershipPlan ? `${defaultMembershipPlan.name} - ${money.format(Number(defaultMembershipPlan.price ?? 0))}` : "Not set"} />
               <InfoRow icon={IndianRupee} label="Admission Fee" value={money.format(organization.admissionFee ?? 0)} />
               <InfoRow icon={Mail} label="Admin Email" value={organization.adminEmail || "Not set"} />
               <InfoRow icon={Phone} label="Admin Phone" value={organization.adminPhoneNumber || "Not set"} />
