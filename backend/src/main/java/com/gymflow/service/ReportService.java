@@ -8,8 +8,6 @@ import com.gymflow.api.dto.ReportDtos.DashboardReportResponse;
 import com.gymflow.api.dto.ReportDtos.MonthlyMemberJoinResponse;
 import com.gymflow.api.dto.ReportDtos.ReminderReportResponse;
 import com.gymflow.api.dto.ReportDtos.SubscriptionValiditySummary;
-import com.gymflow.api.dto.SubscriptionDtos.PlanAccessResponse;
-import com.gymflow.api.dto.SubscriptionDtos.SubscriptionPricingResponse;
 import com.gymflow.api.error.BadRequestException;
 import com.gymflow.domain.Member;
 import com.gymflow.domain.MemberMembership;
@@ -56,7 +54,6 @@ public class ReportService {
     private final ReminderService reminderService;
     private final com.gymflow.repository.OrganizationRepository organizationRepository;
     private final PlanAccessService planAccessService;
-    private final SubscriptionPricingService subscriptionPricingService;
     private final MemberCreditLedgerService memberCreditLedgerService;
 
     @Transactional
@@ -84,8 +81,6 @@ public class ReportService {
             revenueSegmentation,
             memberSummary,
             monthlyMemberJoins(organization),
-            toPlanAccessResponse(planAccessService.summary(organization)),
-            toPricingResponse(subscriptionPricingService.currentPrice(organization)),
             buildSubscriptionValidity(organization),
             overdueItems
         );
@@ -129,28 +124,7 @@ public class ReportService {
             .toList();
     }
 
-    private PlanAccessResponse toPlanAccessResponse(PlanAccessService.PlanAccessSummary summary) {
-        return new PlanAccessResponse(
-            summary.canCreateMembers(),
-            summary.canViewAdvancedAnalytics(),
-            summary.canReceiveMonthlyReports(),
-            summary.canExportReports(),
-            summary.canUsePremiumFeatures(),
-            summary.canUseSupportAutomation()
-        );
-    }
 
-    private SubscriptionPricingResponse toPricingResponse(SubscriptionPricingService.SubscriptionPriceBreakdown pricing) {
-        return new SubscriptionPricingResponse(
-            pricing.baseAmount(),
-            pricing.totalAmount(),
-            pricing.activeMembers(),
-            pricing.includedMembers(),
-            pricing.overageMembers(),
-            pricing.overageRate(),
-            pricing.overageAmount()
-        );
-    }
 
     private SubscriptionValiditySummary buildSubscriptionValidity(Organization organization) {
         LocalDate today = LocalDate.now(APP_ZONE);

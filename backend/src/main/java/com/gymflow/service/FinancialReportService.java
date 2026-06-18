@@ -77,10 +77,7 @@ public class FinancialReportService {
             window.range(),
             window.startDate(),
             window.endDate(),
-            organization.getName(),
-            organization.getLogoUrl(),
             reportPlanName(organization),
-            toPlanAccessResponse(planAccessService.summary(organization)),
             summary(months),
             months
         );
@@ -99,10 +96,8 @@ public class FinancialReportService {
             extension
         );
 
-        if ("CSV".equals(normalizedType)) {
-            return new ReportExport(buildCsv(report), "text/csv; charset=UTF-8", filename);
-        }
-        return new ReportExport(buildPdf(report), "application/pdf", filename);
+        byte[] content = "PDF".equals(normalizedType) ? buildPdf(report, organization) : buildCsv(report, organization);
+        return new ReportExport(content, "PDF".equals(normalizedType) ? "application/pdf" : "text/csv; charset=UTF-8", filename);
     }
 
     private FinancialReportMonthResponse monthResponse(
@@ -179,12 +174,10 @@ public class FinancialReportService {
             admissionRevenue,
             membershipRevenue,
             duePayments,
-            expenses,
             admittedMemberIds.size(),
             activeMembers,
             overdueMembers,
-            deactivatedMembers,
-            "%s plan, membership pricing follows each member plan snapshot".formatted(reportPlanName(organization))
+            deactivatedMembers
         );
     }
 
@@ -217,7 +210,6 @@ public class FinancialReportService {
         BigDecimal admissionRevenue = BigDecimal.ZERO;
         BigDecimal membershipRevenue = BigDecimal.ZERO;
         BigDecimal duePayments = BigDecimal.ZERO;
-        BigDecimal expenses = BigDecimal.ZERO;
         long admissions = 0L;
         long deactivatedMembers = 0L;
 
@@ -226,7 +218,6 @@ public class FinancialReportService {
             admissionRevenue = admissionRevenue.add(month.admissionRevenue());
             membershipRevenue = membershipRevenue.add(month.membershipRevenue());
             duePayments = duePayments.add(month.duePayments());
-            expenses = expenses.add(month.expenses());
             admissions += month.admissions();
             deactivatedMembers += month.deactivatedMembers();
         }
@@ -237,7 +228,6 @@ public class FinancialReportService {
             admissionRevenue,
             membershipRevenue,
             duePayments,
-            expenses,
             admissions,
             latest == null ? 0 : latest.activeMembers(),
             latest == null ? 0 : latest.overdueMembers(),
@@ -362,11 +352,11 @@ public class FinancialReportService {
         return planAccessService.resolvePlan(organization).name();
     }
 
-    private byte[] buildCsv(FinancialReportResponse report) {
+    private byte[] buildCsv(FinancialReportResponse report, Organization organization) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.writeBytes(new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
         StringBuilder csv = new StringBuilder();
-        appendCsvRow(csv, "Gym", report.organizationName());
+        appendCsvRow(csv, "Gym", organization.getName());
         appendCsvRow(csv, "Period", report.period());
         appendCsvRow(csv, "Date Range", report.startDate() + " to " + report.endDate());
         appendCsvRow(csv, "Plan", report.planName());
@@ -379,7 +369,6 @@ public class FinancialReportService {
             "Membership Revenue",
             "Admissions",
             "Due Payments",
-            "Expenses",
             "Active Members",
             "Overdue Members",
             "Deactivated Members"
@@ -393,7 +382,6 @@ public class FinancialReportService {
                 moneyValue(month.membershipRevenue()),
                 String.valueOf(month.admissions()),
                 moneyValue(month.duePayments()),
-                moneyValue(month.expenses()),
                 String.valueOf(month.activeMembers()),
                 String.valueOf(month.overdueMembers()),
                 String.valueOf(month.deactivatedMembers())
@@ -419,8 +407,8 @@ public class FinancialReportService {
         return normalized;
     }
 
-    private byte[] buildPdf(FinancialReportResponse report) {
-        List<String> pageContents = buildPdfPages(report);
+    private byte[] buildPdf(FinancialReportResponse report, Organization organization) {
+        List<String> pageContents = buildPdfPages(report, organization);
         List<String> objects = new ArrayList<>();
         objects.add("<< /Type /Catalog /Pages 2 0 R >>");
 
@@ -463,7 +451,7 @@ public class FinancialReportService {
         return out.toByteArray();
     }
 
-    private List<String> buildPdfPages(FinancialReportResponse report) {
+    private List<String> buildPdfPages(FinancialReportResponse report, Organization organization) {
         List<String> pages = new ArrayList<>();
         List<FinancialReportMonthResponse> rows = report.months();
         List<int[]> ranges = new ArrayList<>();
@@ -481,7 +469,7 @@ public class FinancialReportService {
         int pageCount = ranges.size();
         for (int page = 0; page < pageCount; page++) {
             StringBuilder content = new StringBuilder();
-            drawPdfHeader(content, report, page + 1, pageCount);
+            drawPdfHeader(content, report, organization, page + 1, pageCount);
 
             if (page == 0) {
                 drawSummaryCard(content, 36, 458, "Total Revenue", moneyLabel(report.summary().totalRevenue()));
@@ -508,11 +496,11 @@ public class FinancialReportService {
         return pages;
     }
 
-    private void drawPdfHeader(StringBuilder content, FinancialReportResponse report, int page, int pageCount) {
+    private void drawPdfHeader(StringBuilder content, FinancialReportResponse report, Organization organization, int page, int pageCount) {
         content.append("0.97 0.99 0.98 rg 0 0 842 595 re f\n");
         content.append("0.90 0.96 0.93 rg 0 535 842 60 re f\n");
         pdfText(content, "F2", 20, 36, 560, "Financial Report");
-        pdfText(content, "F1", 10, 36, 542, safePdfText(report.organizationName(), 86) + " | " + report.startDate() + " to " + report.endDate());
+        pdfText(content, "F1", 10, 36, 542, safePdfText(organization.getName(), 86) + " | " + report.startDate() + " to " + report.endDate());
         pdfText(content, "F1", 9, 666, 560, "Generated " + OffsetDateTime.now(APP_ZONE).toLocalDate());
         pdfText(content, "F1", 9, 742, 542, "Page " + page + " of " + pageCount);
     }

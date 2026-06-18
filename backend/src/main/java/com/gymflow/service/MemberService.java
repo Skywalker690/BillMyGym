@@ -424,9 +424,7 @@ public class MemberService {
             memberRepository.countByOrganizationIdAndDeletedFalse(orgId),
             memberRepository.countByOrganizationIdAndDeletedFalseAndStatus(orgId, MemberStatus.ACTIVE),
             memberRepository.countByOrganizationIdAndDeletedFalseAndStatusIn(orgId, INACTIVE_MEMBER_STATUSES),
-            memberMembershipRepository.countByOrganizationIdAndDeletedFalseAndStatus(orgId, MembershipStatus.ACTIVE),
             memberMembershipRepository.countExpiringSoon(orgId, today),
-            memberMembershipRepository.countExpiredOn(orgId, today),
             memberMembershipRepository.countOverdueBefore(orgId),
             toMemberLimitResponse(memberLimitService.usage(
                 organizationRepository.findByIdAndDeletedFalse(orgId)

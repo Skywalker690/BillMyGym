@@ -35,21 +35,10 @@ type FinancialReport = {
   range: string;
   startDate: string;
   endDate: string;
-  organizationName: string;
-  logoUrl?: string | null;
   planName: string;
-  planAccess?: {
-    canReceiveMonthlyReports?: boolean;
-    canExportReports?: boolean;
-  };
   summary?: {
     totalRevenue?: number;
-    admissionRevenue?: number;
-    membershipRevenue?: number;
-    duePayments?: number;
-    expenses?: number;
     admissions?: number;
-    activeMembers?: number;
     overdueMembers?: number;
     deactivatedMembers?: number;
   };
@@ -64,7 +53,6 @@ type FinancialReportMonth = {
   admissionRevenue: number;
   membershipRevenue: number;
   duePayments: number;
-  expenses: number;
   admissions: number;
   activeMembers: number;
   overdueMembers: number;

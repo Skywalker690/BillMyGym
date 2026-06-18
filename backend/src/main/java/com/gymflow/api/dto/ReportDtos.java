@@ -28,8 +28,6 @@ public class ReportDtos {
         RevenueSegmentationResponse revenueSegmentation,
         MemberDirectorySummary memberSummary,
         List<MonthlyMemberJoinResponse> monthlyMemberJoins,
-        PlanAccessResponse planAccess,
-        SubscriptionPricingResponse subscriptionPricing,
         SubscriptionValiditySummary subscriptionValidity,
         List<MemberDirectoryItem> overdue
     ) {
@@ -55,10 +53,7 @@ public class ReportDtos {
         String range,
         LocalDate startDate,
         LocalDate endDate,
-        String organizationName,
-        String logoUrl,
         String planName,
-        PlanAccessResponse planAccess,
         FinancialReportSummary summary,
         List<FinancialReportMonthResponse> months
     ) {
@@ -69,7 +64,6 @@ public class ReportDtos {
         BigDecimal admissionRevenue,
         BigDecimal membershipRevenue,
         BigDecimal duePayments,
-        BigDecimal expenses,
         long admissions,
         long activeMembers,
         long overdueMembers,
@@ -85,12 +79,10 @@ public class ReportDtos {
         BigDecimal admissionRevenue,
         BigDecimal membershipRevenue,
         BigDecimal duePayments,
-        BigDecimal expenses,
         long admissions,
         long activeMembers,
         long overdueMembers,
-        long deactivatedMembers,
-        String planDetails
+        long deactivatedMembers
     ) {
     }
 }

@@ -65,9 +65,7 @@ public class MemberDtos {
         long totalMembers,
         long activeMembers,
         long deactivatedMembers,
-        long activeMemberships,
         long expiringSoonMemberships,
-        long expiredMemberships,
         long overdueMemberships,
         SubscriptionDtos.MemberLimitResponse memberLimit
     ) {

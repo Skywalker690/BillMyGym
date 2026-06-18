@@ -82,7 +82,6 @@ public class RevenueService {
 
         BigDecimal pendingRevenue = BigDecimal.ZERO;
         BigDecimal overdueRevenue = BigDecimal.ZERO;
-        long prepaidMembers = 0L;
         // BUG-22: Track pending members uniquely by ID to avoid double-counting if a member
         // has multiple unpaid memberships (e.g. an old overdue and a current active).
         java.util.Set<Long> pendingMemberIds = new java.util.HashSet<>();
@@ -114,10 +113,6 @@ public class RevenueService {
                         pendingMemberIds.add(membership.getMember().getId());
                     }
                 }
-            }
-            if (membership.getDurationMonths() > 1 && coverage.pendingAmount().compareTo(BigDecimal.ZERO) == 0
-                && membership.getStatus() == MembershipStatus.ACTIVE && isMemberActive) {
-                prepaidMembers++;
             }
         }
         LocalDate today = LocalDate.now(APP_ZONE);
@@ -152,11 +147,9 @@ public class RevenueService {
 
         return new RevenueSummaryResponse(
             currentRevenue,
-            BigDecimal.ZERO, // now merged into overdueRevenue
             expectedRevenue,
             overdueRevenue,
             activeMembers,
-            prepaidMembers,
             activeMembersCollected,
             activeMembersPendingCollection
         );
@@ -170,7 +163,6 @@ public class RevenueService {
                 currentMonth.getYear(),
                 currentMonth.getMonthValue(),
                 summary.currentRevenue(),
-                summary.pendingRevenue(),
                 summary.expectedRevenue(),
                 summary.overdueRevenue()
             )

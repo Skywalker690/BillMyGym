@@ -65,11 +65,9 @@ public class AnalyticsDtos {
 
     public record RevenueSummaryResponse(
         BigDecimal currentRevenue,
-        BigDecimal pendingRevenue,
         BigDecimal expectedRevenue,
         BigDecimal overdueRevenue,
         long activeMembers,
-        long prepaidMembers,
         long activeMembersCollected,
         long activeMembersPendingCollection
     ) {
@@ -87,7 +85,6 @@ public class AnalyticsDtos {
         int year,
         int month,
         BigDecimal currentRevenue,
-        BigDecimal pendingRevenue,
         BigDecimal expectedRevenue,
         BigDecimal overdueRevenue
     ) {

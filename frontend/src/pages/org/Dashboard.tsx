@@ -59,11 +59,9 @@ type DashboardReport = {
   planName?: string;
   revenue?: {
     currentRevenue?: number;
-    pendingRevenue?: number;
     expectedRevenue?: number;
     overdueRevenue?: number;
     activeMembers?: number;
-    prepaidMembers?: number;
     activeMembersCollected?: number;
     activeMembersPendingCollection?: number;
   };
@@ -77,33 +75,15 @@ type DashboardReport = {
     totalMembers?: number;
     activeMembers?: number;
     deactivatedMembers?: number;
-    activeMemberships?: number;
     expiringSoonMemberships?: number;
-    expiredMemberships?: number;
     overdueMemberships?: number;
   };
   monthlyMemberJoins?: MonthlyMemberJoin[];
-  planAccess?: {
-    canCreateMembers?: boolean;
-    canViewAdvancedAnalytics?: boolean;
-    canReceiveMonthlyReports?: boolean;
-    canExportReports?: boolean;
-    canUsePremiumFeatures?: boolean;
-  };
   subscriptionValidity?: {
     label?: string;
     daysRemaining?: number;
     tooltipLabel?: string;
     tooltipDate?: string;
-  };
-  subscriptionPricing?: {
-    baseAmount?: number;
-    totalAmount?: number;
-    activeMembers?: number;
-    includedMembers?: number | null;
-    overageMembers?: number;
-    overageRate?: number;
-    overageAmount?: number;
   };
   expiringSoon?: MembershipSnapshot[];
   overdue?: MembershipSnapshot[];
@@ -205,7 +185,6 @@ export default function Dashboard() {
   const monthlyMemberJoins = dashboardReport?.monthlyMemberJoins ?? [];
   const joinedThisMonth = monthlyMemberJoins.at(-1)?.joinedMembers ?? 0;
   const subscriptionValidity = dashboardReport?.subscriptionValidity;
-  const subscriptionPricing = dashboardReport?.subscriptionPricing;
 
   const activeMembersTotal = Number(revenue.activeMembers ?? summary.activeMembers ?? 0);
   const activeMembersPendingCollection = Number(revenue.activeMembersPendingCollection ?? 0);
@@ -235,36 +214,47 @@ export default function Dashboard() {
 
   const statCards = [
     {
+      id: "admissions",
       title: "Admissions This Month",
       value: `${revenueSegmentation.admissionsThisMonth ?? 0} Members`,
       eyebrow: money(revenueSegmentation.admissionRevenue),
       icon: Users,
       panel: "from-emerald-500/18 via-emerald-400/8 to-transparent",
       badge: "bg-emerald-100 text-emerald-800 border-emerald-200",
+      breakdown: null,
     },
     {
-      title: "Monthly Revenue",
-      value: money(revenueSegmentation.recurringRevenue),
-      eyebrow: "Membership",
+      id: "active-members",
+      title: "Active Members",
+      value: `${summary.activeMembers ?? 0}`,
+      eyebrow: `${activeCollectionRate}% collected`,
       icon: TrendingUp,
-      panel: "from-slate-900/10 via-slate-500/5 to-transparent",
-      badge: "bg-slate-100 text-slate-700 border-slate-200",
+      panel: "from-sky-500/18 via-sky-400/8 to-transparent",
+      badge: "bg-sky-100 text-sky-700 border-sky-200",
+      breakdown: null,
     },
     {
+      id: "total-revenue",
       title: "Total Revenue",
       value: money(revenueSegmentation.totalRevenue),
-      eyebrow: "Admission + monthly",
+      eyebrow: "This month",
       icon: Wallet,
       panel: "from-amber-500/20 via-amber-300/8 to-transparent",
       badge: "bg-amber-100 text-amber-800 border-amber-200",
+      breakdown: {
+        admissionRevenue: money(revenueSegmentation.admissionRevenue),
+        recurringRevenue: money(revenueSegmentation.recurringRevenue),
+      },
     },
     {
-      title: "Overdue Exposure",
+      id: "pending-revenue",
+      title: "Pending Revenue",
       value: money(revenue.overdueRevenue),
       eyebrow: `${summary.overdueMemberships ?? 0} overdue`,
       icon: AlertTriangle,
       panel: "from-rose-500/18 via-rose-300/8 to-transparent",
       badge: "bg-rose-100 text-rose-800 border-rose-200",
+      breakdown: null,
     },
   ];
 
@@ -346,14 +336,56 @@ export default function Dashboard() {
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
-            <div key={card.title} className="glass-panel relative overflow-hidden rounded-[1.4rem] p-4 sm:rounded-[1.8rem] sm:p-6">
+            <div key={card.id} className="glass-panel relative overflow-hidden rounded-[1.4rem] p-4 sm:rounded-[1.8rem] sm:p-6">
               <div className={cn("absolute inset-0 bg-gradient-to-br", card.panel)} />
               <div className="relative z-10">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-3">
                   <div className="w-fit rounded-xl border border-white/80 bg-white/75 p-2 shadow-sm sm:rounded-2xl sm:p-3">
                     <Icon className="h-4 w-4 text-slate-900 sm:h-5 sm:w-5" />
                   </div>
-                  <Badge className={cn("text-[8px] leading-tight px-1.5 py-0 sm:text-xs sm:px-2.5 sm:py-0.5 w-fit whitespace-normal text-center sm:text-left sm:whitespace-nowrap", card.badge)}>{card.eyebrow}</Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Badge className={cn("text-[8px] leading-tight px-1.5 py-0 sm:text-xs sm:px-2.5 sm:py-0.5 w-fit whitespace-normal text-center sm:text-left sm:whitespace-nowrap", card.badge)}>{card.eyebrow}</Badge>
+                    {card.breakdown && (
+                      <div className="group relative hidden sm:block">
+                        <button
+                          type="button"
+                          className="flex items-center justify-center h-5 w-5 rounded-full border border-slate-200 bg-white/80 text-slate-500 shadow-sm transition-colors hover:border-amber-300 hover:text-amber-700 hover:bg-amber-50"
+                          aria-label="Revenue breakdown"
+                        >
+                          <Info className="h-2.5 w-2.5" />
+                        </button>
+                        {/* Hover breakdown popup — projects upward */}
+                        <div className="pointer-events-none absolute bottom-full right-0 mb-2 w-56 origin-bottom-right scale-95 opacity-0 transition-all duration-200 ease-out group-hover:scale-100 group-hover:opacity-100 z-50">
+                          <div className="relative rounded-2xl border border-amber-100 bg-white shadow-xl shadow-amber-900/10 overflow-hidden">
+                            {/* Gradient header */}
+                            <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-b border-amber-100 px-4 pt-3 pb-2">
+                              <div className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-700">Revenue Breakdown</div>
+                              <div className="text-[10px] font-semibold text-amber-600/80 mt-0.5">Current month</div>
+                            </div>
+                            {/* Rows */}
+                            <div className="p-3 space-y-2">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+                                  <span className="text-[11px] font-semibold text-slate-600">Admission Fee</span>
+                                </div>
+                                <span className="text-[11px] font-black text-slate-900">{card.breakdown.admissionRevenue}</span>
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                  <span className="text-[11px] font-semibold text-slate-600">Monthly Fee</span>
+                                </div>
+                                <span className="text-[11px] font-black text-slate-900">{card.breakdown.recurringRevenue}</span>
+                              </div>
+                            </div>
+                          </div>
+                          {/* Arrow */}
+                          <div className="absolute -bottom-1.5 right-3 h-3 w-3 rotate-45 border-b border-r border-amber-100 bg-white" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="mt-4 sm:mt-8">
                   <div className="text-[9px] font-black uppercase leading-tight tracking-[0.1em] text-slate-500 sm:text-[10px] sm:tracking-[0.22em]">{card.title}</div>
@@ -399,7 +431,7 @@ export default function Dashboard() {
               compact
             />
             <RevenueBand
-              label="Overdue Revenue"
+              label="Pending Revenue"
               value={money(revenue.overdueRevenue)}
               accent="rose"
               helper="Immediate leakage risk to recover"
